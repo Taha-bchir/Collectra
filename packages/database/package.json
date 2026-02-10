@@ -1,0 +1,57 @@
+{
+  "name": "@repo/database",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": true,
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules dist",
+    "db:migrate:prod": "dotenv -e ../../.env.production -- prisma migrate deploy -- --environment production",
+    "db:migrate:staging": "dotenv -e ../../.env.staging -- prisma migrate deploy -- --environment staging",
+    "db:migrate:dev": "dotenv -e ../../.env.development -- prisma migrate dev -- --environment development",
+    "db:push": "dotenv -e ../../.env.development -- prisma db push",
+    "db:pull": "dotenv -e ../../.env.development -- prisma db pull",
+    "db:seed:dev": "dotenv -e ../../.env.development -- prisma db seed -- --environment development",
+    "db:seed:staging": "dotenv -e ../../.env.staging -- prisma db seed -- --environment staging",
+    "db:seed:prod": "dotenv -e ../../.env.production -- prisma db seed -- --environment production",
+    "db:drop": "dotenv -e ../../.env.development -- prisma migrate reset --force --skip-seed --skip-generate -- --environment development",
+    "db:studio": "dotenv -e ../../.env.development -- prisma studio",
+    "db:setup": "dotenv -e ../../.env.development -- pnpm run db:migrate:dev && pnpm run db:seed",
+    "db:generate": "dotenv -e ../../.env.development -- prisma generate && prisma format",
+    "db:reset:staging": "dotenv -e ../../.env.staging -- prisma migrate reset --force -- --environment staging",
+    "db:reset:dev": "dotenv -e ../../.env.development -- prisma migrate reset --force -- --environment development",
+    "db:resolve:applied:dev": "dotenv -e ../../.env.development -- prisma migrate resolve --applied 20251208145759_make_negotiation_relations_many_to_one",
+    "db:status:dev": "dotenv -e ../../.env.development -- prisma migrate status",
+    "postinstall": "pnpm run db:generate",
+    "build": "tsc && tsc-alias",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^8.4.0",
+    "@supabase/supabase-js": "^2.48.0",
+    "@prisma/client": "^6.19.0",
+    "@types/lodash": "^4.14.202",
+    "bcryptjs": "2.4.3",
+    "dotenv": "^16.4.1",
+    "dotenv-cli": "^7.3.0",
+    "tsc-alias": "^1.8.16",
+    "lodash": "^4.17.21",
+    "prisma": "^6.19.0",
+    "@repo/typescript-config": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "ethers": "^6.16.0"
+  },
+  "devDependencies": {
+  },
+  "prisma": {
+    "seed": "tsx src/seed/index.ts"
+  }
+}

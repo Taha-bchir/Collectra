@@ -1,0 +1,21 @@
+{
+  "extends": "../../packages/typescript-config/node.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx",
+    "paths": {
+      "@repo/database": ["../../packages/database/src/index.ts"],
+      "@repo/database/*": ["../../packages/database/src/*"],
+      "@repo/types": ["../../packages/types/src/index.ts"],
+      "@repo/types/*": ["../../packages/types/src/*"],
+      "hono-autoload/types": ["node_modules/hono-autoload/types/autoloader"],
+      "hono-autoload": ["node_modules/hono-autoload/index.ts"]
+    },
+    "typeRoots": ["./src/types", "./node_modules/@types"],
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

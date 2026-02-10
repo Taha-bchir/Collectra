@@ -1,0 +1,42 @@
+{
+  "name": "CarDeal App",
+  "short_name": "CarDeal",
+  "description": "Smart car buying platform - Connect buyers, sellers, and brokers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo blue.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo blue.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "automotive"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Browse Marketplace",
+      "short_name": "Marketplace",
+      "description": "Browse available cars",
+      "url": "/marketplace",
+      "icons": [{ "src": "/logo blue.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "My Cars",
+      "short_name": "Cars",
+      "description": "Manage your car listings",
+      "url": "/cars",
+      "icons": [{ "src": "/logo blue.png", "sizes": "96x96" }]
+    }
+  ]
+}

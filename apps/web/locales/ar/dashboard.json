@@ -1,0 +1,12 @@
+{
+  "dashboard_navigation": "التنقل",
+  "dashboard_settings": "الإعدادات",
+  "dashboard_overview": "المعاينة",
+  "dashboard_my_cars": "سياراتي",
+  "dashboard_overview_description": "نظرة عامة على سياراتك ومفاوضاتك وطلبات السيارات",
+  "dashboard_redirect_login": "جارٍ التحويل إلى تسجيل الدخول...",
+  "dashboard_user": "المستخدم",
+  "dashboard_log_out": "تسجيل الخروج",
+  "dashboard_car_requests": "طلبات السيارات",
+  "dashboard_no_cars_yet": "ليس لديك أي سيارات معروضة بعد"
+}

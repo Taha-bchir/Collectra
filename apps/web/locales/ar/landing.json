@@ -1,0 +1,20 @@
+{
+  "landing_badge": "قالب SaaS",
+  "landing_title_main": "Next.js + Hono",
+  "landing_title_highlight": "Starter",
+  "landing_description": "مونوريبو قابل لإعادة الاستخدام يتضمن المصادقة والتفويض وإدارة المستخدمين. مصمم لتطبيقات SaaS جاهزة للإنتاج.",
+  "landing_feature_auth_title": "المصادقة",
+  "landing_feature_auth_desc": "تسجيل ودخول بالبريد وكلمة المرور، تجديد الجلسة، نسيت كلمة المرور، واختياريًا تسجيل الدخول بـ Google.",
+  "landing_feature_authz_title": "التفويض",
+  "landing_feature_authz_desc": "مسارات API محمية برموز Bearer واختياريًا صلاحيات حسب الدور (RBAC).",
+  "landing_feature_user_title": "إدارة المستخدمين",
+  "landing_feature_user_desc": "الملف الشخصي وإعدادات الحساب وتغيير كلمة المرور وحذف الحساب.",
+  "landing_cta_badge": "ابدأ",
+  "landing_cta_title": "جاهز لبناء تطبيقك؟",
+  "landing_cta_description": "سجّل الدخول أو أنشئ حسابًا للوصول إلى لوحة التحكم والبدء من قاعدة مصادقة نظيفة.",
+  "landing_cta_primary_call": "إنشاء حساب",
+  "landing_cta_secondary_call": "الخصوصية",
+  "landing_cta_benefit_free": "مجاني للاستخدام",
+  "landing_cta_benefit_no_card": "بدون بطاقة ائتمان",
+  "landing_cta_benefit_cancel": "مفتوح المصدر"
+}

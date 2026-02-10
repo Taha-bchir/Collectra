@@ -1,0 +1,22 @@
+{
+  "contact_title": "Contact CarDeal",
+  "contact_subtitle": "Have a question about the platform, partnerships, or media? Send us a message and the CarDeal team will get back to you.",
+  "contact_form_title": "Send us a message",
+  "contact_form_name_label": "Full name",
+  "contact_form_name_placeholder": "Your name",
+  "contact_form_email_label": "Email",
+  "contact_form_email_placeholder": "you@example.com",
+  "contact_form_subject_label": "Subject",
+  "contact_form_subject_placeholder": "How can we help?",
+  "contact_form_message_label": "Message",
+  "contact_form_message_placeholder": "Share as much detail as you can about your request...",
+  "contact_form_submit": "Send message",
+  "contact_info_title": "Other ways to reach us",
+  "contact_info_body": "CarDeal operates as a digital-first platform. For partnership and business inquiries, use the information below.",
+  "contact_info_location_label": "Location",
+  "contact_info_location_value": "Riyadh, Saudi Arabia",
+  "contact_info_email_label": "Email",
+  "contact_info_email_value": "contact@peak-soft.de",
+  "contact_info_phone_label": "Phone",
+  "contact_info_phone_value": "+966 5X XXX XXXX"
+}
