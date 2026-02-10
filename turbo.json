@@ -1,0 +1,57 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "env": [
+        "VERCEL",
+        "NODE_ENV",
+        "PORT",
+        "API_URL",
+        "SUPABASE_PROJECT_ID",
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "REDIS_URL",
+        "JWT_SECRET",
+        "COOKIE_SECRET",
+        "RATE_LIMIT_WINDOW_MS",
+        "RATE_LIMIT_MAX_REQUESTS",
+        "DATABASE_URL",
+        "DIRECT_URL",
+        "PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING",
+        "PRISMA_ENGINES_MIRROR",
+        "ALLOWED_ORIGINS",
+        "SUPABASE_EMAIL_REDIRECT_URL",
+        "SUPABASE_RESET_REDIRECT_URL"
+      ],
+      "dependsOn": [
+        "^build"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**",
+        ".vercel/output/**"
+      ]
+    },
+    "lint": {
+      "dependsOn": [
+        "^lint"
+      ]
+    },
+    "check-types": {
+      "dependsOn": [
+        "^check-types"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

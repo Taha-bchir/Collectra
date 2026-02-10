@@ -1,0 +1,16 @@
+{
+  "welcome": "Welcome",
+  "error": {
+    "unauthorized": "Unauthorized",
+    "forbidden": "Forbidden",
+    "notFound": "Not Found",
+    "internalError": "Internal Server Error",
+    "validationError": "Validation Error"
+  },
+  "success": {
+    "created": "Created successfully",
+    "updated": "Updated successfully",
+    "deleted": "Deleted successfully"
+  }
+}
+

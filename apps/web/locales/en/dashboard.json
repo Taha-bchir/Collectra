@@ -1,0 +1,12 @@
+{
+  "dashboard_navigation": "Navigation",
+  "dashboard_settings": "Settings",
+  "dashboard_overview": "Overview",
+  "dashboard_my_cars": "My Cars",
+  "dashboard_overview_description": "Welcome to your dashboard. Replace this with your own metrics and features.",
+  "dashboard_redirect_login": "Redirecting to login...",
+  "dashboard_user": "User",
+  "dashboard_log_out": "Log out",
+  "dashboard_car_requests": "Car Requests",
+  "dashboard_no_cars_yet": "You don't have any cars listed yet"
+}

@@ -1,0 +1,18 @@
+{
+  "chatbot_open_label": "فتح مساعد الدردشة بالذكاء الاصطناعي",
+  "chatbot_close_label": "إغلاق الدردشة",
+  "chatbot_title": "المساعد الذكي",
+  "chatbot_subtitle": "مساعد صفقات السيارات",
+  "chatbot_powered_by": "مدعوم بالذكاء الاصطناعي",
+  "chatbot_empty_title": "مساعد مدعوم بالذكاء الاصطناعي",
+  "chatbot_empty_description": "أنا مساعدك الذكي المدعوم من OpenAI. يمكنني مساعدتك في التنقل في تطبيق صفقات السيارات والإجابة على أسئلتك!",
+  "chatbot_empty_badge_ask": "اسأل عن الميزات",
+  "chatbot_empty_badge_help": "احصل على المساعدة",
+  "chatbot_empty_badge_learn": "تعلم التطبيق",
+  "chatbot_input_placeholder": "اسألني أي شيء عن التطبيق...",
+  "chatbot_send_label": "إرسال الرسالة",
+  "chatbot_thinking": "الذكاء الاصطناعي يفكر...",
+  "chatbot_error_title": "خطأ",
+  "chatbot_powered_by_openai": "مدعوم من OpenAI",
+  "chatbot_view_marketplace": "عرض في السوق"
+}

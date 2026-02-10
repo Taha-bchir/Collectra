@@ -1,0 +1,20 @@
+{
+  "landing_badge": "SaaS Boilerplate",
+  "landing_title_main": "Next.js + Hono",
+  "landing_title_highlight": "Starter",
+  "landing_description": "A reusable monorepo with authentication, authorization, and authenticated user management. Built for production-ready SaaS apps.",
+  "landing_feature_auth_title": "Authentication",
+  "landing_feature_auth_desc": "Email/password sign-up and login, session refresh, forgot password, and optional Google OAuth.",
+  "landing_feature_authz_title": "Authorization",
+  "landing_feature_authz_desc": "Protected API routes with Bearer tokens and optional role-based access (RBAC).",
+  "landing_feature_user_title": "User Management",
+  "landing_feature_user_desc": "Profile and account settings, password change, and account deletion.",
+  "landing_cta_badge": "Get started",
+  "landing_cta_title": "Ready to build your app?",
+  "landing_cta_description": "Sign in or create an account to access the dashboard and start from a clean, authenticated baseline.",
+  "landing_cta_primary_call": "Sign up",
+  "landing_cta_secondary_call": "Privacy",
+  "landing_cta_benefit_free": "Free to use",
+  "landing_cta_benefit_no_card": "No credit card",
+  "landing_cta_benefit_cancel": "Open source"
+}

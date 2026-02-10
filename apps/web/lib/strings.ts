@@ -1,0 +1,223 @@
+/**
+ * English copy for the app. No i18n; single language only.
+ */
+export const strings = {
+  // App & nav
+  app_name: 'SaaS Boilerplate',
+  nav_home: 'Home',
+  nav_dashboard: 'Dashboard',
+  nav_account_settings: 'Account Settings',
+  nav_login: 'Login',
+  nav_get_started: 'Get Started',
+  footer_privacy_policy: 'Privacy Policy',
+
+  // Landing
+  landing_badge: 'SaaS Boilerplate',
+  landing_title_main: 'Next.js + Hono',
+  landing_title_highlight: 'Starter',
+  landing_description:
+    'A reusable monorepo with authentication, authorization, and authenticated user management. Built for production-ready SaaS apps.',
+  landing_feature_auth_title: 'Authentication',
+  landing_feature_auth_desc:
+    'Email/password sign-up and login, session refresh, forgot password, and optional Google OAuth.',
+  landing_feature_authz_title: 'Authorization',
+  landing_feature_authz_desc:
+    'Protected API routes with Bearer tokens and optional role-based access (RBAC).',
+  landing_feature_user_title: 'User Management',
+  landing_feature_user_desc:
+    'Profile and account settings, password change, and account deletion.',
+  landing_cta_badge: 'Get started',
+  landing_cta_title: 'Ready to build your app?',
+  landing_cta_description:
+    'Sign in or create an account to access the dashboard and start from a clean, authenticated baseline.',
+  landing_cta_primary_call: 'Sign up',
+  landing_cta_secondary_call: 'Privacy',
+  landing_cta_benefit_free: 'Free to use',
+  landing_cta_benefit_no_card: 'No credit card',
+  landing_cta_benefit_cancel: 'Open source',
+  logout: 'Logout',
+  loading: 'Loading...',
+  theme: 'Theme',
+
+  // Theme
+  lightMode: 'Light Mode',
+  darkMode: 'Dark Mode',
+  systemMode: 'System Mode',
+
+  // Dashboard
+  dashboard_navigation: 'Navigation',
+  dashboard_settings: 'Settings',
+  dashboard_overview: 'Overview',
+  dashboard_my_cars: 'My Cars',
+  dashboard_overview_description:
+    'Welcome to your dashboard. Replace this with your own metrics and features.',
+  dashboard_redirect_login: 'Redirecting to login...',
+  dashboard_log_out: 'Log out',
+
+  // Auth – login
+  auth_login_title: 'Sign in to your account',
+  auth_login_description: 'Enter your email and password to access your dashboard',
+  auth_email_label: 'Email address',
+  auth_email_placeholder: 'name@example.com',
+  auth_password_label: 'Password',
+  auth_password_placeholder: 'Enter your password',
+  auth_login_button: 'Sign in',
+  auth_login_loading: 'Signing you in...',
+  auth_login_register_prompt: "Don't have an account?",
+  auth_login_register_link: 'Create one',
+  auth_forgot_link: 'Forgot your password?',
+  auth_google_continue: 'Continue with Google',
+  auth_google_loading: 'Connecting...',
+  auth_generic_error: 'Something went wrong. Please try again later.',
+  auth_back_to_login: 'Back to login',
+
+  // Auth – sign up
+  auth_signup_title: 'Create a new account',
+  auth_signup_description: 'Fill out the form below to get started',
+  auth_full_name_label: 'Full name',
+  auth_full_name_placeholder: 'Enter your full name',
+  auth_phone_label: 'Phone number',
+  auth_phone_placeholder: '05xxxxxxxx',
+  auth_street_address_label: 'Street Address',
+  auth_street_address_placeholder: '123 Main St',
+  auth_city_label: 'City',
+  auth_city_placeholder: 'Riyadh',
+  auth_state_label: 'State / Region',
+  auth_state_placeholder: 'Riyadh Region',
+  auth_postal_code_label: 'Postal Code',
+  auth_postal_code_placeholder: '12345',
+  auth_country_label: 'Country',
+  auth_country_placeholder: 'Saudi Arabia',
+  auth_role_label: 'Account type',
+  auth_password_confirm_label: 'Confirm password',
+  auth_signup_button: 'Create account',
+  auth_signup_loading: 'Creating your account...',
+  auth_signup_login_prompt: 'Already have an account?',
+  auth_signup_login_link: 'Sign in',
+  auth_signup_success_title: 'Account created successfully!',
+  auth_signup_success_description: 'Check your email inbox to confirm your account.',
+  auth_signup_success_help:
+    "We've sent you a confirmation email. Click the link inside to activate your account and sign in. Check your spam folder if you don't see it.",
+  auth_signup_success_button: 'Back to sign in',
+
+  // Auth – verify
+  auth_verify_success_title: 'Email Verified Successfully!',
+  auth_verify_success_description: 'Your account has been verified and is ready to use.',
+  auth_verify_success_message:
+    'You can now sign in to your account and start using all the features of our platform.',
+  auth_verify_login_button: 'Go to Sign In',
+  auth_verify_loading_title: 'Verifying your email',
+  auth_verify_loading_description: 'Please wait while we confirm your email address.',
+  auth_verify_error_title: 'Verification failed',
+  auth_verify_error_description:
+    'The verification link is invalid or expired. Please request a new email.',
+  auth_verify_error_cta: 'Please request a new verification email.',
+
+  // Auth – error
+  auth_error_title: 'Sorry, something went wrong',
+  auth_error_description: 'An unexpected error occurred',
+  auth_error_code: 'Error code',
+
+  // Auth – forgot & reset
+  auth_forgot_title: 'Forgot password?',
+  auth_forgot_description: "Enter your email and we'll send you a reset link.",
+  auth_forgot_submit: 'Send reset link',
+  auth_forgot_success_title: 'Check your email',
+  auth_forgot_success_description: 'If an account exists for that email, a reset link is on the way.',
+  auth_verify_login_button_alt: 'Go to Sign In',
+  auth_reset_invalid_token: 'Reset link is invalid or expired.',
+  auth_password_min_length: 'Password must be at least 8 characters.',
+  auth_password_max_length: 'Password must be at most 72 characters.',
+  auth_password_mismatch: 'Passwords do not match.',
+  auth_reset_success_title: 'Password updated',
+  auth_reset_title: 'Set a new password',
+  auth_reset_verifying: 'Verifying reset link',
+  auth_reset_error_title: 'Reset link invalid',
+  auth_reset_success_description: 'Your password has been updated. Redirecting to login…',
+  auth_reset_description: 'Create a new password to secure your account.',
+  auth_reset_verifying_description: 'Please wait while we validate your reset link.',
+  auth_reset_error_description: 'The reset link is invalid or has expired. Request a new one.',
+  auth_new_password_label: 'New password',
+  auth_confirm_password_label: 'Confirm password',
+  auth_reset_submitting: 'Updating password...',
+  auth_reset_submit: 'Update password',
+  auth_reset_back_to_login: 'Back to login',
+  auth_reset_success_message: 'Password updated successfully.',
+
+  // Auth – OAuth / callback
+  auth_oauth_success_title: 'Authentication successful',
+  auth_oauth_success_description: 'Redirecting to your dashboard...',
+  auth_oauth_processing_title: 'Processing authentication',
+  auth_oauth_processing_description: 'Please wait while we complete your authentication',
+  auth_oauth_error_title: 'Authentication failed',
+  auth_oauth_error_description: 'An error occurred during authentication',
+  auth_oauth_error: 'OAuth authentication failed',
+  auth_oauth_missing_code: 'Missing authorization code',
+
+  // Validation
+  validation_email_required: 'Email is required',
+  validation_email_invalid: 'Please enter a valid email address',
+  validation_password_required: 'Password is required',
+  validation_password_min_length: 'Password must be at least 8 characters long',
+  validation_password_max_length: 'Password must not exceed 72 characters',
+  validation_password_confirm_required: 'Please confirm your password',
+  validation_password_confirm_mismatch: 'Passwords do not match',
+  validation_fullname_required: 'Full name is required',
+  validation_fullname_max_length: 'Full name must not exceed 120 characters',
+  validation_phone_min_length: 'Phone number must be at least 3 characters',
+  validation_phone_max_length: 'Phone number must not exceed 32 characters',
+  validation_street_address_max_length: 'Street address must not exceed 255 characters',
+  validation_city_max_length: 'City must not exceed 120 characters',
+  validation_state_max_length: 'State must not exceed 120 characters',
+  validation_postal_code_max_length: 'Postal code must not exceed 20 characters',
+  validation_country_max_length: 'Country must not exceed 120 characters',
+
+  // Settings / account
+  settings_account_title: 'Account settings',
+  settings_account_description:
+    'Manage your personal information, password, and account privacy from a single place.',
+  settings_tab_profile: 'Personal information',
+  settings_tab_password: 'Change password',
+  settings_tab_danger: 'Delete account',
+  settings_profile_title: 'Personal information',
+  settings_profile_description:
+    'Keep your contact details up to date so buyers and partners can reach you easily.',
+  settings_profile_full_name: 'Full name',
+  settings_profile_full_name_placeholder: 'John Doe',
+  settings_profile_phone: 'Phone number',
+  settings_profile_phone_placeholder: '+1 234 567 8900',
+  settings_profile_email: 'Email address',
+  settings_profile_email_note: 'Email changes are handled via support for security reasons.',
+  settings_profile_saving: 'Saving changes...',
+  settings_profile_save: 'Save changes',
+  settings_profile_success: 'Your personal information has been updated.',
+  settings_profile_error: 'Something went wrong while saving your changes.',
+  settings_password_title: 'Change password',
+  settings_password_description: 'Use a strong, unique password to keep your account secure.',
+  settings_password_current: 'Current password',
+  settings_password_current_placeholder: '••••••••',
+  settings_password_new: 'New password',
+  settings_password_new_placeholder: 'At least 8 characters',
+  settings_password_confirm: 'Confirm new password',
+  settings_password_confirm_placeholder: 'Repeat new password',
+  settings_password_updating: 'Updating password...',
+  settings_password_update: 'Update password',
+  settings_password_error_min_length: 'New password must be at least 8 characters.',
+  settings_password_error_mismatch: 'Passwords do not match.',
+  settings_password_success: 'Your password has been updated successfully.',
+  settings_password_error: 'Unable to change password right now. Please try again.',
+  settings_delete_title: 'Delete account',
+  settings_delete_description:
+    'This will permanently remove your account and associated data. This action cannot be undone.',
+  settings_delete_confirm_label: 'To confirm, type',
+  settings_delete_confirm_suffix: 'in the box below',
+  settings_delete_confirm_placeholder: 'DELETE',
+  settings_delete_error: 'Failed to delete account. Please try again.',
+  settings_delete_error_confirm: 'Please type "DELETE" to confirm account deletion.',
+  settings_delete_warning:
+    'Your ongoing listings, negotiations, and requests may be affected. Make sure to export any information you need before deleting your account.',
+  settings_delete_deleting: 'Deleting account...',
+  settings_delete_button: 'Delete my account',
+} as const
+
+export type StringKey = keyof typeof strings
