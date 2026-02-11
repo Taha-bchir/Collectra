@@ -1,0 +1,22 @@
+{
+  "contact_title": "تواصل مع كارديل",
+  "contact_subtitle": "عندك استفسار عن المنصة أو شراكة أو تغطية إعلامية؟ أرسل لنا رسالة وفريق كارديل يرد عليك في أقرب وقت.",
+  "contact_form_title": "أرسل لنا رسالة",
+  "contact_form_name_label": "الاسم الكامل",
+  "contact_form_name_placeholder": "اسمك",
+  "contact_form_email_label": "البريد الإلكتروني",
+  "contact_form_email_placeholder": "you@example.com",
+  "contact_form_subject_label": "الموضوع",
+  "contact_form_subject_placeholder": "كيف نقدر نساعدك؟",
+  "contact_form_message_label": "الرسالة",
+  "contact_form_message_placeholder": "اكتب تفاصيل كافية عن سؤالك أو طلبك...",
+  "contact_form_submit": "إرسال الرسالة",
+  "contact_info_title": "طرق تواصل أخرى",
+  "contact_info_body": "كارديل تعمل كمنصة رقمية أولًا. لطلبات الشراكات أو الاستفسارات التجارية، استخدم بيانات التواصل التالية.",
+  "contact_info_location_label": "الموقع",
+  "contact_info_location_value": "الرياض، المملكة العربية السعودية",
+  "contact_info_email_label": "البريد الإلكتروني",
+  "contact_info_email_value": "contact@peak-soft.de",
+  "contact_info_phone_label": "الجوال",
+  "contact_info_phone_value": "+966 5X XXX XXXX"
+}

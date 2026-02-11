@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Role enum for internal users (extend as needed)
+enum Role {
+  MANAGER
+  AGENT
+}
+
+// Company model (tenant)
+model Company {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique // e.g., company name or subdomain for uniqueness
+  website   String? // Optional website URL for verification (e.g., "https://example.com")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users User[]
+}
+
+// User model (internal users, linked to Supabase Auth)
+model User {
+  id        String  @id @db.Uuid // Matches Supabase auth.users.id
+  email     String  @unique
+  fullName  String?
+  role      Role    @default(AGENT)
+  companyId String  @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict) // Prevent deleting company if users exist
+}

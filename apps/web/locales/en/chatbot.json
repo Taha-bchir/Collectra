@@ -1,0 +1,18 @@
+{
+  "chatbot_open_label": "Open AI chat assistant",
+  "chatbot_close_label": "Close chat",
+  "chatbot_title": "AI Assistant",
+  "chatbot_subtitle": "Car Deal Helper",
+  "chatbot_powered_by": "Powered by AI",
+  "chatbot_empty_title": "AI-Powered Assistant",
+  "chatbot_empty_description": "I'm your AI assistant powered by OpenAI. I can help you navigate the car deal app and answer your questions!",
+  "chatbot_empty_badge_ask": "Ask about features",
+  "chatbot_empty_badge_help": "Get help",
+  "chatbot_empty_badge_learn": "Learn the app",
+  "chatbot_input_placeholder": "Ask me anything about the app...",
+  "chatbot_send_label": "Send message",
+  "chatbot_thinking": "AI is thinking...",
+  "chatbot_error_title": "Error",
+  "chatbot_powered_by_openai": "Powered by OpenAI",
+  "chatbot_view_marketplace": "View in Marketplace"
+}
