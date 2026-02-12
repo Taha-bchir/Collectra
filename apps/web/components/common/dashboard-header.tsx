@@ -25,12 +25,7 @@ export function DashboardHeader() {
     <header className="sticky top-0 z-40 border-b from-background/95 to-background/80 backdrop-blur-lg border-border/30 shadow-sm">
       <div className="flex h-16 items-center justify-between px-6 lg:px-8 gap-4">
         <div className="flex items-center gap-3 min-w-0">
-          <Badge
-            variant="secondary"
-            className="from-primary/10 to-primary/5 text-primary font-semibold px-3 py-1 whitespace-nowrap"
-          >
-            {profile.role}
-          </Badge>
+          <span className="text-sm text-muted-foreground truncate">{profile.email}</span>
         </div>
 
         <div className="flex items-center gap-2 lg:gap-4 ml-auto">

@@ -8,9 +8,6 @@ import type { AxiosInstance } from 'axios'
 import {
   AUTH_ROUTES,
   normalizeProfile,
-  mapBackendRoleToFrontend,
-  mapFrontendRoleToBackend,
-  type BackendUserRole,
   type LoginPayload,
   type RegisterPayload,
   type RegisterResult,
@@ -89,19 +86,16 @@ export const useAuthStore = create<AuthState>()(
         revalidateSession: async () => {
           try {
             const client = getAuthClient()
-            const { data } = await client.get<{ data: { id: string; email: string; role: BackendUserRole; profile: { fullName?: string | null; phone?: string | null } } }>(USER_ROUTES.me)
+            const { data } = await client.get<{ data: { id: string; email: string; profile: { fullName?: string | null } } }>(USER_ROUTES.me)
             const d = data.data
             set({
               profile: {
                 id: d.id,
                 email: d.email,
-                full_name: d.profile?.fullName ?? null,
-                phone: d.profile?.phone ?? null,
-                role: mapBackendRoleToFrontend(d.role),
-                avatar_url: null,
-                is_verified: true,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                fullName: d.profile?.fullName ?? null,
+                emailConfirmed: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
               },
             })
           } catch {
@@ -140,20 +134,15 @@ export const useAuthStore = create<AuthState>()(
               data: {
                 id: string
                 email: string
-                role: string
-                profile: { fullName?: string | null; phone?: string | null }
+                profile: { fullName?: string | null }
                 requiresEmailVerification: boolean
               }
-            }>(AUTH_ROUTES.register, {
-              ...payload,
-              role: mapFrontendRoleToBackend(payload.role ?? 'USER'),
-            })
+            }>(AUTH_ROUTES.register, payload)
             const result = data.data
             set({ authLoading: false, authError: null })
             return {
               userId: result.id,
               email: result.email,
-              role: mapBackendRoleToFrontend(result.role as BackendUserRole),
               requiresEmailVerification: result.requiresEmailVerification,
             }
           } catch (err) {

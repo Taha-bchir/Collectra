@@ -14,7 +14,6 @@ export interface Env {
     user?: {
       id: string
       email?: string
-      role?: Database["public"]["Enums"]["UserRole"]
     }
   }
 }

@@ -30,7 +30,6 @@ handler.openapi(getLoggedUserDataSchema, async (c) => {
       data: {
         id: data.id,
         email: data.email,
-        role: user.role ?? 'USER',
         profile: {
           fullName: data.fullName ?? null,
         },
@@ -63,7 +62,6 @@ handler.openapi(updateLoggedUserDataSchema, async (c) => {
       data: {
         id: data.id,
         email: data.email,
-        role: user.role ?? 'USER',
         profile: {
           fullName: data.fullName ?? null,
         },

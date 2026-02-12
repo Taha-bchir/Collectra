@@ -8,11 +8,9 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, Suspense } from "react"
-import type { UserRole } from "@/lib/db-types"
 import { ApiError } from "@/features/auth/services/auth-service"
 import { strings } from "@/lib/strings"
 import { useAuth } from "@/features/auth/hooks/use-auth"
-import { getDefaultSignupRole } from "@/config/env"
 import {
   validateEmail,
   validatePassword,
@@ -54,7 +52,6 @@ function SignUpForm() {
   const [state, setState] = useState("")
   const [postalCode, setPostalCode] = useState("")
   const [country, setCountry] = useState("")
-  const [role, setRole] = useState<UserRole>(() => getDefaultSignupRole())
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [touched, setTouched] = useState({
@@ -250,13 +247,6 @@ function SignUpForm() {
         email,
         password,
         fullName,
-        phone,
-        streetAddress,
-        city,
-        state,
-        postalCode,
-        country,
-        role,
       })
       router.push("/auth/sign-up-success")
     } catch (error: unknown) {

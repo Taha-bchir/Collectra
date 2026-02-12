@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,35 +8,142 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Role enum for internal users (extend as needed)
-enum Role {
-  MANAGER
+// Enums
+enum WorkspaceRole {
+  OWNER
   AGENT
 }
 
-// Company model (tenant)
-model Company {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique // e.g., company name or subdomain for uniqueness
-  website   String? // Optional website URL for verification (e.g., "https://example.com")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  users User[]
+enum DebtStatus {
+  IMPORTED
+  NOTIFIED
+  PROMISED
+  PAID
+  OVERDUE
 }
 
-// User model (internal users, linked to Supabase Auth)
-model User {
-  id        String  @id @db.Uuid // Matches Supabase auth.users.id
-  email     String  @unique
-  fullName  String?
-  role      Role    @default(AGENT)
-  companyId String  @db.Uuid
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+// Tables
+
+model Workspace {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique
+  website         String?
+  createdByUserId String?  @db.Uuid // Who created this workspace
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  createdBy User?             @relation("CreatedWorkspaces", fields: [createdByUserId], references: [id])
+  members   WorkspaceMember[]
+  campaigns Campaign[]
+  clients   Client[]
+}
+
+model User {
+  id        String   @id @db.Uuid // Matches Supabase auth.users.id
+  email     String   @unique
+  fullName  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
-  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict) // Prevent deleting company if users exist
+  createdWorkspaces Workspace[]       @relation("CreatedWorkspaces")
+  memberships       WorkspaceMember[]
+}
+
+model WorkspaceMember {
+  userId      String        @db.Uuid
+  workspaceId String        @db.Uuid
+  role        WorkspaceRole
+  joinedAt    DateTime      @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([userId, workspaceId])
+}
+
+model Campaign {
+  id          String         @id @default(uuid()) @db.Uuid
+  workspaceId String         @db.Uuid
+  name        String
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      CampaignStatus @default(DRAFT)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  debts        Debt[]
+  invitations  Invitation[]
+  clientTokens ClientToken[]
+}
+
+model Client {
+  id          String   @id @default(uuid()) @db.Uuid
+  workspaceId String   @db.Uuid
+  fullName    String
+  email       String?
+  phone       String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  debts     Debt[]
+}
+
+model Debt {
+  id          String     @id @default(uuid()) @db.Uuid
+  campaignId  String     @db.Uuid
+  clientId    String     @db.Uuid
+  amount      Decimal
+  dueDate     DateTime
+  status      DebtStatus @default(IMPORTED)
+  promiseDate DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  clientTokens ClientToken[] @relation("DebtToClientTokens")
+}
+
+model Invitation {
+  id         String           @id @default(uuid()) @db.Uuid
+  campaignId String           @db.Uuid
+  email      String
+  role       WorkspaceRole    @default(AGENT)
+  token      String           @unique
+  expiresAt  DateTime
+  status     InvitationStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model ClientToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  campaignId String   @db.Uuid
+  debtId     String   @db.Uuid
+  token      String   @unique
+  expiresAt  DateTime @default(dbgenerated("now() + interval '7 days'"))
+  createdAt  DateTime @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  debt     Debt     @relation("DebtToClientTokens", fields: [debtId], references: [id], onDelete: Cascade)
 }

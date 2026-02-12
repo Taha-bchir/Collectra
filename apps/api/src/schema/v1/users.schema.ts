@@ -10,13 +10,10 @@ const userProfileResponseSchema = z.object({
   fullName: z.string().nullable().optional(),
 });
 
-const userRoleSchema = z.enum(['USER', 'ADMIN', 'DEMO']);
-
 const loggedUserResponseSchema = z.object({
   data: z.object({
     id: z.string().uuid(),
     email: z.string().email(),
-    role: userRoleSchema,
     profile: userProfileResponseSchema,
   }),
 });

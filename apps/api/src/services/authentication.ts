@@ -1,56 +1,18 @@
-import type { PrismaClient, Role as PrismaUserRole } from '@repo/database';
+import type { PrismaClient } from '@repo/database';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from '@repo/types';
 import type { AuthenticationServiceOptions } from '../types/services.js';
 import { getSupabaseServiceClient } from '../lib/supabase.js';
 
-/** API/frontend role (USER | ADMIN | DEMO). Stored in JWT and returned in responses. */
-type DbUserRole = Database['public']['Enums']['UserRole'];
-
-const EXTERNAL_ROLES: DbUserRole[] = ['USER', 'ADMIN', 'DEMO'];
-const DEFAULT_EXTERNAL_ROLE: DbUserRole = 'USER';
-
-/** Map API/frontend role to Prisma Role (MANAGER | AGENT) for DB storage. */
-function mapExternalRoleToPrisma(external: DbUserRole): PrismaUserRole {
-  switch (external) {
-    case 'ADMIN':
-      return 'MANAGER';
-    case 'USER':
-    case 'DEMO':
-    default:
-      return 'AGENT';
-  }
-}
-
-const DEFAULT_COMPANY_NAME = 'Default';
-
-async function getOrCreateDefaultCompany(prisma: PrismaClient): Promise<string> {
-  const company = await prisma.company.findFirst({ where: { name: DEFAULT_COMPANY_NAME } });
-  if (company) return company.id;
-  const created = await prisma.company.create({
-    data: { name: DEFAULT_COMPANY_NAME, updatedAt: new Date() },
-  });
-  return created.id;
-}
-
-const PROFILE_FIELDS = [
-  'fullName',
-  'streetAddress',
-  'city',
-  'state',
-  'postalCode',
-  'country',
-] as const;
+const PROFILE_FIELDS = ['fullName'] as const;
 
 type ProfileField = (typeof PROFILE_FIELDS)[number];
-type UserProfileShape = Pick<Database['public']['Tables']['users']['Row'], ProfileField>;
+type UserProfileShape = { fullName: string | null };
 type UserProfileInput = Partial<UserProfileShape>;
 
 type RegisterPayload = UserProfileInput & {
   email: string;
   password: string;
-  role?: DbUserRole;
-  companyId?: string;  // Add if needed for registration
 };
 
 type LoginPayload = {
@@ -103,11 +65,7 @@ export class AuthenticationService {
   }
 
   async registerUser(payload: RegisterPayload) {
-    const externalRole: DbUserRole = payload.role ?? DEFAULT_EXTERNAL_ROLE;
-    const prismaRole = mapExternalRoleToPrisma(externalRole);
     const profileMetadata = this.pickProfileFields(payload);
-    const companyId =
-      payload.companyId ?? (await getOrCreateDefaultCompany(this.prisma));
 
     const { data, error } = await this.supabase.auth.signUp({
       email: payload.email,
@@ -115,7 +73,6 @@ export class AuthenticationService {
       options: {
         emailRedirectTo: this.emailRedirectTo,
         data: {
-          role: externalRole,
           ...profileMetadata,
         },
       },
@@ -133,15 +90,11 @@ export class AuthenticationService {
 
     const { dbUser } = await this.upsertUserFromSupabase(supabaseUser, {
       fullName: profileMetadata.fullName ?? null,
-      role: prismaRole,
-      companyId,
-      externalRole,
     });
 
     return {
       id: dbUser.id,
       email: dbUser.email,
-      role: externalRole,
       profile: { fullName: dbUser.fullName ?? null },
       requiresEmailVerification: !data.session,
     };
@@ -163,7 +116,7 @@ export class AuthenticationService {
       throw new Error('Invalid credentials.');
     }
 
-    const { dbUser, externalRole } = await this.upsertUserFromSupabase(user);
+    const { dbUser } = await this.upsertUserFromSupabase(user);
 
     return {
       accessToken: session.access_token,
@@ -172,7 +125,6 @@ export class AuthenticationService {
       user: {
         id: dbUser.id,
         email: dbUser.email,
-        role: externalRole,
         profile: { fullName: dbUser.fullName ?? null },
         emailConfirmed: Boolean(user.email_confirmed_at),
       },
@@ -229,7 +181,7 @@ export class AuthenticationService {
       throw err;
     }
 
-    const { dbUser, externalRole } = await this.upsertUserFromSupabase(user);
+    const { dbUser } = await this.upsertUserFromSupabase(user);
 
     return {
       accessToken: session.access_token,
@@ -238,7 +190,6 @@ export class AuthenticationService {
       user: {
         id: dbUser.id,
         email: dbUser.email,
-        role: externalRole,
         profile: { fullName: dbUser.fullName ?? null },
         emailConfirmed: Boolean(user.email_confirmed_at),
       },
@@ -249,28 +200,13 @@ private async upsertUserFromSupabase(
     user: SupabaseUser,
     overrides?: {
       fullName?: string | null;
-      role?: PrismaUserRole;
-      companyId?: string;
-      externalRole?: DbUserRole;
     }
-  ): Promise<{ dbUser: Awaited<ReturnType<PrismaClient['user']['upsert']>>; externalRole: DbUserRole }> {
+  ): Promise<{ dbUser: Awaited<ReturnType<PrismaClient['user']['upsert']>> }> {
     const email = user.email;
     if (!email) {
       throw new Error('Supabase user missing email.');
     }
 
-    const metadataRole = user.user_metadata?.role as string | undefined;
-    const prismaRole: PrismaUserRole =
-      overrides?.role ??
-      (metadataRole ? mapExternalRoleToPrisma(metadataRole as DbUserRole) : undefined) ??
-      'AGENT';
-    const externalRole: DbUserRole =
-      overrides?.externalRole ??
-      (EXTERNAL_ROLES.includes(metadataRole as DbUserRole) ? (metadataRole as DbUserRole) : undefined) ??
-      DEFAULT_EXTERNAL_ROLE;
-
-    const companyId =
-      overrides?.companyId ?? (await getOrCreateDefaultCompany(this.prisma));
     const fullName = overrides?.fullName ?? (user.user_metadata?.fullName as string | undefined) ?? null;
 
     const dbUser = await this.prisma.user.upsert({
@@ -278,26 +214,15 @@ private async upsertUserFromSupabase(
       update: {
         email,
         fullName,
-        role: prismaRole,
       },
       create: {
         id: user.id,
         email,
         fullName,
-        role: prismaRole,
-        companyId,
       },
     });
 
-    const serviceClient = getSupabaseServiceClient();
-    await serviceClient.auth.admin.updateUserById(user.id, {
-      user_metadata: {
-        ...(user.user_metadata as Record<string, unknown>),
-        role: externalRole,
-      },
-    });
-
-    return { dbUser, externalRole };
+    return { dbUser };
   }
 
   async getGoogleOAuthUrl(payload: GoogleOAuthPayload) {
@@ -359,11 +284,8 @@ private async upsertUserFromSupabase(
       ...googleProfile,
     });
 
-    const externalRole: DbUserRole = (googleProfile?.role as DbUserRole | undefined) ?? 'USER';
-
     const { dbUser } = await this.upsertUserFromSupabase(user, {
       fullName: profileMetadata.fullName ?? null,
-      externalRole,
     });
 
     return {
@@ -373,7 +295,6 @@ private async upsertUserFromSupabase(
       user: {
         id: dbUser.id,
         email: dbUser.email,
-        role: externalRole,
         profile: { fullName: dbUser.fullName ?? null },
         emailConfirmed: Boolean(user.email_confirmed_at),
       },
@@ -398,11 +319,8 @@ private async upsertUserFromSupabase(
       ...googleProfile,
     });
 
-    const externalRole: DbUserRole = (googleProfile?.role as DbUserRole | undefined) ?? 'USER';
-
     const { dbUser } = await this.upsertUserFromSupabase(user, {
       fullName: profileMetadata.fullName ?? null,
-      externalRole,
     });
 
     // Get session info - we'll use the provided tokens
@@ -419,7 +337,6 @@ private async upsertUserFromSupabase(
       user: {
         id: dbUser.id,
         email: dbUser.email,
-        role: externalRole,
         profile: { fullName: dbUser.fullName ?? null },
         emailConfirmed: Boolean(user.email_confirmed_at),
       },

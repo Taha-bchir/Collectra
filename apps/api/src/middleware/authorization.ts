@@ -18,11 +18,8 @@ export const authorization: MiddlewareHandler<Env> = async (c, next) => {
 }
 
 /**
- * Role-based authorization helper. Use after the main authorization middleware.
- * Returns 401 if no user, 403 if user's role is not in the allowed list.
- *
- * @example
- *   app.get('/admin/settings', requireRole(['ADMIN']), (c) => c.json({ ... }))
+ * Role-based authorization helper - DEPRECATED.
+ * The new schema uses workspace-based roles via WorkspaceMember.
  */
 export function requireRole(roles: string[]): MiddlewareHandler<Env> {
   return async (c, next) => {
@@ -32,10 +29,7 @@ export function requireRole(roles: string[]): MiddlewareHandler<Env> {
       return c.json({ error: 'Unauthorized' }, 401)
     }
 
-    if (!roles.includes(user.role ?? '')) {
-      return c.json({ error: 'Forbidden' }, 403)
-    }
-
+    // Note: User roles are now managed at workspace level via WorkspaceMember
     await next()
   }
 }
@@ -73,7 +67,6 @@ async function enforceAuth(c: Parameters<MiddlewareHandler<Env>>[0], next: () =>
     c.set('user', {
       id: user.id,
       email: user.email ?? undefined,
-      role: user.user_metadata?.role as Database["public"]["Enums"]["UserRole"] | undefined,
     })
 
     await next()

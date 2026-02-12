@@ -1,0 +1,322 @@
+﻿+---apps
+|   +---api
+|   |   +---src
+|   |   |   +---config
+|   |   |   |   |   env.ts
+|   |   |   +---lib
+|   |   |   |   |   prisma.ts
+|   |   |   |   |   supabase.ts
+|   |   |   +---locales
+|   |   |   |   +---en
+|   |   |   |   |   |   common.json
+|   |   |   +---middleware
+|   |   |   |   |   authorization.ts
+|   |   |   |   |   autoloader.ts
+|   |   |   |   |   compress.ts
+|   |   |   |   |   cookie.ts
+|   |   |   |   |   cors.ts
+|   |   |   |   |   error-handler.ts
+|   |   |   |   |   formbody.ts
+|   |   |   |   |   helmet.ts
+|   |   |   |   |   i18next.ts
+|   |   |   |   |   index.ts
+|   |   |   |   |   multipart.ts
+|   |   |   |   |   registry.ts
+|   |   |   |   |   request-id.ts
+|   |   |   |   |   sensible.ts
+|   |   |   |   |   set-request-language.ts
+|   |   |   |   |   swagger-ui.ts
+|   |   |   |   |   swagger.ts
+|   |   |   |   |   types.ts
+|   |   |   |   |   under-pressure.ts
+|   |   |   |   |   url-data.ts
+|   |   |   +---routes
+|   |   |   |   +---v1
+|   |   |   |   |   +---authentication
+|   |   |   |   |   |   |   actions.ts
+|   |   |   |   |   +---health
+|   |   |   |   |   |   |   actions.ts
+|   |   |   |   |   +---users
+|   |   |   |   |   |   |   actions.ts
+|   |   |   |   +---v2
+|   |   |   |   |   +---health
+|   |   |   |   |   |   |   actions.ts
+|   |   |   +---schema
+|   |   |   |   +---v1
+|   |   |   |   |   |   authentication.schema.ts
+|   |   |   |   |   |   health.schema.ts
+|   |   |   |   |   |   users.schema.ts
+|   |   |   +---services
+|   |   |   |   |   authentication.ts
+|   |   |   |   |   users.ts
+|   |   |   +---types
+|   |   |   |   |   hono-autoload.d.ts
+|   |   |   |   |   index.ts
+|   |   |   |   |   services.ts
+|   |   |   +---utils
+|   |   |   |   |   auth.ts
+|   |   |   |   |   logger.ts
+|   |   |   |   app.ts
+|   |   |   |   index.ts
+|   |   |   |   server.ts
+|   |   +---supabase
+|   |   |   |   .gitignore
+|   |   |   |   config.toml
+|   |   |   .gitignore
+|   |   |   eslint.config.js
+|   |   |   package.json
+|   |   |   README.md
+|   |   |   tsconfig.json
+|   +---web
+|   |   +---app
+|   |   |   +---(dashboard)
+|   |   |   |   +---overview
+|   |   |   |   |   |   page.tsx
+|   |   |   |   +---settings
+|   |   |   |   |   +---account
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   layout.tsx
+|   |   |   +---(public)
+|   |   |   |   +---auth
+|   |   |   |   |   +---callback
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   +---error
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   +---forgot-password
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   +---login
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   +---reset-password
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   +---sign-up
+|   |   |   |   |   |   |   loading.tsx
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   +---sign-up-success
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   |   +---verify
+|   |   |   |   |   |   |   page.tsx
+|   |   |   |   globals.css
+|   |   |   |   layout.tsx
+|   |   |   |   page.tsx
+|   |   +---components
+|   |   |   +---common
+|   |   |   |   |   app-sidebar.tsx
+|   |   |   |   |   dashboard-header.tsx
+|   |   |   |   |   dashboard-page-header.tsx
+|   |   |   |   |   footer.tsx
+|   |   |   |   |   navbar.tsx
+|   |   |   |   |   theme-provider.tsx
+|   |   |   |   |   theme-switcher.tsx
+|   |   |   +---ui
+|   |   |   |   |   accordion.tsx
+|   |   |   |   |   alert-dialog.tsx
+|   |   |   |   |   alert.tsx
+|   |   |   |   |   aspect-ratio.tsx
+|   |   |   |   |   avatar.tsx
+|   |   |   |   |   badge.tsx
+|   |   |   |   |   breadcrumb.tsx
+|   |   |   |   |   button-group.tsx
+|   |   |   |   |   button.tsx
+|   |   |   |   |   calendar.tsx
+|   |   |   |   |   card.tsx
+|   |   |   |   |   carousel.tsx
+|   |   |   |   |   chart.tsx
+|   |   |   |   |   checkbox.tsx
+|   |   |   |   |   collapsible.tsx
+|   |   |   |   |   command.tsx
+|   |   |   |   |   context-menu.tsx
+|   |   |   |   |   dialog.tsx
+|   |   |   |   |   drawer.tsx
+|   |   |   |   |   dropdown-menu.tsx
+|   |   |   |   |   empty.tsx
+|   |   |   |   |   field.tsx
+|   |   |   |   |   form.tsx
+|   |   |   |   |   hover-card.tsx
+|   |   |   |   |   input-group.tsx
+|   |   |   |   |   input-otp.tsx
+|   |   |   |   |   input.tsx
+|   |   |   |   |   item.tsx
+|   |   |   |   |   kbd.tsx
+|   |   |   |   |   label.tsx
+|   |   |   |   |   menubar.tsx
+|   |   |   |   |   navigation-menu.tsx
+|   |   |   |   |   pagination.tsx
+|   |   |   |   |   popover.tsx
+|   |   |   |   |   progress.tsx
+|   |   |   |   |   radio-group.tsx
+|   |   |   |   |   resizable.tsx
+|   |   |   |   |   scroll-area.tsx
+|   |   |   |   |   select.tsx
+|   |   |   |   |   separator.tsx
+|   |   |   |   |   sheet.tsx
+|   |   |   |   |   sidebar.tsx
+|   |   |   |   |   skeleton.tsx
+|   |   |   |   |   slider.tsx
+|   |   |   |   |   sonner.tsx
+|   |   |   |   |   spinner.tsx
+|   |   |   |   |   switch.tsx
+|   |   |   |   |   table.tsx
+|   |   |   |   |   tabs.tsx
+|   |   |   |   |   textarea.tsx
+|   |   |   |   |   toast.tsx
+|   |   |   |   |   toaster.tsx
+|   |   |   |   |   toggle-group.tsx
+|   |   |   |   |   toggle.tsx
+|   |   |   |   |   tooltip.tsx
+|   |   |   |   |   use-mobile.tsx
+|   |   |   |   |   use-toast.ts
+|   |   |   |   app-sidebar.tsx
+|   |   |   |   nav-main.tsx
+|   |   |   |   nav-projects.tsx
+|   |   |   |   nav-secondary.tsx
+|   |   |   |   nav-user.tsx
+|   |   +---config
+|   |   |   |   env.ts
+|   |   |   |   nav-config.ts
+|   |   +---features
+|   |   |   +---auth
+|   |   |   |   +---hooks
+|   |   |   |   |   |   use-auth.ts
+|   |   |   |   +---services
+|   |   |   |   |   |   auth-service.ts
+|   |   |   |   +---utils
+|   |   |   |   |   |   auth-validation.ts
+|   |   |   +---overview
+|   |   |   |   |   types.ts
+|   |   |   +---site
+|   |   |   |   +---components
+|   |   |   |   |   |   HomePageContent.tsx
+|   |   |   +---users
+|   |   |   |   +---services
+|   |   |   |   |   |   user-service.ts
+|   |   +---hooks
+|   |   |   |   use-mobile.ts
+|   |   |   |   use-toast.ts
+|   |   +---lib
+|   |   |   |   api-client.ts
+|   |   |   |   api.ts
+|   |   |   |   db-types.ts
+|   |   |   |   strings.ts
+|   |   |   |   utils.ts
+|   |   +---locales
+|   |   |   +---ar
+|   |   |   |   |   about.json
+|   |   |   |   |   auth.json
+|   |   |   |   |   car-requests.json
+|   |   |   |   |   cars.json
+|   |   |   |   |   chatbot.json
+|   |   |   |   |   common.json
+|   |   |   |   |   contact.json
+|   |   |   |   |   dashboard.json
+|   |   |   |   |   imprint.json
+|   |   |   |   |   landing.json
+|   |   |   |   |   marketplace.json
+|   |   |   |   |   negotiations.json
+|   |   |   |   |   pricing.json
+|   |   |   |   |   privacy.json
+|   |   |   |   |   remaining.json
+|   |   |   |   |   settings.json
+|   |   |   +---en
+|   |   |   |   |   about.json
+|   |   |   |   |   auth.json
+|   |   |   |   |   car-requests.json
+|   |   |   |   |   cars.json
+|   |   |   |   |   chatbot.json
+|   |   |   |   |   common.json
+|   |   |   |   |   contact.json
+|   |   |   |   |   dashboard.json
+|   |   |   |   |   imprint.json
+|   |   |   |   |   landing.json
+|   |   |   |   |   marketplace.json
+|   |   |   |   |   negotiations.json
+|   |   |   |   |   pricing.json
+|   |   |   |   |   privacy.json
+|   |   |   |   |   remaining.json
+|   |   |   |   |   settings.json
+|   |   +---public
+|   |   |   +---videos
+|   |   |   |   |   auth-broll.mp4
+|   |   |   |   |   signup-broll.mp4
+|   |   |   |   manifest.json
+|   |   |   |   placeholder-user.jpg
+|   |   |   |   placeholder.jpg
+|   |   |   |   placeholder.svg
+|   |   +---store
+|   |   |   |   auth-store.ts
+|   |   |   |   preferences-store.ts
+|   |   |   |   user-store.ts
+|   |   |   .env.local
+|   |   |   .gitignore
+|   |   |   components.json
+|   |   |   env.example
+|   |   |   eslint.config.js
+|   |   |   next-env.d.ts
+|   |   |   next.config.mjs
+|   |   |   package.json
+|   |   |   postcss.config.mjs
+|   |   |   README.md
+|   |   |   tsconfig.json
++---docs
+|   |   AUTH.md
+|   |   hono-autoload.md
+|   |   SETUP.md
++---packages
+|   +---database
+|   |   +---prisma
+|   |   |   +---migrations
+|   |   |   |   +---20260209120903_initial_migration
+|   |   |   |   |   |   migration.sql
+|   |   |   |   +---20260211160352_n
+|   |   |   |   |   |   migration.sql
+|   |   |   |   +---20260211161223_a
+|   |   |   |   |   |   migration.sql
+|   |   |   |   +---20260211161716_s
+|   |   |   |   |   |   migration.sql
+|   |   |   |   |   migration_lock.toml
+|   |   |   |   schema.prisma
+|   |   +---src
+|   |   |   +---seed
+|   |   |   |   |   development.ts
+|   |   |   |   |   index.ts
+|   |   |   |   |   production.ts
+|   |   |   |   |   staging.ts
+|   |   |   |   client.ts
+|   |   |   |   index.ts
+|   |   |   package.json
+|   |   |   prisma.config.ts
+|   |   |   README.md
+|   |   |   tsconfig.json
+|   +---eslint-config
+|   |   |   base.js
+|   |   |   next.js
+|   |   |   package.json
+|   |   |   react-internal.js
+|   |   |   README.md
+|   +---types
+|   |   +---src
+|   |   |   |   constants.ts
+|   |   |   |   index.ts
+|   |   |   |   types.ts
+|   |   |   package.json
+|   |   |   README.md
+|   |   |   tsconfig.json
+|   +---typescript-config
+|   |   |   base.json
+|   |   |   nextjs.json
+|   |   |   node.json
+|   |   |   package.json
+|   |   |   react-library.json
+|   |   |   README.md
+|   .czrc
+|   .env.development
+|   .gitignore
+|   .npmrc
+|   .nvmrc
+|   commitlint.config.cjs
+|   LICENSE
+|   package.json
+|   pnpm-lock.yaml
+|   pnpm-workspace.yaml
+|   project_structure.txt
+|   README.md
+|   turbo.json

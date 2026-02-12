@@ -1,28 +1,13 @@
 import { createRoute, z } from "@hono/zod-openapi";
-import { Constants } from "@repo/types";
-
-const userRoleEnum = z.enum(Constants.public.Enums.UserRole);
 
 const userProfileRequestSchema = z.object({
   fullName: z.string().min(1).max(120).optional(),
-  phone: z.string().min(3).max(32).optional(),
-  streetAddress: z.string().max(255).optional(),
-  city: z.string().max(120).optional(),
-  state: z.string().max(120).optional(),
-  postalCode: z.string().max(20).optional(),
-  country: z.string().max(120).optional(),
 });
 
 const nullableString = (schema: z.ZodString) => schema.or(z.null());
 
 const userProfileResponseSchema = z.object({
   fullName: nullableString(z.string().min(1).max(120)).optional(),
-  phone: nullableString(z.string().min(3).max(32)).optional(),
-  streetAddress: nullableString(z.string().max(255)).optional(),
-  city: nullableString(z.string().max(120)).optional(),
-  state: nullableString(z.string().max(120)).optional(),
-  postalCode: nullableString(z.string().max(20)).optional(),
-  country: nullableString(z.string().max(120)).optional(),
 });
 
 const authErrorSchema = z.object({
@@ -39,7 +24,6 @@ const authTokensResponseSchema = z.object({
   user: z.object({
     id: z.string().uuid(),
     email: z.string().email(),
-    role: userRoleEnum,
     profile: userProfileResponseSchema,
     emailConfirmed: z.boolean(),
   }),
@@ -59,8 +43,6 @@ export const registerUserSchema = createRoute({
           schema: z.object({
             email: z.string().email(),
             password: z.string().min(8).max(72),
-            role: userRoleEnum.optional(),
-            companyId: z.string().uuid().optional(),
           }).extend(userProfileRequestSchema.shape),
         },
       },
@@ -75,7 +57,6 @@ export const registerUserSchema = createRoute({
             data: z.object({
               id: z.string().uuid(),
               email: z.string().email(),
-              role: userRoleEnum,
               profile: userProfileResponseSchema,
               requiresEmailVerification: z.boolean(),
             }),

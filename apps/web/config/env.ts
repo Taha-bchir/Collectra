@@ -45,17 +45,3 @@ export function getDefaultTheme(): 'light' | 'dark' | 'system' {
   }
   return v as 'light' | 'dark' | 'system'
 }
-
-/** Allowed sign-up roles (must match @repo/types UserRole: USER | ADMIN | DEMO). */
-const SIGNUP_ROLES = ['USER', 'ADMIN', 'DEMO'] as const
-
-/** Default role selected on sign-up. Required. Must be a valid UserRole. */
-export function getDefaultSignupRole(): (typeof SIGNUP_ROLES)[number] {
-  const v = required('NEXT_PUBLIC_DEFAULT_SIGNUP_ROLE', 'USER').toUpperCase()
-  if (v === 'USER' || v === 'ADMIN' || v === 'DEMO') {
-    return v
-  }
-  throw new Error(
-    `[config] NEXT_PUBLIC_DEFAULT_SIGNUP_ROLE must be one of: ${SIGNUP_ROLES.join(', ')}. Got: ${v}`,
-  )
-}

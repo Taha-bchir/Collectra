@@ -1,54 +1,105 @@
 // packages/database/src/seed/development.ts
 import { fileURLToPath } from 'url';
 import path from 'path';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const __filename = fileURLToPath(import.meta.url);
 
 const prisma = new PrismaClient();
 
 async function seedDevelopment() {
-  // Default company used when new users sign up without a companyId (Swagger/frontend)
-  const defaultCompany = await prisma.company.upsert({
-    where: { name: 'Default' },
-    update: {},
-    create: {
-      name: 'Default',
-      website: null,
-    },
-  });
-  console.log('Created/Updated Default Company:', defaultCompany);
-
-  // Create a test company
-  const company = await prisma.company.upsert({
-    where: { name: 'Test Debt Collection Co.' },
-    update: {},
-    create: {
-      name: 'Test Debt Collection Co.',
-      website: 'https://testdebtco.tn',  // Example website for testing
-    },
-  });
-  console.log('Created/Updated Company:', company);
-
-  // Note: For the user, you need a real Supabase Auth user ID.
+  // Note: For the test user, you need a real Supabase Auth user ID.
   // Step 1: Register a test user via the API (POST /api/v1/authentication/register) or Supabase dashboard.
   // Step 2: Copy the auth.users.id (UUID) from Supabase dashboard > Authentication > Users.
   // Step 3: Replace 'your-supabase-user-uuid-here' below with that ID.
   const testUserId = 'b39fd63b-c9b3-40e0-a250-455458dde401'; // Replace this!
 
-  // Create a test internal user (linked to Supabase Auth ID)
+  // Create a test user (linked to Supabase Auth ID)
   const user = await prisma.user.upsert({
     where: { id: testUserId },
     update: {},
     create: {
       id: testUserId,
-      email: 'test@debtco.com', // Must match the Supabase user's email
-      fullName: 'Test Manager',
-      role: 'MANAGER' as Role, // Type-safe enum
-      companyId: company.id,
+      email: 'test@collectra.com', // Must match the Supabase user's email
+      fullName: 'Test User',
     },
   });
   console.log('Created/Updated User:', user);
+
+  // Create a test workspace
+  const workspace = await prisma.workspace.upsert({
+    where: { name: 'Test Workspace' },
+    update: {},
+    create: {
+      name: 'Test Workspace',
+      website: 'https://testworkspace.com',
+      createdByUserId: user.id,
+    },
+  });
+  console.log('Created/Updated Workspace:', workspace);
+
+  // Add user as workspace member (owner)
+  const workspaceMember = await prisma.workspaceMember.upsert({
+    where: {
+      userId_workspaceId: {
+        userId: user.id,
+        workspaceId: workspace.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: user.id,
+      workspaceId: workspace.id,
+      role: 'OWNER',
+    },
+  });
+  console.log('Created/Updated Workspace Member:', workspaceMember);
+
+  // Create a test client
+  const client = await prisma.client.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000001' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000001',
+      workspaceId: workspace.id,
+      fullName: 'John Doe',
+      email: 'john@example.com',
+      phone: '+1234567890',
+      address: '123 Main St, City, Country',
+    },
+  });
+  console.log('Created/Updated Client:', client);
+
+  // Create a test campaign
+  const campaign = await prisma.campaign.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000002' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000002',
+      workspaceId: workspace.id,
+      name: 'Q1 2026 Collection Campaign',
+      description: 'First quarter debt collection campaign',
+      startDate: new Date('2026-01-01'),
+      endDate: new Date('2026-03-31'),
+      status: 'ACTIVE',
+    },
+  });
+  console.log('Created/Updated Campaign:', campaign);
+
+  // Create a test debt
+  const debt = await prisma.debt.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000003' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000003',
+      campaignId: campaign.id,
+      clientId: client.id,
+      amount: 1500.00,
+      dueDate: new Date('2026-02-15'),
+      status: 'NOTIFIED',
+    },
+  });
+  console.log('Created/Updated Debt:', debt);
 }
 
 export default seedDevelopment;

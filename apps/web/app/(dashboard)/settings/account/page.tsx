@@ -24,7 +24,6 @@ export default function AccountSettingsPage() {
   const deleteAccount = useUserStore((state) => state.deleteAccount)
 
   const [fullName, setFullName] = useState("")
-  const [phone, setPhone] = useState("")
   const [email, setEmail] = useState("")
   const [profileMessage, setProfileMessage] = useState<string | null>(null)
 
@@ -44,7 +43,6 @@ export default function AccountSettingsPage() {
     if (user) {
       setEmail(user.email)
       setFullName(user.profile.fullName ?? "")
-      setPhone(user.profile.phone ?? "")
     }
   }, [user])
 
@@ -58,7 +56,6 @@ export default function AccountSettingsPage() {
     setProfileMessage(null)
     await updateProfile({
       fullName: fullName.trim() || undefined,
-      phone: phone.trim() || undefined,
     })
     if (!useUserStore.getState().error) {
       setProfileMessage(strings.settings_profile_success)
@@ -138,27 +135,15 @@ export default function AccountSettingsPage() {
                 <Separator />
 
                 <form onSubmit={handleSaveProfile} className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="fullName">{strings.settings_profile_full_name}</Label>
-                      <Input
-                        id="fullName"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        placeholder={strings.settings_profile_full_name_placeholder}
-                        disabled={isLoadingProfile || isSavingProfile}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="phone">{strings.settings_profile_phone}</Label>
-                      <Input
-                        id="phone"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder={strings.settings_profile_phone_placeholder}
-                        disabled={isLoadingProfile || isSavingProfile}
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="fullName">{strings.settings_profile_full_name}</Label>
+                    <Input
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder={strings.settings_profile_full_name_placeholder}
+                      disabled={isLoadingProfile || isSavingProfile}
+                    />
                   </div>
 
                   <div className="space-y-1.5">
@@ -281,7 +266,7 @@ export default function AccountSettingsPage() {
                       type="submit"
                       variant="destructive"
                       disabled={isDeleting}
-                      className="min-w-[200px]"
+                      className="min-w-50"
                     >
                       {isDeleting ? strings.settings_delete_deleting : strings.settings_delete_button}
                     </Button>

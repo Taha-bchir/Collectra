@@ -5,24 +5,27 @@
 
 import type { Enums, Tables } from '@repo/types'
 
-/** Database enum for user role (must match API/DB). */
-export type UserRole = Enums<'UserRole'>
-
 /** DB users table row shape. */
-export type DbUser = Tables<'users'>
+export type DbUser = Tables<'User'>
+
+/** DB workspace table row shape. */
+export type DbWorkspace = Tables<'Workspace'>
+
+/** DB workspace member table row shape. */
+export type DbWorkspaceMember = Tables<'WorkspaceMember'>
+
+/** Database enum for workspace role. */
+export type WorkspaceRole = Enums<'WorkspaceRole'>
 
 /**
  * Auth profile shape used in the web app (session, store).
- * Aligns with API auth responses and normalizeProfile output.
+ * Aligns with API auth responses.
  */
 export interface Profile {
   id: string
   email: string
-  full_name: string | null
-  phone: string | null
-  role: UserRole
-  avatar_url: string | null
-  is_verified: boolean
-  created_at: string
-  updated_at: string
+  fullName: string | null
+  emailConfirmed: boolean
+  createdAt: string
+  updatedAt: string
 }
