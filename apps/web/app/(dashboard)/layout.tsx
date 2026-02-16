@@ -34,7 +34,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuPortal,
   DropdownMenuSubContent,
-  DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu'
 import { Settings, Sun, Moon, Monitor } from 'lucide-react'
 
@@ -213,6 +212,7 @@ export default function DashboardLayout({
         }
     }, [isMounted, hasHydrated, isAuthenticated, router])
 
+
     // Show loading state while checking authentication and hydrating
     if (!isMounted || !hasHydrated) {
         return (
@@ -235,18 +235,14 @@ export default function DashboardLayout({
         )
     }
 
-    const isDarkMode = theme === 'dark'
 
-    const handleThemeToggle = (checked: boolean) => {
-        setTheme(checked ? 'dark' : 'light')
-    }
 
     return (
         <div className="min-h-svh">
             <SidebarProvider>
                 <AppSidebar />
                 <SidebarInset>
-                    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+                    <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 px-4 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 border-b">
                         <div className="flex flex-1 items-center gap-2">
                             <SidebarTrigger className="-ml-1" />
                             <Separator

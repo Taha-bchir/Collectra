@@ -1,6 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { HTTPException } from 'hono/http-exception';
 import type { Env } from '../types/index.js'; // adjust if your Env type is elsewhere
+import { getCookieHelper, WORKSPACE_COOKIE_NAME } from './cookie.js';
 
 // We assume authorization middleware already set c.set('user', { id: string, ... })
 
@@ -14,26 +15,43 @@ export const tenantMiddleware = createMiddleware<Env>(async (c, next) => {
 
   const prisma = c.get('prisma');
 
-  // For MVP: user belongs to only one workspace → take the first one
-  // Later: support multiple + current selection via cookie/header/query
-  const membership = await prisma.workspaceMember.findFirst({
-    where: {
-      userId: user.id,
-    },
-    select: {
-      role: true,
-      workspace: {
-        select: {
-          id: true,
-          name: true,
-          // add more fields if needed (website, etc.)
+  const preferredWorkspaceId = getCookieHelper(c, WORKSPACE_COOKIE_NAME) || null;
+
+  const membership = preferredWorkspaceId
+    ? await prisma.workspaceMember.findFirst({
+        where: {
+          userId: user.id,
+          workspaceId: preferredWorkspaceId,
         },
-      },
-    },
-    orderBy: {
-      joinedAt: 'asc', // oldest first → probably the primary one
-    },
-  });
+        select: {
+          role: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              // add more fields if needed (website, etc.)
+            },
+          },
+        },
+      })
+    : await prisma.workspaceMember.findFirst({
+        where: {
+          userId: user.id,
+        },
+        select: {
+          role: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+              // add more fields if needed (website, etc.)
+            },
+          },
+        },
+        orderBy: {
+          joinedAt: 'desc', // newest first → best default for single-workspace UX
+        },
+      });
 
   if (!membership || !membership.workspace) {
     throw new HTTPException(403, {

@@ -1,6 +1,5 @@
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import type { MiddlewareHandler } from 'hono'
-import { env } from '../config/env.js'
 import type { Env } from '../types/index.js'
 import type { MiddlewareDefinition } from './types.js'
 
@@ -9,6 +8,8 @@ export const AUTH_COOKIE_NAMES = {
   accessToken: 'access_token',
   refreshToken: 'refresh_token',
 } as const
+
+export const WORKSPACE_COOKIE_NAME = 'workspace_id'
 
 const REFRESH_TOKEN_MAX_AGE_DAYS = 30
 
@@ -31,11 +32,13 @@ export const cookieMiddleware: MiddlewareHandler<Env> = async (c, next) => {
 
 export const getCookieHelper = (c: any, name: string) => getCookie(c, name)
 
+// In dev, use SameSite=None; Secure so cookies are sent on cross-origin requests (e.g. web :3001 → API :3000).
+// Browsers treat localhost as secure, so this works for local development.
 export const setCookieHelper = (c: any, name: string, value: string, options?: CookieOptions) => {
   const baseOptions: CookieOptions = {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: env.NODE_ENV === 'production' ? 'None' : 'Lax',
+    secure: true, // required when sameSite is None (needed for cross-origin from web to API)
+    sameSite: 'None',
     path: '/',
   }
   const mergedOptions: CookieOptions = options ? { ...baseOptions, ...options } : baseOptions
@@ -51,16 +54,10 @@ export const setAuthCookies = (
 ) => {
   setCookieHelper(c, AUTH_COOKIE_NAMES.accessToken, accessToken, {
     maxAge: expiresInSeconds,
-    httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: env.NODE_ENV === 'production' ? 'None' : 'Lax',
     path: '/',
   })
   setCookieHelper(c, AUTH_COOKIE_NAMES.refreshToken, refreshToken, {
     maxAge: REFRESH_TOKEN_MAX_AGE_DAYS * 24 * 60 * 60,
-    httpOnly: true,
-    secure: env.NODE_ENV === 'production',
-    sameSite: env.NODE_ENV === 'production' ? 'None' : 'Lax',
     path: '/',
   })
 }
@@ -72,6 +69,10 @@ export const clearAuthCookies = (c: any) => {
 }
 
 export const deleteCookieHelper = (c: any, name: string) => deleteCookie(c, name)
+
+export const setWorkspaceCookie = (c: any, workspaceId: string) => {
+  setCookieHelper(c, WORKSPACE_COOKIE_NAME, workspaceId, { path: '/' })
+}
 
 const definition: MiddlewareDefinition = {
   name: 'cookies',

@@ -10,6 +10,7 @@ import { AUTH_COOKIE_NAMES } from './cookie.js'
 /** Path patterns that require a valid JWT. Only these receive the authorization middleware. */
 const PROTECTED_PATTERNS = [
   '/api/v1/users/*',
+  '/api/v1/workspaces/*',
   '/api/v1/authentication/reset-password',
 ] as const
 
@@ -50,6 +51,15 @@ async function enforceAuth(c: Parameters<MiddlewareHandler<Env>>[0], next: () =>
     cookieToken ?? (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null)
 
   if (!token) {
+    logger.warn(
+      { 
+        path: c.req.path,
+        hasCookie: !!cookieToken,
+        hasAuthHeader: !!authHeader,
+        headers: Object.fromEntries(c.req.raw.headers.entries?.() ?? [])
+      },
+      '[authorization] No token found in cookie or Authorization header'
+    )
     return c.json({ error: 'Unauthorized' }, 401)
   }
 
@@ -61,6 +71,7 @@ async function enforceAuth(c: Parameters<MiddlewareHandler<Env>>[0], next: () =>
     } = await supabase.auth.getUser(token)
 
     if (error || !user) {
+      logger.warn({ error }, '[authorization] Token validation failed')
       return c.json({ error: 'Unauthorized' }, 401)
     }
 

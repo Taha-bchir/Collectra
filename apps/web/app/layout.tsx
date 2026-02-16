@@ -39,28 +39,20 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: '/placeholder.svg', type: 'image/svg+xml' },
       {
-        url: '/logo blue.png',
-        type: 'image/png',
-      },
-      {
-        url: '/logo blue.png',
+        url: '/placeholder.svg',
         media: '(prefers-color-scheme: light)',
-        type: 'image/png',
+        type: 'image/svg+xml',
       },
       {
-        url: '/logo white.png',
+        url: '/placeholder.svg',
         media: '(prefers-color-scheme: dark)',
-        type: 'image/png',
+        type: 'image/svg+xml',
       },
     ],
-    apple: [
-      {
-        url: '/logo blue.png',
-        type: 'image/png',
-      },
-    ],
-    shortcut: '/logo blue.png',
+    apple: [{ url: '/placeholder.svg', type: 'image/svg+xml' }],
+    shortcut: '/placeholder.svg',
   },
 }
 
@@ -72,6 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${geist.variable} ${geistMono.variable} ${sourceSerif.variable} font-sans antialiased`}
       >
         <ThemeProvider>

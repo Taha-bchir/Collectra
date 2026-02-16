@@ -46,7 +46,11 @@ function normalizeError(err: unknown): ApiError {
       }
       if (!message && typeof body?.message === 'string') message = body.message
     }
-    return new ApiError(message ?? err.message ?? 'Request failed', status, payload)
+    const apiError = new ApiError(message ?? err.message ?? 'Request failed', status, payload)
+    if (status === 403) {
+      console.error('[api-client] 403 Forbidden:', { message: apiError.message, data: payload, headers: err.response?.headers })
+    }
+    return apiError
   }
   return new ApiError(err instanceof Error ? err.message : 'Request failed', 0, undefined)
 }
@@ -125,6 +129,20 @@ export function createCookieAuthApiClient(config: CreateCookieAuthApiClientConfi
     baseURL: baseURL.replace(/\/$/, ''),
     headers: { 'Content-Type': 'application/json' },
     withCredentials: true,
+  })
+
+  client.interceptors.request.use((req) => {
+    if (typeof window !== 'undefined') {
+      const cookies = document.cookie.split('; ').reduce((acc: Record<string, string>, cookie) => {
+        const [key, value] = cookie.split('=')
+        acc[key] = value
+        return acc
+      }, {})
+      if (cookies.access_token) {
+        console.log('[api-client] Request with cookies:', { url: req.url, hasAccessToken: true })
+      }
+    }
+    return req
   })
 
   let isRefreshing = false

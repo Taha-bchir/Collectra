@@ -1,11 +1,14 @@
 "use client"
 
 import type * as React from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronDown, LayoutGrid } from "lucide-react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useWorkspaceStore } from "@/store/workspace-store"
 import { strings } from "@/lib/strings"
+import { validateWorkspaceName, validateWebsite } from "@/features/auth/utils/auth-validation"
 import {
   Sidebar,
   SidebarContent,
@@ -38,6 +41,11 @@ import { Badge } from "@/components/ui/badge"
 import { LogOut, ChevronsUpDown } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { navItems, userNavItems, type NavItem } from "@/config/nav-config"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 
 /**
  * Enhanced AppSidebar Component with sidebar-8 pattern
@@ -52,9 +60,22 @@ import { navItems, userNavItems, type NavItem } from "@/config/nav-config"
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, isAuthenticated, hasHydrated } = useAuth()
+  const workspace = useWorkspaceStore((state) => state.workspace)
+  const workspaces = useWorkspaceStore((state) => state.workspaces)
+  const workspaceLoading = useWorkspaceStore((state) => state.loading)
+  const workspaceError = useWorkspaceStore((state) => state.error)
+  const fetchCurrentWorkspace = useWorkspaceStore((state) => state.fetchCurrentWorkspace)
+  const fetchWorkspaces = useWorkspaceStore((state) => state.fetchWorkspaces)
+  const createWorkspace = useWorkspaceStore((state) => state.createWorkspace)
+  const setCurrentWorkspace = useWorkspaceStore((state) => state.setCurrentWorkspace)
   const router = useRouter()
   const { state: sidebarState } = useSidebar()
+  const [createOpen, setCreateOpen] = useState(false)
+  const [workspaceName, setWorkspaceName] = useState("")
+  const [workspaceWebsite, setWorkspaceWebsite] = useState("")
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [isCreating, setIsCreating] = useState(false)
 
   const handleLogout = () => {
     signOut()
@@ -64,6 +85,74 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const getUserInitials = () => {
     if (!profile?.email) return "U"
     return profile.email.charAt(0).toUpperCase()
+  }
+
+  const resetCreateForm = () => {
+    setWorkspaceName("")
+    setWorkspaceWebsite("")
+    setCreateError(null)
+  }
+
+  useEffect(() => {
+    if (hasHydrated && isAuthenticated) {
+      fetchCurrentWorkspace()
+      fetchWorkspaces()
+    }
+  }, [hasHydrated, isAuthenticated, fetchCurrentWorkspace, fetchWorkspaces])
+
+  useEffect(() => {
+    if (!createOpen) {
+      resetCreateForm()
+    }
+  }, [createOpen])
+
+  const workspaceLabel = workspaceLoading
+    ? strings.loading
+    : workspace?.name ?? (workspaceError ? "Workspace unavailable" : "Select workspace")
+
+  const workspaceItems = workspaces.length
+    ? workspaces
+    : workspace?.id
+      ? [workspace]
+      : []
+
+  const handleCreateWorkspace = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    const nameError = validateWorkspaceName(workspaceName)
+    const websiteError = validateWebsite(workspaceWebsite)
+
+    if (nameError || websiteError) {
+      setCreateError(nameError ?? websiteError)
+      return
+    }
+
+    setIsCreating(true)
+    setCreateError(null)
+
+    try {
+      await createWorkspace({
+        name: workspaceName.trim(),
+        website: workspaceWebsite.trim() ? workspaceWebsite.trim() : undefined,
+      })
+      setCreateOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create workspace"
+      setCreateError(message)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleWorkspaceSelect = async (workspaceId: string) => {
+    if (workspace?.id === workspaceId) return
+    try {
+      await setCurrentWorkspace(workspaceId)
+      await fetchCurrentWorkspace()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to switch workspace"
+      setCreateError(message)
+    }
   }
 
   return (
@@ -105,6 +194,75 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 )}
               </Link>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+        <SidebarSeparator className="my-2 h-[2px] shrink-0 bg-sidebar-border border-0" />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            {sidebarState !== "collapsed" && (
+              <div className="px-4 pb-1 pt-0.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-sidebar-foreground/80">
+                  Workspace
+                </span>
+              </div>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="sm"
+                  className={`data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground hover:bg-sidebar-accent/50 transition-colors duration-200 ${
+                    sidebarState === "collapsed" ? "justify-center px-2" : "px-4"
+                  }`}
+                >
+                  {sidebarState === "collapsed" ? (
+                    <LayoutGrid className="h-4 w-4" />
+                  ) : (
+                    <>
+                  <div className="flex flex-1 items-center gap-2 min-w-0">
+                        <span className="text-xs font-semibold text-sidebar-foreground">Workspace</span>
+                        <span className="truncate font-semibold text-sidebar-foreground">
+                          {workspaceLabel}
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-auto size-4 shrink-0 text-sidebar-foreground/60" />
+                    </>
+                  )}
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-60">
+                {workspaceItems.length === 0 ? (
+                  <DropdownMenuItem disabled>
+                    {workspaceLabel}
+                  </DropdownMenuItem>
+                ) : (
+                  workspaceItems.map((item) => (
+                    <DropdownMenuItem
+                      key={item.id}
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        handleWorkspaceSelect(item.id)
+                      }}
+                    >
+                      <span className="truncate">{item.name}</span>
+                      {workspace?.id === item.id ? (
+                        <Badge variant="secondary" className="ml-auto">
+                          Active
+                        </Badge>
+                      ) : null}
+                    </DropdownMenuItem>
+                  ))
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    setCreateOpen(true)
+                  }}
+                >
+                  Create workspace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -238,6 +396,57 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create workspace</DialogTitle>
+            <DialogDescription>
+              Add a new workspace and link it to your account.
+            </DialogDescription>
+          </DialogHeader>
+          <Card>
+            <CardHeader className="pb-2" />
+            <CardContent>
+              <form onSubmit={handleCreateWorkspace} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="workspace-name">Workspace name</Label>
+                  <Input
+                    id="workspace-name"
+                    type="text"
+                    value={workspaceName}
+                    onChange={(event) => setWorkspaceName(event.target.value)}
+                    maxLength={120}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="workspace-website">Website (optional)</Label>
+                  <Input
+                    id="workspace-website"
+                    type="url"
+                    value={workspaceWebsite}
+                    onChange={(event) => setWorkspaceWebsite(event.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+                {createError && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {createError}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isCreating}>
+                    {isCreating ? "Creating..." : "Create workspace"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
     </Sidebar>
   )
 }

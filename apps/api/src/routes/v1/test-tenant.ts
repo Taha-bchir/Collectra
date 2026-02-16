@@ -18,7 +18,7 @@ handler.use(tenantMiddleware);
  */
 
 // ✅ PASS: Valid tenant access - returns current workspace & user
-handler.get('/test-tenant/valid', async (c) => {
+handler.get('/valid', async (c) => {
   const workspace = c.get('currentWorkspace');
   const user = c.get('currentUser');
   
@@ -42,7 +42,7 @@ handler.get('/test-tenant/valid', async (c) => {
 
 // 🔒 SECURITY TEST: Check tenant isolation
 // User should only access their own workspace
-handler.get('/test-tenant/isolation/:targetWorkspaceId', async (c) => {
+handler.get('/isolation/:targetWorkspaceId', async (c) => {
   const workspace = c.get('currentWorkspace');
   const targetWorkspaceId = c.req.param('targetWorkspaceId');
   
@@ -67,7 +67,7 @@ handler.get('/test-tenant/isolation/:targetWorkspaceId', async (c) => {
 });
 
 // ℹ️ DEBUG: Check role-based access
-handler.get('/test-tenant/role-check', async (c) => {
+handler.get('/role-check', async (c) => {
   const user = c.get('currentUser');
   
   if (!user) {
@@ -90,6 +90,6 @@ handler.get('/test-tenant/role-check', async (c) => {
 });
 
 export default {
-  path: '/api/v1',
+  path: '/api/v1/test-tenant',
   handler,
 };

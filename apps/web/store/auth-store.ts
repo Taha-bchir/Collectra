@@ -117,6 +117,8 @@ export const useAuthStore = create<AuthState>()(
               authLoading: false,
               authError: null,
             })
+            const workspaceStore = (await import('@/store/workspace-store')).useWorkspaceStore.getState()
+            workspaceStore.invalidateWorkspace()
           } catch (err) {
             const message =
               err instanceof ApiError ? err.message : 'Sign in failed. Please try again.'
@@ -153,6 +155,8 @@ export const useAuthStore = create<AuthState>()(
                 authLoading: false,
                 authError: null,
               })
+              const workspaceStore = (await import('@/store/workspace-store')).useWorkspaceStore.getState()
+              workspaceStore.invalidateWorkspace()
             } else {
               set({ authLoading: false, authError: null })
             }
@@ -175,6 +179,8 @@ export const useAuthStore = create<AuthState>()(
             await client.post(AUTH_ROUTES.logout, {})
           } finally {
             get().clearSession()
+            const workspaceStore = (await import('@/store/workspace-store')).useWorkspaceStore.getState()
+            workspaceStore.invalidateWorkspace()
             setAuthError(null)
           }
         },

@@ -28,7 +28,12 @@ async function seedDevelopment() {
 
   // Create a test workspace
   const workspace = await prisma.workspace.upsert({
-    where: { name: 'Test Workspace' },
+    where: { 
+      createdByUserId_name: {
+        createdByUserId: user.id,
+        name: 'Test Workspace',
+      }
+    },
     update: {},
     create: {
       name: 'Test Workspace',

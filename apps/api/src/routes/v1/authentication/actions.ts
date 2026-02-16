@@ -91,7 +91,15 @@ handler.openapi(registerUserSchema, async (c) => {
       201
     );
   } catch (error) {
-    logger.error({ error, scope: "auth.register" }, "Failed to register user");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error({ 
+      error: errorMessage, 
+      stack: errorStack,
+      scope: "auth.register",
+      payload: { email: payload.email, workspaceName: payload.workspaceName }
+    }, "Failed to register user");
+    
     const normalized = normalizeError(error, 400);
     const isConflict = /already/i.test(normalized.message);
     const status: 400 | 409 | 500 = isConflict

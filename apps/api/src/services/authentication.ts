@@ -101,21 +101,39 @@ export class AuthenticationService {
     }
     const website = payload.website?.trim() || null;
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.workspace.create({
-        data: {
-          name: workspaceName,
-          website,
-          createdByUserId: dbUser.id,
-          members: {
-            create: {
-              userId: dbUser.id,
-              role: WorkspaceRole.OWNER,
+    console.log('[registerUser] Creating workspace:', { 
+      userId: dbUser.id, 
+      workspaceName, 
+      website 
+    });
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const workspace = await tx.workspace.create({
+          data: {
+            name: workspaceName,
+            website,
+            createdByUserId: dbUser.id,
+            members: {
+              create: {
+                userId: dbUser.id,
+                role: WorkspaceRole.OWNER,
+              },
             },
           },
-        },
+        });
+        console.log('[registerUser] Workspace created successfully:', { 
+          workspaceId: workspace.id,
+          workspaceName: workspace.name 
+        });
       });
-    });
+    } catch (wsError) {
+      console.error('[registerUser] Workspace creation failed:', { 
+        error: wsError instanceof Error ? wsError.message : String(wsError),
+        stack: wsError instanceof Error ? wsError.stack : undefined
+      });
+      throw wsError;
+    }
 
     const session = data.session;
 
