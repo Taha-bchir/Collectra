@@ -19,6 +19,7 @@ export interface WorkspaceState {
   createWorkspace: (payload: CreateWorkspacePayload) => Promise<BackendWorkspace>;
   setCurrentWorkspace: (workspaceId: string) => Promise<BackendWorkspace>;
   invalidateWorkspace: () => void;
+  ensureWorkspaceSelected: () => Promise<void>;
 }
 
 const baseURL = getApiBaseUrl();
@@ -130,6 +131,33 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           : "Failed to switch workspace. Please try again.";
       set({ error: message, loading: false });
       throw err;
+    }
+  },
+
+  ensureWorkspaceSelected: async () => {
+    const { workspace, workspaces, setCurrentWorkspace } = get();
+    
+    // If a workspace is already selected, no need to do anything
+    if (workspace?.id) {
+      console.log('[workspace-store] Workspace already selected:', { id: workspace.id, name: workspace.name });
+      return;
+    }
+
+    // If no workspaces available, we can't select one
+    if (!workspaces || workspaces.length === 0) {
+      console.log('[workspace-store] No workspaces available to select');
+      return;
+    }
+
+    // Select the first workspace
+    const firstWorkspace = workspaces[0];
+    console.log('[workspace-store] Auto-selecting first workspace:', { id: firstWorkspace.id, name: firstWorkspace.name });
+    
+    try {
+      await setCurrentWorkspace(firstWorkspace.id);
+    } catch (err) {
+      console.error('[workspace-store] Failed to auto-select workspace:', err);
+      // Don't throw - silently fail as this is a convenience feature
     }
   },
 

@@ -69,6 +69,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const fetchWorkspaces = useWorkspaceStore((state) => state.fetchWorkspaces)
   const createWorkspace = useWorkspaceStore((state) => state.createWorkspace)
   const setCurrentWorkspace = useWorkspaceStore((state) => state.setCurrentWorkspace)
+  const ensureWorkspaceSelected = useWorkspaceStore((state) => state.ensureWorkspaceSelected)
   const router = useRouter()
   const { state: sidebarState } = useSidebar()
   const [createOpen, setCreateOpen] = useState(false)
@@ -99,6 +100,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       fetchWorkspaces()
     }
   }, [hasHydrated, isAuthenticated, fetchCurrentWorkspace, fetchWorkspaces])
+
+  useEffect(() => {
+    // Auto-select first workspace if workspaces are available but none is selected
+    if (workspaces.length > 0 && !workspace?.id) {
+      ensureWorkspaceSelected()
+    }
+  }, [workspaces, workspace?.id, ensureWorkspaceSelected])
 
   useEffect(() => {
     if (!createOpen) {
@@ -196,7 +204,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <SidebarSeparator className="my-2 h-[2px] shrink-0 bg-sidebar-border border-0" />
+        <SidebarSeparator className="my-2 h-0.5 shrink-0 bg-sidebar-border border-0" />
         <SidebarMenu>
           <SidebarMenuItem>
             {sidebarState !== "collapsed" && (
