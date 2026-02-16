@@ -76,6 +76,26 @@ export const validateCountry = (country: string): string | null => {
   return null
 }
 
+export const validateWorkspaceName = (name: string): string | null => {
+  if (!name || name.trim().length === 0) return strings.validation_workspace_name_required
+  if (name.length > 120) return strings.validation_workspace_name_max_length
+  return null
+}
+
+export const validateWebsite = (website: string): string | null => {
+  if (!website) return null
+  if (website.length > 255) return strings.validation_workspace_website_max_length
+  try {
+    const parsed = new URL(website)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return strings.validation_workspace_website_invalid
+    }
+  } catch {
+    return strings.validation_workspace_website_invalid
+  }
+  return null
+}
+
 export const validateLoginForm = (email: string, password: string): ValidationError[] => {
   const errors: ValidationError[] = []
   const emailError = validateEmail(email)
@@ -91,11 +111,8 @@ export interface RegisterFormData {
   confirmPassword: string
   fullName: string
   phone?: string
-  streetAddress?: string
-  city?: string
-  state?: string
-  postalCode?: string
-  country?: string
+  workspaceName: string
+  website?: string
 }
 
 export const validateRegisterForm = (data: RegisterFormData): ValidationError[] => {
@@ -112,25 +129,11 @@ export const validateRegisterForm = (data: RegisterFormData): ValidationError[] 
     const e = validatePhone(data.phone)
     if (e) errors.push({ field: 'phone', message: e })
   }
-  if (data.streetAddress) {
-    const e = validateStreetAddress(data.streetAddress)
-    if (e) errors.push({ field: 'streetAddress', message: e })
-  }
-  if (data.city) {
-    const e = validateCity(data.city)
-    if (e) errors.push({ field: 'city', message: e })
-  }
-  if (data.state) {
-    const e = validateState(data.state)
-    if (e) errors.push({ field: 'state', message: e })
-  }
-  if (data.postalCode) {
-    const e = validatePostalCode(data.postalCode)
-    if (e) errors.push({ field: 'postalCode', message: e })
-  }
-  if (data.country) {
-    const e = validateCountry(data.country)
-    if (e) errors.push({ field: 'country', message: e })
+  const workspaceNameError = validateWorkspaceName(data.workspaceName)
+  if (workspaceNameError) errors.push({ field: 'workspaceName', message: workspaceNameError })
+  if (data.website) {
+    const e = validateWebsite(data.website)
+    if (e) errors.push({ field: 'website', message: e })
   }
   return errors
 }

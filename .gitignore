@@ -16,6 +16,9 @@ node_modules
 .env.staginglocal
 .env.staging
 
+# .md files
+SIGNUP_CHANGES.md
+
 # Testing
 coverage
 

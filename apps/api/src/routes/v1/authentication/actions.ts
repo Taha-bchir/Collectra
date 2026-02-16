@@ -77,7 +77,19 @@ handler.openapi(registerUserSchema, async (c) => {
 
   try {
     const result = await service.registerUser(payload);
-    return c.json({ data: result }, 201);
+    if (result.session) {
+      setAuthCookies(c, result.session.accessToken, result.session.refreshToken, result.session.expiresIn);
+    }
+
+    return c.json(
+      {
+        data: {
+          ...result.user,
+          requiresEmailVerification: result.requiresEmailVerification,
+        },
+      },
+      201
+    );
   } catch (error) {
     logger.error({ error, scope: "auth.register" }, "Failed to register user");
     const normalized = normalizeError(error, 400);

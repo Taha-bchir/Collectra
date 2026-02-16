@@ -28,6 +28,8 @@ export interface RegisterPayload {
   email: string
   password: string
   fullName: string
+  workspaceName: string
+  website?: string
 }
 
 export interface RegisterResult {

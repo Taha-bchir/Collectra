@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@repo/database';
+import { WorkspaceRole } from '@repo/database';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from '@repo/types';
 import type { AuthenticationServiceOptions } from '../types/services.js';
@@ -13,6 +14,8 @@ type UserProfileInput = Partial<UserProfileShape>;
 type RegisterPayload = UserProfileInput & {
   email: string;
   password: string;
+  workspaceName: string;
+  website?: string;
 };
 
 type LoginPayload = {
@@ -92,11 +95,44 @@ export class AuthenticationService {
       fullName: profileMetadata.fullName ?? null,
     });
 
+    const workspaceName = payload.workspaceName.trim();
+    if (!workspaceName) {
+      throw new Error('Workspace name is required.');
+    }
+    const website = payload.website?.trim() || null;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.workspace.create({
+        data: {
+          name: workspaceName,
+          website,
+          createdByUserId: dbUser.id,
+          members: {
+            create: {
+              userId: dbUser.id,
+              role: WorkspaceRole.OWNER,
+            },
+          },
+        },
+      });
+    });
+
+    const session = data.session;
+
     return {
-      id: dbUser.id,
-      email: dbUser.email,
-      profile: { fullName: dbUser.fullName ?? null },
-      requiresEmailVerification: !data.session,
+      user: {
+        id: dbUser.id,
+        email: dbUser.email,
+        profile: { fullName: dbUser.fullName ?? null },
+      },
+      requiresEmailVerification: !session,
+      session: session
+        ? {
+            accessToken: session.access_token,
+            refreshToken: session.refresh_token,
+            expiresIn: session.expires_in,
+          }
+        : null,
     };
   }
 

@@ -7,9 +7,9 @@ type AuthenticatedUser = NonNullable<AppContext['var']['user']>
 export function requireUser(c: AppContext): AuthenticatedUser {
   const user = c.get('user')
 
-  if (!user) {
+  if (!user || !user.email) {
     throw new HTTPException(401, { message: 'Unauthorized' })
   }
 
-  return user
+  return user as AuthenticatedUser
 }

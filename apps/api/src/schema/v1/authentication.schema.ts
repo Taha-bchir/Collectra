@@ -43,7 +43,12 @@ export const registerUserSchema = createRoute({
           schema: z.object({
             email: z.string().email(),
             password: z.string().min(8).max(72),
-          }).extend(userProfileRequestSchema.shape),
+          })
+            .extend(userProfileRequestSchema.shape)
+            .extend({
+              workspaceName: z.string().min(1).max(120),
+              website: z.string().url().max(255).optional(),
+            }),
         },
       },
     },

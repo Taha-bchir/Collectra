@@ -1,7 +1,7 @@
 /**
  * English copy for the app. No i18n; single language only.
  */
-export const strings = {
+export const strings: Record<string, string> = {
   // App & nav
   app_name: 'SaaS Boilerplate',
   nav_home: 'Home',
@@ -78,6 +78,10 @@ export const strings = {
   auth_full_name_placeholder: 'Enter your full name',
   auth_phone_label: 'Phone number',
   auth_phone_placeholder: '05xxxxxxxx',
+  auth_workspace_name_label: 'Company / Workspace name',
+  auth_workspace_name_placeholder: 'Enter your company or workspace name',
+  auth_workspace_website_label: 'Website (optional)',
+  auth_workspace_website_placeholder: 'https://example.com',
   auth_street_address_label: 'Street Address',
   auth_street_address_placeholder: '123 Main St',
   auth_city_label: 'City',
@@ -166,6 +170,10 @@ export const strings = {
   validation_fullname_max_length: 'Full name must not exceed 120 characters',
   validation_phone_min_length: 'Phone number must be at least 3 characters',
   validation_phone_max_length: 'Phone number must not exceed 32 characters',
+  validation_workspace_name_required: 'Company or workspace name is required',
+  validation_workspace_name_max_length: 'Company or workspace name must not exceed 120 characters',
+  validation_workspace_website_invalid: 'Please enter a valid website URL',
+  validation_workspace_website_max_length: 'Website must not exceed 255 characters',
   validation_street_address_max_length: 'Street address must not exceed 255 characters',
   validation_city_max_length: 'City must not exceed 120 characters',
   validation_state_max_length: 'State must not exceed 120 characters',
@@ -218,6 +226,6 @@ export const strings = {
     'Your ongoing listings, negotiations, and requests may be affected. Make sure to export any information you need before deleting your account.',
   settings_delete_deleting: 'Deleting account...',
   settings_delete_button: 'Delete my account',
-} as const
+}
 
 export type StringKey = keyof typeof strings

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useState, Suspense } from "react"
 import { ApiError } from "@/features/auth/services/auth-service"
 import { strings } from "@/lib/strings"
@@ -17,11 +17,6 @@ import {
   validatePasswordConfirmation,
   validateFullName,
   validatePhone,
-  validateStreetAddress,
-  validateCity,
-  validateState,
-  validatePostalCode,
-  validateCountry,
 } from "@/features/auth/utils/auth-validation"
 import { ChevronRight, ChevronLeft, Loader2, LayoutGrid } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
@@ -32,26 +27,39 @@ interface FieldErrors {
   confirmPassword: string | null
   fullName: string | null
   phone: string | null
-  streetAddress: string | null
-  city: string | null
-  state: string | null
-  postalCode: string | null
-  country: string | null
+  workspaceName: string | null
+  website: string | null
+}
+
+const validateWorkspaceName = (name: string): string | null => {
+  if (!name || name.trim().length === 0) return strings.validation_workspace_name_required
+  if (name.length > 120) return strings.validation_workspace_name_max_length
+  return null
+}
+
+const validateWebsite = (website: string): string | null => {
+  if (!website) return null
+  if (website.length > 255) return strings.validation_workspace_website_max_length
+  try {
+    const parsed = new URL(website)
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return strings.validation_workspace_website_invalid
+    }
+  } catch {
+    return strings.validation_workspace_website_invalid
+  }
+  return null
 }
 
 function SignUpForm() {
-  const searchParams = useSearchParams()
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [repeatPassword, setRepeatPassword] = useState("")
   const [fullName, setFullName] = useState("")
   const [phone, setPhone] = useState("")
-  const [streetAddress, setStreetAddress] = useState("")
-  const [city, setCity] = useState("")
-  const [state, setState] = useState("")
-  const [postalCode, setPostalCode] = useState("")
-  const [country, setCountry] = useState("")
+  const [workspaceName, setWorkspaceName] = useState("")
+  const [website, setWebsite] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [touched, setTouched] = useState({
@@ -60,11 +68,8 @@ function SignUpForm() {
     confirmPassword: false,
     fullName: false,
     phone: false,
-    streetAddress: false,
-    city: false,
-    state: false,
-    postalCode: false,
-    country: false,
+    workspaceName: false,
+    website: false,
   })
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({
     email: null,
@@ -72,11 +77,8 @@ function SignUpForm() {
     confirmPassword: null,
     fullName: null,
     phone: null,
-    streetAddress: null,
-    city: null,
-    state: null,
-    postalCode: null,
-    country: null,
+    workspaceName: null,
+    website: null,
   })
   const router = useRouter()
   const { signUp, signInWithGoogle } = useAuth()
@@ -133,43 +135,19 @@ function SignUpForm() {
     }
   }
 
-  const handleStreetAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleWorkspaceNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    setStreetAddress(value)
-    if (touched.streetAddress) {
-      updateFieldError("streetAddress", validateStreetAddress(value))
+    setWorkspaceName(value)
+    if (touched.workspaceName) {
+      updateFieldError("workspaceName", validateWorkspaceName(value))
     }
   }
 
-  const handleCityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleWebsiteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    setCity(value)
-    if (touched.city) {
-      updateFieldError("city", validateCity(value))
-    }
-  }
-
-  const handleStateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setState(value)
-    if (touched.state) {
-      updateFieldError("state", validateState(value))
-    }
-  }
-
-  const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setPostalCode(value)
-    if (touched.postalCode) {
-      updateFieldError("postalCode", validatePostalCode(value))
-    }
-  }
-
-  const handleCountryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setCountry(value)
-    if (touched.country) {
-      updateFieldError("country", validateCountry(value))
+    setWebsite(value)
+    if (touched.website) {
+      updateFieldError("website", validateWebsite(value))
     }
   }
 
@@ -188,11 +166,6 @@ function SignUpForm() {
 
   const validateStep2 = () => {
     const errors: Partial<FieldErrors> = {
-      streetAddress: validateStreetAddress(streetAddress),
-      city: validateCity(city),
-      state: validateState(state),
-      postalCode: validatePostalCode(postalCode),
-      country: validateCountry(country),
       password: validatePassword(password),
       confirmPassword: validatePasswordConfirmation(password, repeatPassword),
     }
@@ -200,42 +173,53 @@ function SignUpForm() {
     setFieldErrors((prev) => ({ ...prev, ...errors }))
     setTouched((prev) => ({
       ...prev,
-      streetAddress: true,
-      city: true,
-      state: true,
-      postalCode: true,
-      country: true,
       password: true,
       confirmPassword: true,
     }))
 
-    return (
-      !errors.streetAddress &&
-      !errors.city &&
-      !errors.state &&
-      !errors.postalCode &&
-      !errors.country &&
-      !errors.password &&
-      !errors.confirmPassword &&
-      password &&
-      repeatPassword
-    )
+    return !errors.password && !errors.confirmPassword && password && repeatPassword
+  }
+
+  const validateStep3 = () => {
+    const errors: Partial<FieldErrors> = {
+      workspaceName: validateWorkspaceName(workspaceName),
+      website: validateWebsite(website),
+    }
+
+    setFieldErrors((prev) => ({ ...prev, ...errors }))
+    setTouched((prev) => ({
+      ...prev,
+      workspaceName: true,
+      website: true,
+    }))
+
+    return !errors.workspaceName && !errors.website && workspaceName
   }
 
   const handleNext = () => {
-    if (validateStep1()) {
+    if (step === 1 && validateStep1()) {
       setStep(2)
+      return
+    }
+    if (step === 2 && validateStep2()) {
+      setStep(3)
     }
   }
 
   const handleBack = () => {
-    setStep(1)
+    if (step === 2) {
+      setStep(1)
+      return
+    }
+    if (step === 3) {
+      setStep(2)
+    }
   }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateStep2()) {
+    if (!validateStep3()) {
       return
     }
 
@@ -243,12 +227,19 @@ function SignUpForm() {
     setError(null)
 
     try {
-      await signUp({
+      const payload = {
         email,
         password,
         fullName,
-      })
-      router.push("/auth/sign-up-success")
+        workspaceName,
+        website: website.trim() ? website.trim() : undefined,
+      } as Parameters<typeof signUp>[0]
+      const result = await signUp(payload)
+      if (result.requiresEmailVerification) {
+        router.push("/auth/sign-up-success")
+      } else {
+        router.push("/overview")
+      }
     } catch (error: unknown) {
       if (error instanceof ApiError) {
         setError(error.message)
@@ -261,7 +252,7 @@ function SignUpForm() {
   }
 
   const hasValidationErrors = Object.values(fieldErrors).some((error) => error !== null)
-  const requiredFieldsFilled = email && password && repeatPassword && fullName
+  const requiredFieldsFilled = email && password && repeatPassword && fullName && workspaceName
   const isFormValid = requiredFieldsFilled && !hasValidationErrors
 
   return (
@@ -294,18 +285,27 @@ function SignUpForm() {
                 </div>
                 <span className="text-sm font-medium hidden sm:inline">Basic Info</span>
               </div>
-              <div className={`h-px w-12 ${step >= 2 ? 'bg-primary' : 'bg-muted-foreground'}`} />
+              <div className={`h-px w-10 ${step >= 2 ? 'bg-primary' : 'bg-muted-foreground'}`} />
               <div className={`flex items-center gap-2 ${step >= 2 ? 'text-primary' : 'text-muted-foreground'}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
                   step >= 2 ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
                 }`}>
                   2
                 </div>
-                <span className="text-sm font-medium hidden sm:inline">Address & Password</span>
+                <span className="text-sm font-medium hidden sm:inline">Password</span>
+              </div>
+              <div className={`h-px w-10 ${step >= 3 ? 'bg-primary' : 'bg-muted-foreground'}`} />
+              <div className={`flex items-center gap-2 ${step >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                  step >= 3 ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
+                }`}>
+                  3
+                </div>
+                <span className="text-sm font-medium hidden sm:inline">Workspace</span>
               </div>
             </div>
 
-            <form onSubmit={step === 2 ? handleSignUp : (e) => { e.preventDefault(); handleNext(); }} className="space-y-4">
+            <form onSubmit={step === 3 ? handleSignUp : (e) => { e.preventDefault(); handleNext(); }} className="space-y-4">
               {step === 1 ? (
                 /* Step 1: Basic Information */
                 <div className="space-y-4">
@@ -381,111 +381,9 @@ function SignUpForm() {
                     <ChevronRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
-              ) : (
-                /* Step 2: Address & Password */
+              ) : step === 2 ? (
+                /* Step 2: Password */
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="streetAddress" className="text-foreground">{strings.auth_street_address_label}</Label>
-                    <Input
-                      id="streetAddress"
-                      type="text"
-                      placeholder={strings.auth_street_address_placeholder}
-                      value={streetAddress}
-                      onChange={handleStreetAddressChange}
-                      onBlur={() => {
-                        setFieldTouched("streetAddress")
-                        updateFieldError("streetAddress", validateStreetAddress(streetAddress))
-                      }}
-                      className={`bg-muted/50 ${fieldErrors.streetAddress && touched.streetAddress ? "border-destructive" : ""}`}
-                      maxLength={255}
-                    />
-                    {fieldErrors.streetAddress && touched.streetAddress && (
-                      <p className="text-sm text-destructive">{fieldErrors.streetAddress}</p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city" className="text-foreground">{strings.auth_city_label}</Label>
-                      <Input
-                        id="city"
-                        type="text"
-                        placeholder={strings.auth_city_placeholder}
-                        value={city}
-                        onChange={handleCityChange}
-                        onBlur={() => {
-                          setFieldTouched("city")
-                          updateFieldError("city", validateCity(city))
-                        }}
-                        className={`bg-muted/50 ${fieldErrors.city && touched.city ? "border-destructive" : ""}`}
-                        maxLength={120}
-                      />
-                      {fieldErrors.city && touched.city && (
-                        <p className="text-sm text-destructive">{fieldErrors.city}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="state" className="text-foreground">{strings.auth_state_label}</Label>
-                      <Input
-                        id="state"
-                        type="text"
-                        placeholder={strings.auth_state_placeholder}
-                        value={state}
-                        onChange={handleStateChange}
-                        onBlur={() => {
-                          setFieldTouched("state")
-                          updateFieldError("state", validateState(state))
-                        }}
-                        className={`bg-muted/50 ${fieldErrors.state && touched.state ? "border-destructive" : ""}`}
-                        maxLength={120}
-                      />
-                      {fieldErrors.state && touched.state && (
-                        <p className="text-sm text-destructive">{fieldErrors.state}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="postalCode" className="text-foreground">{strings.auth_postal_code_label}</Label>
-                      <Input
-                        id="postalCode"
-                        type="text"
-                        placeholder={strings.auth_postal_code_placeholder}
-                        value={postalCode}
-                        onChange={handlePostalCodeChange}
-                        onBlur={() => {
-                          setFieldTouched("postalCode")
-                          updateFieldError("postalCode", validatePostalCode(postalCode))
-                        }}
-                        className={`bg-muted/50 ${fieldErrors.postalCode && touched.postalCode ? "border-destructive" : ""}`}
-                        maxLength={20}
-                      />
-                      {fieldErrors.postalCode && touched.postalCode && (
-                        <p className="text-sm text-destructive">{fieldErrors.postalCode}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="country" className="text-foreground">{strings.auth_country_label}</Label>
-                      <Input
-                        id="country"
-                        type="text"
-                        placeholder={strings.auth_country_placeholder}
-                        value={country}
-                        onChange={handleCountryChange}
-                        onBlur={() => {
-                          setFieldTouched("country")
-                          updateFieldError("country", validateCountry(country))
-                        }}
-                        className={`bg-muted/50 ${fieldErrors.country && touched.country ? "border-destructive" : ""}`}
-                        maxLength={120}
-                      />
-                      {fieldErrors.country && touched.country && (
-                        <p className="text-sm text-destructive">{fieldErrors.country}</p>
-                      )}
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-foreground">{strings.auth_password_label}</Label>
                     <Input
@@ -524,6 +422,72 @@ function SignUpForm() {
                     />
                     {fieldErrors.confirmPassword && touched.confirmPassword && (
                       <p className="text-sm text-destructive">{fieldErrors.confirmPassword}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 bg-muted/50"
+                      size="lg"
+                      onClick={handleBack}
+                      disabled={isLoading}
+                    >
+                      <ChevronLeft className="mr-2 h-4 w-4" />
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1 bg-foreground text-background hover:bg-foreground/90"
+                      size="lg"
+                      disabled={isLoading}
+                    >
+                      Continue
+                      <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Step 3: Workspace */
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="workspaceName" className="text-foreground">{strings.auth_workspace_name_label}</Label>
+                    <Input
+                      id="workspaceName"
+                      type="text"
+                      required
+                      value={workspaceName}
+                      onChange={handleWorkspaceNameChange}
+                      onBlur={() => {
+                        setFieldTouched("workspaceName")
+                        updateFieldError("workspaceName", validateWorkspaceName(workspaceName))
+                      }}
+                      placeholder={strings.auth_workspace_name_placeholder}
+                      className={`bg-muted/50 ${fieldErrors.workspaceName && touched.workspaceName ? "border-destructive" : ""}`}
+                      maxLength={120}
+                    />
+                    {fieldErrors.workspaceName && touched.workspaceName && (
+                      <p className="text-sm text-destructive">{fieldErrors.workspaceName}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="website" className="text-foreground">{strings.auth_workspace_website_label}</Label>
+                    <Input
+                      id="website"
+                      type="url"
+                      value={website}
+                      onChange={handleWebsiteChange}
+                      onBlur={() => {
+                        setFieldTouched("website")
+                        updateFieldError("website", validateWebsite(website))
+                      }}
+                      placeholder={strings.auth_workspace_website_placeholder}
+                      className={`bg-muted/50 ${fieldErrors.website && touched.website ? "border-destructive" : ""}`}
+                      maxLength={255}
+                    />
+                    {fieldErrors.website && touched.website && (
+                      <p className="text-sm text-destructive">{fieldErrors.website}</p>
                     )}
                   </div>
 

@@ -139,7 +139,23 @@ export const useAuthStore = create<AuthState>()(
               }
             }>(AUTH_ROUTES.register, payload)
             const result = data.data
-            set({ authLoading: false, authError: null })
+            if (!result.requiresEmailVerification) {
+              set({
+                profile: {
+                  id: result.id,
+                  email: result.email,
+                  fullName: result.profile?.fullName ?? null,
+                  emailConfirmed: true,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                },
+                hasHydrated: true,
+                authLoading: false,
+                authError: null,
+              })
+            } else {
+              set({ authLoading: false, authError: null })
+            }
             return {
               userId: result.id,
               email: result.email,
