@@ -14,10 +14,31 @@ enum WorkspaceRole {
   AGENT
 }
 
+enum PromiseStatus {
+  ACTIVE // Promise made, waiting for due date
+  KEPT // Paid on or before promised date
+  BROKEN // Not paid by promised date
+  CANCELLED // Manually cancelled by agent or customer
+}
+
+enum ActionType {
+  LINK_SENT
+  LINK_CLICKED
+  PROMISE_MADE
+  PROMISE_UPDATED
+  PAYMENT_CONFIRMED
+  STATUS_CHANGED
+  NOTE_ADDED
+  EMAIL_SENT
+  SMS_SENT
+  PHONE_CALL
+  OTHER
+}
+
 enum DebtStatus {
   IMPORTED
   NOTIFIED
-  PROMISE_TO_PAY       @map("PROMISED")
+  PROMISE_TO_PAY        @map("PROMISED")
   PAID
   OVERDUE_AFTER_PROMISE @map("OVERDUE")
 }
@@ -82,8 +103,6 @@ model Campaign {
   workspaceId String         @db.Uuid
   name        String
   description String?
-  startDate   DateTime?
-  endDate     DateTime?
   status      CampaignStatus @default(DRAFT)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
@@ -104,8 +123,9 @@ model Client {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  debts     DebtRecord[]
+  workspace     Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  debts         DebtRecord[]
+  actionHistory CustomerActionHistory[]
 }
 
 model DebtRecord {
@@ -122,7 +142,9 @@ model DebtRecord {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  clientTokens ClientToken[] @relation("DebtToClientTokens")
+  clientTokens    ClientToken[]           @relation("DebtToClientTokens")
+  paymentPromises PaymentPromise[]
+  actionHistory   CustomerActionHistory[]
 
   @@map("Debt")
 }
@@ -150,4 +172,36 @@ model ClientToken {
 
   campaign Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   debt     DebtRecord @relation("DebtToClientTokens", fields: [debtId], references: [id], onDelete: Cascade)
+}
+
+model PaymentPromise {
+  id           String        @id @default(uuid()) @db.Uuid
+  debtId       String        @db.Uuid
+  promisedDate DateTime
+  status       PromiseStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  debt DebtRecord @relation(fields: [debtId], references: [id], onDelete: Cascade)
+
+  @@index([debtId])
+  @@index([status]) // Quick filter: all broken promises, etc.
+}
+
+model CustomerActionHistory {
+  id          String     @id @default(uuid()) @db.Uuid
+  debtId      String?    @db.Uuid // optional – some actions are customer-level only
+  customerId  String     @db.Uuid
+  actionType  ActionType
+  timestamp   DateTime   @default(now())
+  performedBy String?    @db.Uuid // userId of agent/owner who did it (nullable for client actions)
+  metadata    Json? // flexible: { note: "...", oldStatus: "...", newStatus: "..." }
+  createdAt   DateTime   @default(now())
+
+  debt     DebtRecord? @relation(fields: [debtId], references: [id], onDelete: SetNull)
+  customer Client      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, timestamp(sort: Desc)]) // Timeline per customer, newest first
+  @@index([debtId])
+  @@index([actionType])
 }
