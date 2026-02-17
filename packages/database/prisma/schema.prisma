@@ -17,9 +17,9 @@ enum WorkspaceRole {
 enum DebtStatus {
   IMPORTED
   NOTIFIED
-  PROMISED
+  PROMISE_TO_PAY       @map("PROMISED")
   PAID
-  OVERDUE
+  OVERDUE_AFTER_PROMISE @map("OVERDUE")
 }
 
 enum CampaignStatus {
@@ -89,7 +89,7 @@ model Campaign {
   updatedAt   DateTime       @updatedAt
 
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  debts        Debt[]
+  debts        DebtRecord[]
   invitations  Invitation[]
   clientTokens ClientToken[]
 }
@@ -104,11 +104,11 @@ model Client {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  debts     Debt[]
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  debts     DebtRecord[]
 }
 
-model Debt {
+model DebtRecord {
   id          String     @id @default(uuid()) @db.Uuid
   campaignId  String     @db.Uuid
   clientId    String     @db.Uuid
@@ -123,6 +123,8 @@ model Debt {
   client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   clientTokens ClientToken[] @relation("DebtToClientTokens")
+
+  @@map("Debt")
 }
 
 model Invitation {
@@ -146,6 +148,6 @@ model ClientToken {
   expiresAt  DateTime @default(dbgenerated("now() + interval '7 days'"))
   createdAt  DateTime @default(now())
 
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  debt     Debt     @relation("DebtToClientTokens", fields: [debtId], references: [id], onDelete: Cascade)
+  campaign Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  debt     DebtRecord @relation("DebtToClientTokens", fields: [debtId], references: [id], onDelete: Cascade)
 }

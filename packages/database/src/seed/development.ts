@@ -91,20 +91,68 @@ async function seedDevelopment() {
   });
   console.log('Created/Updated Campaign:', campaign);
 
-  // Create a test debt
-  const debt = await prisma.debt.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000003' },
-    update: {},
-    create: {
+  // Create test debts
+  const debtsToSeed = [
+    {
       id: '00000000-0000-0000-0000-000000000003',
-      campaignId: campaign.id,
-      clientId: client.id,
-      amount: 1500.00,
+      amount: 1500.0,
       dueDate: new Date('2026-02-15'),
-      status: 'NOTIFIED',
+      status: 'NOTIFIED' as const,
+      promiseDate: null,
     },
-  });
-  console.log('Created/Updated Debt:', debt);
+    {
+      id: '00000000-0000-0000-0000-000000000004',
+      amount: 850.5,
+      dueDate: new Date('2026-02-20'),
+      status: 'IMPORTED' as const,
+      promiseDate: null,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000005',
+      amount: 2200.0,
+      dueDate: new Date('2026-01-30'),
+      status: 'PROMISE_TO_PAY' as const,
+      promiseDate: new Date('2026-02-25'),
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000006',
+      amount: 430.75,
+      dueDate: new Date('2026-01-10'),
+      status: 'PAID' as const,
+      promiseDate: null,
+    },
+    {
+      id: '00000000-0000-0000-0000-000000000007',
+      amount: 999.99,
+      dueDate: new Date('2025-12-31'),
+      status: 'OVERDUE_AFTER_PROMISE' as const,
+      promiseDate: new Date('2026-01-05'),
+    },
+  ];
+
+  for (const debtItem of debtsToSeed) {
+    const debt = await prisma.debtRecord.upsert({
+      where: { id: debtItem.id },
+      update: {
+        campaignId: campaign.id,
+        clientId: client.id,
+        amount: debtItem.amount,
+        dueDate: debtItem.dueDate,
+        status: debtItem.status,
+        promiseDate: debtItem.promiseDate,
+      },
+      create: {
+        id: debtItem.id,
+        campaignId: campaign.id,
+        clientId: client.id,
+        amount: debtItem.amount,
+        dueDate: debtItem.dueDate,
+        status: debtItem.status,
+        promiseDate: debtItem.promiseDate,
+      },
+    });
+    console.log('Created/Updated Debt:', debt.id, debt.status, debt.amount.toString());
+  }
 }
 
 export default seedDevelopment;

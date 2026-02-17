@@ -207,13 +207,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarSeparator className="my-2 h-0.5 shrink-0 bg-sidebar-border border-0" />
         <SidebarMenu>
           <SidebarMenuItem>
-            {sidebarState !== "collapsed" && (
-              <div className="px-4 pb-1 pt-0.5">
-                <span className="text-xs font-bold uppercase tracking-wider text-sidebar-foreground/80">
-                  Workspace
-                </span>
-              </div>
-            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
