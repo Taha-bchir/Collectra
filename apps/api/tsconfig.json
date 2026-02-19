@@ -3,7 +3,6 @@
   "compilerOptions": {
     "outDir": "./dist",
     "baseUrl": ".",
-    "types": ["node"],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
     "paths": {
@@ -13,8 +12,7 @@
       "@repo/types/*": ["../../packages/types/src/*"],
       "hono-autoload/types": ["node_modules/hono-autoload/types/autoloader"],
       "hono-autoload": ["node_modules/hono-autoload/index.ts"]
-    },
-    "typeRoots": ["./src/types", "./node_modules/@types"],
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

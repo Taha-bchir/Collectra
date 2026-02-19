@@ -11,6 +11,10 @@ import { AUTH_COOKIE_NAMES } from './cookie.js'
 const PROTECTED_PATTERNS = [
   '/api/v1/users/*',
   '/api/v1/workspaces/*',
+  '/api/v1/customers',
+  '/api/v1/customers/*',
+  '/api/v1/debts',
+  '/api/v1/debts/*',
   '/api/v1/authentication/reset-password',
 ] as const
 

@@ -60,7 +60,7 @@ export function resolveCorsOrigin(origin: string | null | undefined): string | n
 export const corsMiddleware = cors({
   origin: (origin) => resolveCorsOrigin(origin),
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-Id'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Request-Id', 'X-Workspace-Id'],
   exposeHeaders: ['Content-Length', 'X-Request-Id'],
   credentials: true,
   maxAge: 86400, // 24 hours

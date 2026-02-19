@@ -31,17 +31,26 @@ src/
 ├── routes/           # API route handlers
 │   └── v1/
 │       ├── authentication/  # Auth endpoints
+│       ├── customers/       # Customer endpoints
+│       ├── debts/           # Debt endpoints
+│       ├── workspaces/      # Workspace endpoints
 │       ├── users/           # User management
 │       └── health/          # Health checks
 │
 ├── services/        # Business logic
 │   ├── authentication.ts    # Auth service
+│   ├── customers.ts         # Customer service
+│   ├── debts.ts             # Debt service
 │   └── users.ts             # User service
 │
 ├── schema/          # Zod validation schemas
 │   └── v1/
 │       ├── authentication.schema.ts
-│       └── users.schema.ts
+│       ├── customers.schema.ts
+│       ├── debts.schema.ts
+│       ├── health.schema.ts
+│       ├── users.schema.ts
+│       └── workspaces.schema.ts
 │
 ├── utils/           # Utility functions
 │   ├── auth.ts             # Auth helpers
@@ -148,6 +157,24 @@ The API will be available at `http://localhost:3000`
 | Method | Endpoint | Description | Auth Required |
 |--------|----------|-------------|---------------|
 | GET | `/api/v1/users/me` | Get current user | Yes |
+
+### Customers
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/customers` | List customers in current workspace | Yes |
+| POST | `/api/v1/customers` | Create a customer in current workspace | Yes |
+| GET | `/api/v1/customers/{id}` | Get customer by ID (workspace-scoped) | Yes |
+| PATCH | `/api/v1/customers/{id}` | Update customer by ID (workspace-scoped) | Yes |
+
+### Debts
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/debts` | List debts in current workspace | Yes |
+| POST | `/api/v1/debts` | Create debt in current workspace | Yes |
+| GET | `/api/v1/debts/{id}` | Get debt by ID (workspace-scoped) | Yes |
+| PATCH | `/api/v1/debts/{id}` | Update debt by ID (workspace-scoped) | Yes |
 
 ### Health
 

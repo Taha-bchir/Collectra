@@ -24,6 +24,7 @@ const servicesMiddleware: MiddlewareHandler<Env> = async (c, next) => {
 app.use('*', servicesMiddleware)
 
 await registerGlobalMiddlewares(app)
+
 await registerAutoRoutes(app)
 
 const rootRoute = createRoute({

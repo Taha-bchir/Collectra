@@ -15,7 +15,8 @@ export const tenantMiddleware = createMiddleware<Env>(async (c, next) => {
 
   const prisma = c.get('prisma');
 
-  const preferredWorkspaceId = getCookieHelper(c, WORKSPACE_COOKIE_NAME) || null;
+  const workspaceHeader = c.req.header('x-workspace-id')?.trim();
+  const preferredWorkspaceId = workspaceHeader || getCookieHelper(c, WORKSPACE_COOKIE_NAME) || null;
 
   const membership = preferredWorkspaceId
     ? await prisma.workspaceMember.findFirst({
