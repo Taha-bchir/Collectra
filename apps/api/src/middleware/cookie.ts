@@ -32,13 +32,29 @@ export const cookieMiddleware: MiddlewareHandler<Env> = async (c, next) => {
 
 export const getCookieHelper = (c: any, name: string) => getCookie(c, name)
 
-// In dev, use SameSite=None; Secure so cookies are sent on cross-origin requests (e.g. web :3001 → API :3000).
-// Browsers treat localhost as secure, so this works for local development.
+const resolveCookieSecurity = (c: any): Pick<CookieOptions, 'secure' | 'sameSite'> => {
+  try {
+    const requestUrl = new URL(c.req.url)
+    const isHttps = requestUrl.protocol === 'https:'
+
+    if (isHttps) {
+      return { secure: true, sameSite: 'None' }
+    }
+
+    // On plain HTTP (local dev, Swagger), Secure cookies are ignored by browsers.
+    // Use Lax so cookies persist and auth works in same-site local flows.
+    return { secure: false, sameSite: 'Lax' }
+  } catch {
+    return { secure: false, sameSite: 'Lax' }
+  }
+}
+
 export const setCookieHelper = (c: any, name: string, value: string, options?: CookieOptions) => {
+  const securityOptions = resolveCookieSecurity(c)
   const baseOptions: CookieOptions = {
     httpOnly: true,
-    secure: true, // required when sameSite is None (needed for cross-origin from web to API)
-    sameSite: 'None',
+    secure: securityOptions.secure,
+    sameSite: securityOptions.sameSite,
     path: '/',
   }
   const mergedOptions: CookieOptions = options ? { ...baseOptions, ...options } : baseOptions

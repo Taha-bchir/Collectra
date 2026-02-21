@@ -176,6 +176,21 @@ The API will be available at `http://localhost:3000`
 | GET | `/api/v1/debts/{id}` | Get debt by ID (workspace-scoped) | Yes |
 | PATCH | `/api/v1/debts/{id}` | Update debt by ID (workspace-scoped) | Yes |
 
+### Promises
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/v1/debts/{debtId}/promises` | List payment promises for a debt (workspace-scoped) | Yes |
+| POST | `/api/v1/debts/{debtId}/promises` | Create payment promise for a debt (workspace-scoped) | Yes |
+
+### Actions
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/actions` | Record customer/debt action (workspace-scoped) | Yes |
+| GET | `/api/v1/debts/{debtId}/actions` | List action timeline for a debt (workspace-scoped) | Yes |
+| GET | `/api/v1/customers/{customerId}/actions` | List action timeline for a customer (workspace-scoped) | Yes |
+
 ### Health
 
 | Method | Endpoint | Description | Auth Required |

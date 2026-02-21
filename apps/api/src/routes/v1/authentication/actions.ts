@@ -129,7 +129,17 @@ handler.openapi(loginSchema, async (c) => {
     setAuthCookies(c, result.accessToken, result.refreshToken, result.expiresIn);
     return c.json({ data: result }, 200);
   } catch (error) {
-    logger.warn({ error, scope: "auth.login" }, "Login failed");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.warn(
+      {
+        scope: "auth.login",
+        error: errorMessage,
+        stack: errorStack,
+        payload: { email: payload.email },
+      },
+      "Login failed"
+    );
     const normalized = normalizeError(error, 401);
     const status: 400 | 401 | 500 =
       normalized.status >= 500 ? 500 : normalized.status === 400 ? 400 : 401;
@@ -221,7 +231,16 @@ handler.openapi(refreshSchema, async (c) => {
     setAuthCookies(c, result.accessToken, result.refreshToken, result.expiresIn);
     return c.json({ data: result }, 200);
   } catch (error) {
-    logger.warn({ error, scope: "auth.refresh" }, "Token refresh failed");
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.warn(
+      {
+        scope: "auth.refresh",
+        error: errorMessage,
+        stack: errorStack,
+      },
+      "Token refresh failed"
+    );
     const normalized = normalizeError(error, 401);
     const status: 400 | 401 | 500 =
       normalized.status >= 500 ? 500 : normalized.status === 400 ? 400 : 401;

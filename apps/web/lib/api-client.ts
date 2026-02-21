@@ -33,6 +33,18 @@ export interface CreateCookieAuthApiClientConfig {
   onRefresh: () => Promise<void>
 }
 
+function resolvePathFromUrl(url: string, baseURL: string): string {
+  try {
+    return new URL(url, baseURL).pathname
+  } catch {
+    return url.split('?')[0] ?? url
+  }
+}
+
+function shouldSkipRefresh(pathname: string): boolean {
+  return pathname === '/api/v1/authentication/refresh' || pathname.startsWith('/api/v1/authentication/')
+}
+
 function normalizeError(err: unknown): ApiError {
   if (err instanceof ApiError) return err
   if (axios.isAxiosError(err)) {
@@ -89,6 +101,13 @@ export function createApiClient(config: CreateApiClientConfig): AxiosInstance {
     async (err) => {
       const originalRequest = err.config
       const config = originalRequest as RequestConfigWithRetry
+      const requestPath = resolvePathFromUrl(String(config?.url ?? ''), baseURL)
+      const skipRefresh = shouldSkipRefresh(requestPath)
+
+      if (err.response?.status === 401 && skipRefresh) {
+        throw normalizeError(err)
+      }
+
       if (err.response?.status === 401 && config && !config._retry) {
         if (!isRefreshing) {
           isRefreshing = true
@@ -158,6 +177,12 @@ export function createCookieAuthApiClient(config: CreateCookieAuthApiClientConfi
     async (err) => {
       const originalRequest = err.config
       const config = originalRequest as RequestConfigWithRetry
+      const requestPath = resolvePathFromUrl(String(config?.url ?? ''), baseURL)
+
+      if (err.response?.status === 401 && shouldSkipRefresh(requestPath)) {
+        throw normalizeError(err)
+      }
+
       if (err.response?.status === 401 && config && !config._retry) {
         if (!isRefreshing) {
           isRefreshing = true

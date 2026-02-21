@@ -20,6 +20,7 @@ export const setupSwagger = (app: OpenAPIHono<Env>) => {
       version: '1.0.0',
       description: 'REST API powered by Hono, Supabase, and Prisma',
     },
+    security: [{ bearerAuth: [] }],
     servers: servers.length ? servers : undefined,
   })
 }
