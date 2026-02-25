@@ -136,6 +136,21 @@ pnpm dev
 
 The API will be available at `http://localhost:3000`
 
+### Smoke Tests
+
+```bash
+# Tenant + auth integration smoke test
+pnpm --filter api run test:tenant-auth
+```
+
+This validates:
+
+- 401 responses on protected tenant routes without auth
+- 200 responses with a valid authenticated user
+- 403 response when `x-workspace-id` does not belong to the authenticated user
+
+Note: this script creates and cleans up temporary Supabase + database records.
+
 ## 📡 API Endpoints
 
 ### Authentication
@@ -258,22 +273,34 @@ export default {
 } satisfies AutoLoadRoute
 ```
 
-3. **Add authentication** if needed:
+3. **Use the standard handler pattern** (required for consistency):
 
 ```typescript
-import { authorization } from '../../../middleware/authorization.js'
+import { withRouteTryCatch, requireWorkspaceId } from '../../../utils/route-helpers.js'
 
-// Apply to all routes in handler
-handler.use('*', authorization)
+handler.openapi(getResource, withRouteTryCatch('yourResource.list', async (c) => {
+  const workspaceId = requireWorkspaceId(c)
+  const prisma = c.get('prisma')
 
-// Or use requireRole for specific roles
-import { requireRole } from '../../../middleware/authorization.js'
-handler.get('/admin', requireRole(['ADMIN']), async (c) => {
-  // Admin-only route
-})
+  const data = await prisma.yourModel.findMany({
+    where: { workspaceId },
+  })
+
+  return c.json({ data }, 200)
+}))
 ```
 
-4. **Restart dev server** - routes are auto-discovered on startup
+4. **Use schema-validated input only**:
+
+```typescript
+const payload = c.req.valid('json')
+const params = c.req.valid('param')
+const query = c.req.valid('query')
+```
+
+Do not use `await c.req.json<...>()` in route handlers when an OpenAPI route schema already defines the request body.
+
+5. **Restart dev server** - routes are auto-discovered on startup
 
 ### Using Services
 
@@ -301,6 +328,8 @@ if (!resource) {
   throw new HTTPException(404, { message: 'Resource not found' })
 }
 ```
+
+For route handlers, always wrap with `withRouteTryCatch(...)` to keep error handling/logging consistent.
 
 ### Request Validation
 

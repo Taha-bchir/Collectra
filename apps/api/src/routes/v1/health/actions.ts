@@ -1,13 +1,14 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { AutoLoadRoute } from "hono-autoload/types";
 import type { Env } from "../../../types/index.js";
-import { healthSchema } from "../../../schema/v1/health.schema.js";
+import { healthSchema } from "../../../schema/v1/index.js";
 import { logger } from "../../../utils/logger.js";
+import { withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
 
 // Health check with actual connectivity tests
-handler.openapi(healthSchema, async (c) => {
+handler.openapi(healthSchema, withRouteTryCatch('health.v1', async (c) => {
   const supabase = c.get("supabase");
   const prisma = c.get("prisma");
   const requestId = c.get("requestId");
@@ -80,7 +81,7 @@ handler.openapi(healthSchema, async (c) => {
     },
     statusCode
   );
-});
+}));
 
 const routeModule: AutoLoadRoute = {
   path: "/api/v1/health",

@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PrismaClient } from '@repo/database'
 import type { i18n } from 'i18next'
 import type { Database } from '@repo/types'
+import type { WorkspaceRole } from '@repo/database'
 
 export interface Env {
   Variables: {
@@ -14,6 +15,15 @@ export interface Env {
     user?: {
       id: string
       email?: string
+    }
+    currentWorkspace?: {
+      id: string
+      name: string
+    }
+    currentUser?: {
+      id: string
+      email?: string
+      role: WorkspaceRole
     }
   }
 }

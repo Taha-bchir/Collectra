@@ -1,11 +1,8 @@
 import { Hono } from 'hono';
 import type { Env } from '../../types/index.js';
-import { tenantMiddleware } from '../../middleware/tenant.js';
+import { withRouteTryCatch } from '../../utils/route-helpers.js';
 
 const handler = new Hono<Env>();
-
-// Apply tenant middleware to all routes in this handler
-handler.use(tenantMiddleware);
 
 /**
  * Test route to verify tenant middleware security
@@ -18,7 +15,7 @@ handler.use(tenantMiddleware);
  */
 
 // ✅ PASS: Valid tenant access - returns current workspace & user
-handler.get('/valid', async (c) => {
+handler.get('/valid', withRouteTryCatch('testTenant.valid', async (c) => {
   const workspace = c.get('currentWorkspace');
   const user = c.get('currentUser');
   
@@ -38,11 +35,11 @@ handler.get('/valid', async (c) => {
       role: user.role, // OWNER or AGENT
     },
   });
-});
+}));
 
 // 🔒 SECURITY TEST: Check tenant isolation
 // User should only access their own workspace
-handler.get('/isolation/:targetWorkspaceId', async (c) => {
+handler.get('/isolation/:targetWorkspaceId', withRouteTryCatch('testTenant.isolation', async (c) => {
   const workspace = c.get('currentWorkspace');
   const targetWorkspaceId = c.req.param('targetWorkspaceId');
   
@@ -64,10 +61,10 @@ handler.get('/isolation/:targetWorkspaceId', async (c) => {
     message: 'Tenant isolation verified - access granted',
     grantedWorkspaceId: workspace.id,
   });
-});
+}));
 
 // ℹ️ DEBUG: Check role-based access
-handler.get('/role-check', async (c) => {
+handler.get('/role-check', withRouteTryCatch('testTenant.roleCheck', async (c) => {
   const user = c.get('currentUser');
   
   if (!user) {
@@ -87,7 +84,7 @@ handler.get('/role-check', async (c) => {
       canViewData: isOwner || isAgent,
     },
   });
-});
+}));
 
 export default {
   path: '/api/v1/test-tenant',

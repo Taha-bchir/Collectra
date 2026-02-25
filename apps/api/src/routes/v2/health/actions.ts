@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi'
 import type { AutoLoadRoute } from 'hono-autoload/types'
 import type { Env } from '../../../types/index.js'
 import { performance } from 'node:perf_hooks'
+import { withRouteTryCatch } from '../../../utils/route-helpers.js'
 
 const handler = new OpenAPIHono<Env>()
 
@@ -47,7 +48,7 @@ const healthSchema = createRoute({
   },
 })
 
-handler.openapi(healthSchema, async (c) => {
+handler.openapi(healthSchema, withRouteTryCatch('health.v2', async (c) => {
   const supabase = c.get('supabase')
   const prisma = c.get('prisma')
   const start = performance.now()
@@ -88,7 +89,7 @@ handler.openapi(healthSchema, async (c) => {
       },
     })),
   })
-})
+}))
 
 const routeModule: AutoLoadRoute = {
   path: '/api/v2/health',

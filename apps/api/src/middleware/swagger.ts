@@ -16,7 +16,7 @@ export const setupSwagger = (app: OpenAPIHono<Env>) => {
   app.doc('/openapi.json', {
     openapi: '3.1.0',
     info: {
-      title: 'Aqeel API',
+      title: 'Collectra API',
       version: '1.0.0',
       description: 'REST API powered by Hono, Supabase, and Prisma',
     },

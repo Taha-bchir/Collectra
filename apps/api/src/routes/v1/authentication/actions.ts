@@ -13,12 +13,13 @@ import {
   googleOAuthUrlSchema,
   googleOAuthCallbackSchema,
   googleOAuthTokensSchema,
-} from "../../../schema/v1/authentication.schema.js";
+} from "../../../schema/v1/index.js";
 import { AuthenticationService } from "../../../services/authentication.js";
 import { env } from "../../../config/env.js";
 import { logger } from "../../../utils/logger.js";
 import { requireUser } from "../../../utils/auth.js";
 import { setAuthCookies, clearAuthCookies, AUTH_COOKIE_NAMES } from "../../../middleware/cookie.js";
+import { withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
 
@@ -52,27 +53,8 @@ const normalizeError = (error: unknown, fallbackStatus = 500) => {
   return { status: fallbackStatus, message: "Unexpected error" };
 };
 
-type RegisterPayload = Parameters<AuthenticationService["registerUser"]>[0];
-type LoginPayload = Parameters<AuthenticationService["signIn"]>[0];
-type ForgotPasswordPayload = Parameters<
-  AuthenticationService["requestPasswordReset"]
->[0];
-type RefreshPayload = Parameters<AuthenticationService["refreshSession"]>[0];
-type ResetPasswordServicePayload = Parameters<
-  AuthenticationService["resetPassword"]
->[0];
-
-type ResetPasswordRequestBody = {
-  newPassword: ResetPasswordServicePayload["newPassword"];
-  confirmPassword: ResetPasswordServicePayload["newPassword"];
-};
-
-type GoogleOAuthUrlPayload = Parameters<AuthenticationService["getGoogleOAuthUrl"]>[0];
-type GoogleOAuthCallbackPayload = Parameters<AuthenticationService["handleGoogleOAuthCallback"]>[0];
-type GoogleOAuthTokensPayload = Parameters<AuthenticationService["handleGoogleOAuthTokens"]>[0];
-
-handler.openapi(registerUserSchema, async (c) => {
-  const payload = await c.req.json<RegisterPayload>();
+handler.openapi(registerUserSchema, withRouteTryCatch('auth.register', async (c) => {
+  const payload = c.req.valid('json');
   const service = getService(c);
 
   try {
@@ -118,10 +100,10 @@ handler.openapi(registerUserSchema, async (c) => {
       status
     );
   }
-});
+}));
 
-handler.openapi(loginSchema, async (c) => {
-  const payload = await c.req.json<LoginPayload>();
+handler.openapi(loginSchema, withRouteTryCatch('auth.login', async (c) => {
+  const payload = c.req.valid('json');
   const service = getService(c);
 
   try {
@@ -154,10 +136,10 @@ handler.openapi(loginSchema, async (c) => {
       status
     );
   }
-});
+}));
 
-handler.openapi(forgotPasswordSchema, async (c) => {
-  const payload = await c.req.json<ForgotPasswordPayload>();
+handler.openapi(forgotPasswordSchema, withRouteTryCatch('auth.forgotPassword', async (c) => {
+  const payload = c.req.valid('json');
   const service = getService(c);
 
   try {
@@ -178,10 +160,10 @@ handler.openapi(forgotPasswordSchema, async (c) => {
       status
     );
   }
-});
+}));
 
-handler.openapi(resetPasswordSchema, async (c) => {
-  const payload = await c.req.json<ResetPasswordRequestBody>();
+handler.openapi(resetPasswordSchema, withRouteTryCatch('auth.resetPassword', async (c) => {
+  const payload = c.req.valid('json');
   const user = requireUser(c);
   const service = getService(c);
 
@@ -212,10 +194,10 @@ handler.openapi(resetPasswordSchema, async (c) => {
       status
     );
   }
-});
+}));
 
-handler.openapi(refreshSchema, async (c) => {
-  const body = await c.req.json<{ refreshToken?: string }>().catch(() => ({} as { refreshToken?: string }));
+handler.openapi(refreshSchema, withRouteTryCatch('auth.refresh', async (c) => {
+  const body = c.req.valid('json');
   const refreshToken =
     body.refreshToken ?? getCookie(c, AUTH_COOKIE_NAMES.refreshToken) ?? null;
   if (!refreshToken) {
@@ -255,15 +237,15 @@ handler.openapi(refreshSchema, async (c) => {
       status
     );
   }
-});
+}));
 
-handler.openapi(logoutSchema, async (c) => {
+handler.openapi(logoutSchema, withRouteTryCatch('auth.logout', async (c) => {
   clearAuthCookies(c);
   return c.json({ message: "Logged out" }, 200);
-});
+}));
 
-handler.openapi(googleOAuthUrlSchema, async (c) => {
-  const payload = await c.req.json<GoogleOAuthUrlPayload>();
+handler.openapi(googleOAuthUrlSchema, withRouteTryCatch('auth.googleUrl', async (c) => {
+  const payload = c.req.valid('json');
   const service = getService(c);
 
   try {
@@ -284,10 +266,10 @@ handler.openapi(googleOAuthUrlSchema, async (c) => {
       status
     );
   }
-});
+}));
 
-handler.openapi(googleOAuthCallbackSchema, async (c) => {
-  const payload = await c.req.json<GoogleOAuthCallbackPayload>();
+handler.openapi(googleOAuthCallbackSchema, withRouteTryCatch('auth.googleCallback', async (c) => {
+  const payload = c.req.valid('json');
   const service = getService(c);
 
   try {
@@ -310,10 +292,10 @@ handler.openapi(googleOAuthCallbackSchema, async (c) => {
       status
     );
   }
-});
+}));
 
-handler.openapi(googleOAuthTokensSchema, async (c) => {
-  const payload = await c.req.json<GoogleOAuthTokensPayload>();
+handler.openapi(googleOAuthTokensSchema, withRouteTryCatch('auth.googleTokens', async (c) => {
+  const payload = c.req.valid('json');
   const service = getService(c);
 
   try {
@@ -336,7 +318,7 @@ handler.openapi(googleOAuthTokensSchema, async (c) => {
       status
     );
   }
-});
+}));
 
 const routeModule: AutoLoadRoute = {
   path: "/api/v1/authentication",

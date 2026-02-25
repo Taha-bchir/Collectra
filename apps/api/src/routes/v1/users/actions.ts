@@ -6,97 +6,62 @@ import {
   deleteLoggedUserSchema,
   getLoggedUserDataSchema,
   updateLoggedUserDataSchema,
-} from "../../../schema/v1/users.schema.js";
+} from "../../../schema/v1/index.js";
 import { UsersService } from "../../../services/users.js";
+import { requireUserId, withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
 
 // Authorization middleware is autoloaded via middleware/authorization.ts
 // for '/api/v1/users/*', so no explicit import is needed here.
 
-handler.openapi(getLoggedUserDataSchema, async (c) => {
+handler.openapi(getLoggedUserDataSchema, withRouteTryCatch('users.me', async (c) => {
   const prisma = c.get("prisma");
-  const user = c.get("user");
+  const userId = requireUserId(c);
 
-  if (!user) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
+  const usersService = new UsersService({ prisma });
+  const data = await usersService.getLoggedUserData(userId);
 
-  try {
-    const usersService = new UsersService({ prisma });
-    const data = await usersService.getLoggedUserData(user.id);
-
-    return c.json({
-      data: {
-        id: data.id,
-        email: data.email,
-        profile: {
-          fullName: data.fullName ?? null,
-        },
+  return c.json({
+    data: {
+      id: data.id,
+      email: data.email,
+      profile: {
+        fullName: data.fullName ?? null,
       },
-    });
-  } catch (err) {
-    throw new HTTPException(500, {
-      message: err instanceof Error ? err.message : "Internal server error",
-    });
-  }
-});
+    },
+  });
+}));
 
-handler.openapi(updateLoggedUserDataSchema, async (c) => {
+handler.openapi(updateLoggedUserDataSchema, withRouteTryCatch('users.updateMe', async (c) => {
   const prisma = c.get("prisma");
-  const user = c.get("user");
+  const userId = requireUserId(c);
 
-  if (!user) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
+  const payload = c.req.valid('json');
 
-  const payload = await c.req.json<{
-    fullName?: string;
-  }>();
+  const usersService = new UsersService({ prisma });
+  const data = await usersService.updateLoggedUserData(userId, payload);
 
-  try {
-    const usersService = new UsersService({ prisma });
-    const data = await usersService.updateLoggedUserData(user.id, payload);
-
-    return c.json({
-      data: {
-        id: data.id,
-        email: data.email,
-        profile: {
-          fullName: data.fullName ?? null,
-        },
+  return c.json({
+    data: {
+      id: data.id,
+      email: data.email,
+      profile: {
+        fullName: data.fullName ?? null,
       },
-    });
-  } catch (err) {
-    if (err instanceof HTTPException) {
-      throw err;
-    }
+    },
+  });
+}));
 
-    throw new HTTPException(500, {
-      message: err instanceof Error ? err.message : "Internal server error",
-    });
-  }
-});
-
-handler.openapi(deleteLoggedUserSchema, async (c) => {
+handler.openapi(deleteLoggedUserSchema, withRouteTryCatch('users.deleteMe', async (c) => {
   const prisma = c.get("prisma");
-  const user = c.get("user");
+  const userId = requireUserId(c);
 
-  if (!user) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
+  const usersService = new UsersService({ prisma });
+  await usersService.deleteLoggedUser(userId);
 
-  try {
-    const usersService = new UsersService({ prisma });
-    await usersService.deleteLoggedUser(user.id);
-
-    return c.body(null, 204);
-  } catch (err) {
-    throw new HTTPException(500, {
-      message: err instanceof Error ? err.message : "Internal server error",
-    });
-  }
-});
+  return c.body(null, 204);
+}));
 
 const routeModule: AutoLoadRoute = {
   path: "/api/v1/users",

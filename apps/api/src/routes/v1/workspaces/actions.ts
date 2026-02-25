@@ -8,17 +8,15 @@ import {
   createWorkspaceSchema,
   listWorkspacesSchema,
   setCurrentWorkspaceSchema,
-} from "../../../schema/v1/workspaces.schema.js";
+} from "../../../schema/v1/index.js";
 import { setWorkspaceCookie, getCookieHelper, WORKSPACE_COOKIE_NAME } from "../../../middleware/cookie.js";
+import { requireUserId, withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
 
 // GET /current - resolve current workspace optionally (no tenant; returns null if none)
-handler.openapi(getCurrentWorkspaceSchema, async (c) => {
-  const user = c.get("user");
-  if (!user?.id) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
+handler.openapi(getCurrentWorkspaceSchema, withRouteTryCatch('workspaces.current', async (c) => {
+  const userId = requireUserId(c);
 
   const prisma = c.get("prisma");
   const preferredWorkspaceId = getCookieHelper(c, WORKSPACE_COOKIE_NAME) || null;
@@ -26,7 +24,7 @@ handler.openapi(getCurrentWorkspaceSchema, async (c) => {
   const membership = preferredWorkspaceId
     ? await prisma.workspaceMember.findFirst({
         where: {
-          userId: user.id,
+          userId,
           workspaceId: preferredWorkspaceId,
         },
         select: {
@@ -36,7 +34,7 @@ handler.openapi(getCurrentWorkspaceSchema, async (c) => {
         },
       })
     : await prisma.workspaceMember.findFirst({
-        where: { userId: user.id },
+        where: { userId },
         select: {
           workspace: {
             select: { id: true, name: true },
@@ -55,22 +53,18 @@ handler.openapi(getCurrentWorkspaceSchema, async (c) => {
     },
     200
   );
-});
+}));
 
 // POST /current - set current workspace
-handler.openapi(setCurrentWorkspaceSchema, async (c) => {
+handler.openapi(setCurrentWorkspaceSchema, withRouteTryCatch('workspaces.setCurrent', async (c) => {
   const prisma = c.get("prisma");
-  const user = c.get("user");
+  const userId = requireUserId(c);
 
-  if (!user) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
-
-  const payload = await c.req.json<{ workspaceId: string }>();
+  const payload = c.req.valid('json');
 
   const membership = await prisma.workspaceMember.findFirst({
     where: {
-      userId: user.id,
+      userId,
       workspaceId: payload.workspaceId,
     },
     select: {
@@ -93,19 +87,15 @@ handler.openapi(setCurrentWorkspaceSchema, async (c) => {
   setWorkspaceCookie(c, membership.workspace.id);
 
   return c.json({ data: membership.workspace }, 200);
-});
+}));
 
 // GET / - list all workspaces for user
-handler.openapi(listWorkspacesSchema, async (c) => {
+handler.openapi(listWorkspacesSchema, withRouteTryCatch('workspaces.list', async (c) => {
   const prisma = c.get("prisma");
-  const user = c.get("user");
-
-  if (!user) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
+  const userId = requireUserId(c);
 
   const workspaces = await prisma.workspaceMember.findMany({
-    where: { userId: user.id },
+    where: { userId },
     select: {
       workspace: {
         select: {
@@ -119,22 +109,18 @@ handler.openapi(listWorkspacesSchema, async (c) => {
 
   return c.json(
     {
-      data: workspaces.map((entry) => entry.workspace),
+      data: workspaces.map((entry: (typeof workspaces)[number]) => entry.workspace),
     },
     200
   );
-});
+}));
 
 // POST / - create new workspace
-handler.openapi(createWorkspaceSchema, async (c) => {
+handler.openapi(createWorkspaceSchema, withRouteTryCatch('workspaces.create', async (c) => {
   const prisma = c.get("prisma");
-  const user = c.get("user");
+  const userId = requireUserId(c);
 
-  if (!user) {
-    throw new HTTPException(401, { message: "Unauthorized" });
-  }
-
-  const payload = await c.req.json<{ name: string; website?: string }>();
+  const payload = c.req.valid('json');
 
   const name = payload.name?.trim();
   if (!name) {
@@ -151,10 +137,10 @@ handler.openapi(createWorkspaceSchema, async (c) => {
       data: {
         name,
         website,
-        createdByUserId: user.id,
+        createdByUserId: userId,
         members: {
           create: {
-            userId: user.id,
+            userId,
             role: WorkspaceRole.OWNER,
           },
         },
@@ -180,7 +166,7 @@ handler.openapi(createWorkspaceSchema, async (c) => {
       isConflict ? 409 : 400
     );
   }
-});
+}));
 
 const routeModule: AutoLoadRoute = {
   path: "/api/v1/workspaces",

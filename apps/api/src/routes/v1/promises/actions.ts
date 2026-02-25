@@ -1,22 +1,17 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { HTTPException } from 'hono/http-exception';
 import type { Env } from '../../../types/index.js';
-import { authorization } from '../../../middleware/authorization.js';
-import { tenantMiddleware } from '../../../middleware/tenant.js';
-import { listPromisesSchema, createPromiseSchema } from '../../../schema/v1/promises.schema.js';
+import { listPromisesSchema, createPromiseSchema } from '../../../schema/v1/index.js';
+import { requireWorkspaceId, withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
-
-handler.use('/debts/*/promises', authorization);
-handler.use('/debts/*/promises', tenantMiddleware);
 
 // SECURITY NOTICE - TENANT ISOLATION
 // All endpoints MUST use c.get('currentWorkspace').id
 // NEVER trust debtId or any tenant identifier from client
 
-handler.openapi(listPromisesSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) throw new HTTPException(403, { message: 'No active workspace' });
+handler.openapi(listPromisesSchema, withRouteTryCatch('promises.list', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const { debtId } = c.req.valid('param');
 
@@ -36,11 +31,10 @@ handler.openapi(listPromisesSchema, async (c) => {
   });
 
   return c.json({ data: promises }, 200);
-});
+}));
 
-handler.openapi(createPromiseSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) throw new HTTPException(403, { message: 'No active workspace' });
+handler.openapi(createPromiseSchema, withRouteTryCatch('promises.create', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const { debtId } = c.req.valid('param');
   const payload = c.req.valid('json');
@@ -63,7 +57,7 @@ handler.openapi(createPromiseSchema, async (c) => {
   });
 
   return c.json({ data: promise }, 201);
-});
+}));
 
 const routeModule = {
   path: '/api/v1',

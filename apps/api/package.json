@@ -5,7 +5,8 @@
     "devv": "srvx",
     "build": "tsc",
     "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test:tenant-auth": "node --import tsx ./scripts/test-tenant-auth.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",

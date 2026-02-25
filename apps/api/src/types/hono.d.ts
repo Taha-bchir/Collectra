@@ -3,14 +3,14 @@ import type { Context } from 'hono';
 // Extend Hono's context variables
 declare module 'hono' {
   interface ContextVariableMap {
-    // Already set by authorization middleware
+    // Set by authorization middleware
     user?: {
       id: string;
-      email: string;
+      email?: string;
       // ... other fields you set in authorization.ts
     };
 
-    // NEW - set by tenant middleware
+    // Set by tenant-aware authorization middleware
     currentWorkspace?: {
       id: string;
       name: string;
@@ -19,7 +19,7 @@ declare module 'hono' {
 
     currentUser?: {
       id: string;
-      email: string;
+      email?: string;
       role: 'OWNER' | 'AGENT';
     };
   }

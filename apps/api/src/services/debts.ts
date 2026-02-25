@@ -1,74 +1,105 @@
-import { PrismaClient } from '@repo/database';
-import { HTTPException } from 'hono/http-exception';
-import type { DebtStatus } from '@repo/database';
+import { PrismaClient } from '@repo/database'
+import { HTTPException } from 'hono/http-exception'
+import type { DebtStatus } from '@repo/database'
+
+export type DebtListFilters = {
+  status?: DebtStatus
+  clientId?: string
+  campaignId?: string
+}
+
+export type DebtListOptions = {
+  limit?: number
+  offset?: number
+}
+
+export type CreateDebtInput = {
+  campaignId: string
+  clientId: string
+  amount: number
+  dueDate: Date
+  status?: DebtStatus
+  promiseDate?: Date | null
+}
+
+export type UpdateDebtInput = Partial<{
+  amount: number
+  dueDate: Date
+  status: DebtStatus
+  promiseDate?: Date | null
+}>
 
 export class DebtsService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private readonly prisma: PrismaClient) {}
 
-  async list(workspaceId: string, filters?: { status?: DebtStatus; clientId?: string; campaignId?: string }) {
+  async list(
+    workspaceId: string,
+    filters: DebtListFilters = {},
+    options: DebtListOptions = {},
+  ) {
+    const { status, clientId, campaignId } = filters
+    const { limit = 100, offset = 0 } = options
+
+    const safeLimit = Math.min(Math.max(limit, 1), 500)
+    const safeOffset = Math.max(offset, 0)
+
     return this.prisma.debtRecord.findMany({
       where: {
         campaign: { workspaceId },
-        ...(filters?.status && { status: filters.status }),
-        ...(filters?.clientId && { clientId: filters.clientId }),
-        ...(filters?.campaignId && { campaignId: filters.campaignId }),
+        ...(status && { status }),
+        ...(clientId && { clientId }),
+        ...(campaignId && { campaignId }),
       },
       include: { client: true },
       orderBy: { dueDate: 'asc' },
-      take: 100,
-    });
+      take: safeLimit,
+      skip: safeOffset,
+    })
   }
 
   async getById(workspaceId: string, id: string) {
     const debt = await this.prisma.debtRecord.findUnique({
       where: { id },
       include: { client: true, campaign: true },
-    });
+    })
 
     if (!debt || debt.campaign.workspaceId !== workspaceId) {
-      throw new HTTPException(404, { message: 'Debt not found or not in your workspace' });
+      throw new HTTPException(404, { message: 'Debt not found or not in your workspace' })
     }
 
-    return debt;
+    return debt
   }
 
-  async create(workspaceId: string, data: {
-    campaignId: string;
-    clientId: string;
-    amount: number;
-    dueDate: Date;
-    status?: DebtStatus;
-    promiseDate?: Date | null;
-  }) {
-    // Optional: verify campaign belongs to workspace
-    const campaign = await this.prisma.campaign.findUnique({
-      where: { id: data.campaignId },
-    });
+  async create(workspaceId: string, data: CreateDebtInput) {
+    // Verify campaign & client both belong to the workspace before creating the debt
+    const [campaign, client] = await Promise.all([
+      this.prisma.campaign.findUnique({
+        where: { id: data.campaignId },
+      }),
+      this.prisma.client.findUnique({
+        where: { id: data.clientId },
+      }),
+    ] as const)
+
     if (!campaign || campaign.workspaceId !== workspaceId) {
-      throw new HTTPException(403, { message: 'Campaign not in your workspace' });
+      throw new HTTPException(403, { message: 'Campaign not in your workspace' })
     }
 
-    const client = await this.prisma.client.findUnique({
-      where: { id: data.clientId },
-    });
     if (!client || client.workspaceId !== workspaceId) {
-      throw new HTTPException(403, { message: 'Client not in your workspace' });
+      throw new HTTPException(403, { message: 'Client not in your workspace' })
     }
 
-    return this.prisma.debtRecord.create({ data });
+    return this.prisma.debtRecord.create({ data })
   }
 
-  async update(workspaceId: string, id: string, data: Partial<{
-    amount: number;
-    dueDate: Date;
-    status: DebtStatus;
-    promiseDate?: Date | null;
-  }>) {
-    await this.getById(workspaceId, id);
+  async update(workspaceId: string, id: string, data: UpdateDebtInput) {
+    // Reuse tenant check from getById to ensure isolation
+    await this.getById(workspaceId, id)
 
     return this.prisma.debtRecord.update({
       where: { id },
       data,
-    });
+      include: { client: true },
+    })
   }
 }

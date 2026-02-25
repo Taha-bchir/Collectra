@@ -1,27 +1,18 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { HTTPException } from 'hono/http-exception';
 import type { Env } from '../../../types/index.js';
-import { ActionType, Prisma } from '@repo/database';
-import { authorization } from '../../../middleware/authorization.js';
-import { tenantMiddleware } from '../../../middleware/tenant.js';
 import {
   listDebtActionsSchema,
   listCustomerActionsSchema,
   recordActionSchema,
-} from '../../../schema/v1/actions.schema.js';
+} from '../../../schema/v1/index.js';
+import { normalizeMetadata, toPrismaMetadata } from '../../../utils/metadata.js';
+import { requireWorkspaceId, withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
 
-handler.use('/actions', authorization);
-handler.use('/actions', tenantMiddleware);
-handler.use('/debts/*/actions', authorization);
-handler.use('/debts/*/actions', tenantMiddleware);
-handler.use('/customers/*/actions', authorization);
-handler.use('/customers/*/actions', tenantMiddleware);
-
-handler.openapi(listDebtActionsSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) throw new HTTPException(403, { message: 'No active workspace' });
+handler.openapi(listDebtActionsSchema, withRouteTryCatch('actions.listDebt', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const { debtId } = c.req.valid('param');
 
@@ -39,17 +30,16 @@ handler.openapi(listDebtActionsSchema, async (c) => {
     orderBy: { timestamp: 'desc' },
   });
 
-  const formattedActions = actions.map(action => ({
+  const formattedActions = actions.map((action: (typeof actions)[number]) => ({
     ...action,
-    metadata: typeof action.metadata === 'object' ? action.metadata : null,
+    metadata: normalizeMetadata(action.metadata),
   }));
 
   return c.json({ data: formattedActions }, 200);
-});
+}));
 
-handler.openapi(listCustomerActionsSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) throw new HTTPException(403, { message: 'No active workspace' });
+handler.openapi(listCustomerActionsSchema, withRouteTryCatch('actions.listCustomer', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const { customerId } = c.req.valid('param');
 
@@ -67,19 +57,18 @@ handler.openapi(listCustomerActionsSchema, async (c) => {
     orderBy: { timestamp: 'desc' },
   });
 
-  const formattedActions = actions.map(action => ({
+  const formattedActions = actions.map((action: (typeof actions)[number]) => ({
     ...action,
-    metadata: typeof action.metadata === 'object' ? action.metadata : null,
+    metadata: normalizeMetadata(action.metadata),
   }));
 
   return c.json({ data: formattedActions }, 200);
-});
+}));
 
-handler.openapi(recordActionSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) throw new HTTPException(403, { message: 'No active workspace' });
+handler.openapi(recordActionSchema, withRouteTryCatch('actions.record', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
-  const payload = c.req.valid('json') as { customerId: string; debtId?: string; actionType: string; metadata?: unknown };
+  const payload = c.req.valid('json');
 
   // Verify customer belongs to workspace
   const customer = await c.get('prisma').client.findUnique({
@@ -106,19 +95,19 @@ handler.openapi(recordActionSchema, async (c) => {
     data: {
       customerId: payload.customerId,
       debtId: payload.debtId,
-      actionType: payload.actionType as ActionType,
+      actionType: payload.actionType,
       performedBy: c.get('currentUser')?.id, // logged-in user
-      metadata: payload.metadata as Prisma.InputJsonValue | undefined,
+      metadata: toPrismaMetadata(payload.metadata),
     },
   });
 
   const formattedAction = {
     ...action,
-    metadata: typeof action.metadata === 'object' ? action.metadata : null,
+    metadata: normalizeMetadata(action.metadata),
   };
 
   return c.json({ data: formattedAction }, 201);
-});
+}));
 
 const routeModule = {
   path: '/api/v1',

@@ -1,49 +1,17 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
-import { HTTPException } from 'hono/http-exception';
 import type { Env } from '../../../types/index.js';
 import { DebtsService } from '../../../services/debts.js';
-import { authorization } from '../../../middleware/authorization.js';
-import { tenantMiddleware } from '../../../middleware/tenant.js';
 import {
   listDebtsSchema,
   createDebtSchema,
   getDebtByIdSchema,
   updateDebtSchema,
-} from '../../../schema/v1/debts.schema.js';
-import type { DebtStatus, Prisma } from '@repo/database';
+} from '../../../schema/v1/index.js';
+import { requireWorkspaceId, withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
 
-handler.use('*', authorization);
-handler.use('*', tenantMiddleware);
-
-type ApiDebt = {
-  id: string;
-  campaignId: string;
-  clientId: string;
-  amount: number;
-  dueDate: string;
-  status: DebtStatus;
-  promiseDate?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  client?: {
-    fullName: string;
-    phone: string | null;
-    email: string | null;
-  };
-};
-
-type DebtEntity = {
-  id: string;
-  campaignId: string;
-  clientId: string;
-  amount: Prisma.Decimal;
-  dueDate: Date;
-  status: DebtStatus;
-  promiseDate: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
+type DebtRouteEntity = Awaited<ReturnType<DebtsService['create']>> & {
   client?: {
     fullName: string;
     phone: string | null;
@@ -51,7 +19,7 @@ type DebtEntity = {
   } | null;
 };
 
-const toApiDebt = (debt: DebtEntity): ApiDebt => ({
+const toApiDebt = (debt: DebtRouteEntity) => ({
   id: debt.id,
   campaignId: debt.campaignId,
   clientId: debt.clientId,
@@ -77,11 +45,8 @@ const toApiDebt = (debt: DebtEntity): ApiDebt => ({
 // NEVER trust campaignId, clientId, or any other tenant identifier from request body/query/params.
 // This middleware ensures cross-tenant data access is impossible.
 
-handler.openapi(listDebtsSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) {
-    throw new HTTPException(403, { message: 'No active workspace' });
-  }
+handler.openapi(listDebtsSchema, withRouteTryCatch('debts.list', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const { status, clientId, campaignId } = c.req.valid('query') ?? {};
 
@@ -89,13 +54,10 @@ handler.openapi(listDebtsSchema, async (c) => {
   const debts = await service.list(workspaceId, { status, clientId, campaignId });
 
   return c.json({ data: debts.map((debt) => toApiDebt(debt)) }, 200);
-});
+}));
 
-handler.openapi(createDebtSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) {
-    throw new HTTPException(403, { message: 'No active workspace' });
-  }
+handler.openapi(createDebtSchema, withRouteTryCatch('debts.create', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const payload = c.req.valid('json');
   const createInput: Parameters<DebtsService['create']>[1] = {
@@ -113,13 +75,10 @@ handler.openapi(createDebtSchema, async (c) => {
   const debt = await service.create(workspaceId, createInput);
 
   return c.json({ data: toApiDebt(debt) }, 201);
-});
+}));
 
-handler.openapi(getDebtByIdSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) {
-    throw new HTTPException(403, { message: 'No active workspace' });
-  }
+handler.openapi(getDebtByIdSchema, withRouteTryCatch('debts.getById', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const { id } = c.req.valid('param');
 
@@ -127,13 +86,10 @@ handler.openapi(getDebtByIdSchema, async (c) => {
   const debt = await service.getById(workspaceId, id);
 
   return c.json({ data: toApiDebt(debt) }, 200);
-});
+}));
 
-handler.openapi(updateDebtSchema, async (c) => {
-  const workspaceId = c.get('currentWorkspace')?.id;
-  if (!workspaceId) {
-    throw new HTTPException(403, { message: 'No active workspace' });
-  }
+handler.openapi(updateDebtSchema, withRouteTryCatch('debts.update', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
 
   const { id } = c.req.valid('param');
   const payload = c.req.valid('json');
@@ -155,7 +111,7 @@ handler.openapi(updateDebtSchema, async (c) => {
   const updatedDebt = await service.update(workspaceId, id, updateInput);
 
   return c.json({ data: toApiDebt(updatedDebt) }, 200);
-});
+}));
 
 const routeModule = {
   path: '/api/v1/debts',
