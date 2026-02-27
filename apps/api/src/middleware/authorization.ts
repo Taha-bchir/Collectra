@@ -129,16 +129,15 @@ export async function attachTenantContext(
 ) {
   const prisma = c.get('prisma')
 
-  const workspaceHeader = c.req.header('x-workspace-id')?.trim() || null
   const workspaceCookie = getCookie(c, WORKSPACE_COOKIE_NAME) || null
 
   let membership = null
 
-  if (workspaceHeader) {
+  if (workspaceCookie) {
     membership = await prisma.workspaceMember.findFirst({
       where: {
         userId: user.id,
-        workspaceId: workspaceHeader,
+        workspaceId: workspaceCookie,
       },
       select: {
         role: true,
@@ -150,57 +149,31 @@ export async function attachTenantContext(
         },
       },
     })
+  }
 
-    if (!membership?.workspace) {
-      logger.warn(
-        { userId: user.id, workspaceId: workspaceHeader, path: c.req.path },
-        '[authorization] Invalid x-workspace-id for user'
-      )
-      throw new HTTPException(403, { message: 'Forbidden workspace' })
-    }
-  } else {
-    if (workspaceCookie) {
-      membership = await prisma.workspaceMember.findFirst({
-        where: {
-          userId: user.id,
-          workspaceId: workspaceCookie,
-        },
-        select: {
-          role: true,
-          workspace: {
-            select: {
-              id: true,
-              name: true,
-            },
+  if (!membership?.workspace) {
+    membership = await prisma.workspaceMember.findFirst({
+      where: {
+        userId: user.id,
+      },
+      select: {
+        role: true,
+        workspace: {
+          select: {
+            id: true,
+            name: true,
           },
         },
-      })
-    }
+      },
+      orderBy: {
+        joinedAt: 'desc',
+      },
+    })
+  }
 
-    if (!membership?.workspace) {
-      membership = await prisma.workspaceMember.findFirst({
-        where: {
-          userId: user.id,
-        },
-        select: {
-          role: true,
-          workspace: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: {
-          joinedAt: 'desc',
-        },
-      })
-    }
-
-    if (!membership?.workspace) {
-      logger.warn({ userId: user.id, path: c.req.path }, '[authorization] No workspace membership found')
-      throw new HTTPException(403, { message: 'No workspace found for user' })
-    }
+  if (!membership?.workspace) {
+    logger.warn({ userId: user.id, path: c.req.path }, '[authorization] No workspace membership found')
+    throw new HTTPException(403, { message: 'No workspace found for user' })
   }
 
   c.set('currentWorkspace', {

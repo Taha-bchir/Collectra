@@ -1,4 +1,5 @@
-import { OpenAPIHono } from '@hono/zod-openapi';
+import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
+import { z } from 'zod';
 import type { Env } from '../../../types/index.js';
 import { DebtsService } from '../../../services/debts.js';
 import {
@@ -117,5 +118,57 @@ const routeModule = {
   path: '/api/v1/debts',
   handler,
 };
+
+
+const getPersonalLinkSchema = createRoute({
+  method: 'get',
+  path: '/{id}/personal-link',
+  tags: ['debts'],
+  summary: 'Get secure personal link for customer (debt view)',
+  description: 'Returns a unique, unguessable link the company can share with the debtor. Token-only access, no auth required for customer.',
+  request: {
+    params: z.object({
+      id: z.string().uuid(),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Personal link for customer',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              link: z.string().url(),
+              token: z.string().uuid(),
+              expiresAt: z.string().datetime().nullable(),
+            }),
+          }),
+        },
+      },
+    },
+    404: { description: 'Debt not found or not in workspace' },
+    401: { description: 'Unauthorized' },
+    403: { description: 'No active workspace' },
+  },
+});
+
+handler.openapi(getPersonalLinkSchema, withRouteTryCatch('debts.personalLink', async (c) => {
+  const workspaceId = requireWorkspaceId(c);
+
+  const { id } = c.req.valid('param');
+
+  const service = new DebtsService(c.get('prisma'));
+  const link = await service.getPersonalLink(workspaceId, id);
+
+  const debt = await service.getById(workspaceId, id); // already fetched in service
+
+  return c.json({
+    data: {
+      link,
+      token: debt.customerToken,
+      expiresAt: debt.tokenExpiresAt?.toISOString() || null,
+    },
+  });
+}));
 
 export default routeModule;

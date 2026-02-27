@@ -147,7 +147,7 @@ This validates:
 
 - 401 responses on protected tenant routes without auth
 - 200 responses with a valid authenticated user
-- 403 response when `x-workspace-id` does not belong to the authenticated user
+- Workspace resolution handled by backend-selected context (workspace cookie + membership fallback)
 
 Note: this script creates and cleans up temporary Supabase + database records.
 
@@ -219,6 +219,10 @@ Note: this script creates and cleans up temporary Supabase + database records.
 |--------|----------|-------------|
 | GET | `/docs` | Swagger UI documentation |
 | GET | `/openapi.json` | OpenAPI specification |
+
+Internal docs:
+
+- [Debt Personal Link Security](../../docs/DEBT_PERSONAL_LINK_SECURITY.md)
 
 ## 🔧 Development
 
@@ -464,6 +468,7 @@ DEBUG=* pnpm --filter api dev
 - [OpenAPI Specification](https://swagger.io/specification/)
 - [Prisma Documentation](https://www.prisma.io/docs)
 - [Supabase Auth Documentation](https://supabase.com/docs/guides/auth)
+- [Debt Personal Link Security (Project Doc)](../../docs/DEBT_PERSONAL_LINK_SECURITY.md)
 
 ## 🤝 Contributing
 

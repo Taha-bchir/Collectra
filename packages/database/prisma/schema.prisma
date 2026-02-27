@@ -129,15 +129,17 @@ model Client {
 }
 
 model DebtRecord {
-  id          String     @id @default(uuid()) @db.Uuid
-  campaignId  String     @db.Uuid
-  clientId    String     @db.Uuid
-  amount      Decimal
-  dueDate     DateTime
-  status      DebtStatus @default(IMPORTED)
-  promiseDate DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id             String     @id @default(uuid()) @db.Uuid
+  campaignId     String     @db.Uuid
+  clientId       String     @db.Uuid
+  amount         Decimal
+  dueDate        DateTime
+  status         DebtStatus @default(IMPORTED)
+  promiseDate    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  customerToken  String?    @unique // secure UUID token for client link
+  tokenExpiresAt DateTime? // optional: auto-expire after X days
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)

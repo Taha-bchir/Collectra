@@ -37,9 +37,10 @@ Updated file: `apps/api/src/middleware/authorization.ts`
 - Sets:
   - `c.set('currentWorkspace', { id, name })`
   - `c.set('currentUser', { id, email, role })`
-- Header/cookie behavior:
-  - if `x-workspace-id` is provided and invalid for user -> `403 Forbidden workspace`
-  - else fallback to workspace cookie, then latest membership
+- Workspace resolution behavior:
+  - backend resolves active workspace from `workspace_id` cookie
+  - if cookie is missing/invalid, backend falls back to latest membership
+  - no request-header workspace override is used
 
 ### Key snippet
 
@@ -54,7 +55,7 @@ if (isTenantScopedPath(c.req.path)) {
 
 ```ts
 if (!membership?.workspace) {
-  throw new HTTPException(403, { message: 'Forbidden workspace' })
+  throw new HTTPException(403, { message: 'No workspace found for user' })
 }
 ```
 
@@ -186,7 +187,7 @@ Covers:
 
 1. unauthenticated tenant routes -> `401`
 2. authenticated access -> `200`
-3. authenticated + invalid `x-workspace-id` -> `403`
+3. backend workspace resolution via cookie + membership fallback
 
 Test creates temporary Supabase + DB records and cleans them up.
 
@@ -196,6 +197,30 @@ Updated file: `apps/api/package.json`
 
 ```json
 "test:tenant-auth": "node --import tsx ./scripts/test-tenant-auth.ts"
+```
+
+## 7.3 Token + workspace smoke test
+
+New file: `apps/api/scripts/test-token-workspace.ts`
+
+Covers:
+
+1. personal-link endpoint unauthorized access -> `401`
+2. backend workspace switch via `POST /api/v1/workspaces/current`
+3. workspace-scoped debt visibility
+4. personal-link token generation + stable token on repeated calls
+5. cross-workspace personal-link access blocked -> `404`
+
+Updated file: `apps/api/package.json`
+
+```json
+"test:token-workspace": "node --import tsx ./scripts/test-token-workspace.ts"
+```
+
+Command:
+
+```bash
+pnpm --filter api run test:token-workspace
 ```
 
 Command:
@@ -227,6 +252,7 @@ The following checks were executed during the session:
 
 - `pnpm --filter api build`
 - `pnpm --filter api run test:tenant-auth`
+- `pnpm --filter api run test:token-workspace`
 
 Result: passing after final fixes.
 

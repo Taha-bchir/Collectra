@@ -206,6 +206,11 @@ See [docs/AUTH.md](./docs/AUTH.md) for comprehensive documentation on how the au
 - **[API README](./apps/api/README.md)** - API-specific documentation
 - **[Web README](./apps/web/README.md)** - Frontend-specific documentation
 
+## 📝 Changelog (2026-02-27)
+
+- **[Debt Personal Link Security](./docs/DEBT_PERSONAL_LINK_SECURITY.md)** - Updated token format, generation rules, backend-only workspace enforcement, and smoke test coverage (`test:tenant-auth`, `test:token-workspace`).
+- **[API Refactor Summary](./docs/API_REFACTOR_SUMMARY_2026-02-25.md)** - Synced with current backend behavior (workspace cookie + membership fallback, no header override) and added token/workspace test updates.
+
 ## 🧩 Packages
 
 ### `@repo/database`

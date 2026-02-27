@@ -6,7 +6,8 @@
     "build": "tsc",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
-    "test:tenant-auth": "node --import tsx ./scripts/test-tenant-auth.ts"
+    "test:tenant-auth": "node --import tsx ./scripts/test-tenant-auth.ts",
+    "test:token-workspace": "node --import tsx ./scripts/test-token-workspace.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.12.0",

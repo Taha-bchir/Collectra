@@ -73,8 +73,7 @@ async function run() {
 
   const authorizedChecks: Array<[string, string, number, Record<string, string>]> = [
     ['GET', '/api/v1/customers', 200, { Authorization: `Bearer ${accessToken}` }],
-    ['GET', '/api/v1/customers', 200, { Authorization: `Bearer ${accessToken}`, 'x-workspace-id': workspaceId }],
-    ['GET', '/api/v1/customers', 403, { Authorization: `Bearer ${accessToken}`, 'x-workspace-id': '00000000-0000-0000-0000-000000000000' }],
+    ['GET', '/api/v1/debts', 200, { Authorization: `Bearer ${accessToken}` }],
   ]
 
   for (const [method, path, expected, headers] of authorizedChecks) {
