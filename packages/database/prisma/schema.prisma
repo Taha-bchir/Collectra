@@ -11,7 +11,13 @@ datasource db {
 // Enums
 enum WorkspaceRole {
   OWNER
+  MANAGER
   AGENT
+}
+
+enum WorkspaceMemberStatus {
+  ACTIVE
+  INACTIVE
 }
 
 enum PromiseStatus {
@@ -67,10 +73,11 @@ model Workspace {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  createdBy User              @relation("CreatedWorkspaces", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  members   WorkspaceMember[]
-  campaigns Campaign[]
-  clients   Client[]
+  createdBy   User                  @relation("CreatedWorkspaces", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  members     WorkspaceMember[]
+  invitations WorkspaceInvitation[]
+  campaigns   Campaign[]
+  clients     Client[]
 
   @@unique([createdByUserId, name])
 }
@@ -82,20 +89,40 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  createdWorkspaces Workspace[]       @relation("CreatedWorkspaces")
+  createdWorkspaces Workspace[]           @relation("CreatedWorkspaces")
   memberships       WorkspaceMember[]
+  sentInvitations   WorkspaceInvitation[]
 }
 
 model WorkspaceMember {
-  userId      String        @db.Uuid
-  workspaceId String        @db.Uuid
+  userId      String                @db.Uuid
+  workspaceId String                @db.Uuid
   role        WorkspaceRole
-  joinedAt    DateTime      @default(now())
+  status      WorkspaceMemberStatus @default(ACTIVE)
+  joinedAt    DateTime              @default(now())
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@id([userId, workspaceId])
+}
+
+model WorkspaceInvitation {
+  id              String           @id @default(uuid()) @db.Uuid
+  workspaceId     String           @db.Uuid
+  invitedByUserId String           @db.Uuid
+  email           String
+  role            WorkspaceRole    @default(AGENT)
+  token           String           @unique
+  expiresAt       DateTime
+  status          InvitationStatus @default(PENDING)
+  createdAt       DateTime         @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation(fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, status])
+  @@index([email])
 }
 
 model Campaign {

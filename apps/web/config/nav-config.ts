@@ -1,4 +1,4 @@
-import { LayoutDashboard, Settings, type LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Settings, Users, UserPlus, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   title: string
@@ -19,6 +19,16 @@ export const navItems: NavItem[] = [
     title: 'Overview',
     href: '/overview',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Team',
+    href: '/team',
+    icon: Users,
+  },
+  {
+    title: 'Accept Invite',
+    href: '/auth/accept-invite',
+    icon: UserPlus,
   },
 ]
 

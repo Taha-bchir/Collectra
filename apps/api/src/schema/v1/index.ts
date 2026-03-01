@@ -6,4 +6,6 @@ export * from './workspaces.schema.js'
 export * from './authentication.schema.js'
 export * from './users.schema.js'
 export * from './health.schema.js'
+export * from './internal-users.schema.js'
+export * from './invitations.schema.js'
 

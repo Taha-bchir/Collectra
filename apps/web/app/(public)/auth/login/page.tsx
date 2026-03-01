@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
 import { ApiError } from "@/features/auth/services/auth-service"
 import { strings } from "@/lib/strings"
@@ -27,8 +27,10 @@ export default function LoginPage() {
   const [touched, setTouched] = useState({ email: false, password: false })
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { signIn, signInWithGoogle } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const redirectTo = searchParams.get("redirectTo") || "/overview"
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
@@ -76,7 +78,7 @@ export default function LoginPage() {
 
     try {
       await signIn({ email, password })
-      router.push("/overview")
+      router.push(redirectTo)
     } catch (error: unknown) {
       if (error instanceof ApiError) {
         setError(error.message)

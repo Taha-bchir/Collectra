@@ -26,6 +26,7 @@ handler.openapi(getCurrentWorkspaceSchema, withRouteTryCatch('workspaces.current
         where: {
           userId,
           workspaceId: preferredWorkspaceId,
+          status: 'ACTIVE',
         },
         select: {
           workspace: {
@@ -34,7 +35,7 @@ handler.openapi(getCurrentWorkspaceSchema, withRouteTryCatch('workspaces.current
         },
       })
     : await prisma.workspaceMember.findFirst({
-        where: { userId },
+      where: { userId, status: 'ACTIVE' },
         select: {
           workspace: {
             select: { id: true, name: true },
@@ -66,6 +67,7 @@ handler.openapi(setCurrentWorkspaceSchema, withRouteTryCatch('workspaces.setCurr
     where: {
       userId,
       workspaceId: payload.workspaceId,
+      status: 'ACTIVE',
     },
     select: {
       workspace: {
@@ -95,7 +97,7 @@ handler.openapi(listWorkspacesSchema, withRouteTryCatch('workspaces.list', async
   const userId = requireUserId(c);
 
   const workspaces = await prisma.workspaceMember.findMany({
-    where: { userId },
+    where: { userId, status: 'ACTIVE' },
     select: {
       workspace: {
         select: {

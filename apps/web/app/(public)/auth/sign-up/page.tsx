@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, Suspense } from "react"
 import { ApiError } from "@/features/auth/services/auth-service"
 import { strings } from "@/lib/strings"
@@ -81,8 +81,10 @@ function SignUpForm() {
     website: null,
   })
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { signUp, signInWithGoogle } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const redirectTo = searchParams.get("redirectTo") || "/overview"
 
   const updateFieldError = (field: keyof FieldErrors, error: string | null) => {
     setFieldErrors((prev) => ({ ...prev, [field]: error }))
@@ -238,7 +240,7 @@ function SignUpForm() {
       if (result.requiresEmailVerification) {
         router.push("/auth/sign-up-success")
       } else {
-        router.push("/overview")
+        router.push(redirectTo)
       }
     } catch (error: unknown) {
       if (error instanceof ApiError) {

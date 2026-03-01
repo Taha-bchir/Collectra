@@ -2,7 +2,6 @@ import type { MiddlewareHandler } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 import type { Env } from '../types/index.js'
 import type { MiddlewareDefinition } from './types.js'
-import type { Database } from '@repo/types'
 import { getCookie } from 'hono/cookie'
 import { getSupabaseClient } from '../lib/supabase.js'
 import { logger } from '../utils/logger.js'
@@ -12,6 +11,10 @@ import { AUTH_COOKIE_NAMES, WORKSPACE_COOKIE_NAME } from './cookie.js'
 const PROTECTED_PATTERNS = [
   '/api/v1/users/*',
   '/api/v1/workspaces/*',
+  '/api/v1/internal-users',
+  '/api/v1/internal-users/*',
+  '/api/v1/invitations',
+  '/api/v1/invitations/*',
   '/api/v1/customers',
   '/api/v1/customers/*',
   '/api/v1/debts',
@@ -24,11 +27,15 @@ const PROTECTED_PATTERNS = [
 ] as const
 
 const TENANT_SCOPED_PREFIXES = [
+  '/api/v1/internal-users',
+  '/api/v1/invitations',
   '/api/v1/customers',
   '/api/v1/debts',
   '/api/v1/actions',
   '/api/v1/test-tenant',
 ] as const
+
+const NON_TENANT_SCOPED_PATHS = ['/api/v1/invitations/accept'] as const
 
 export const authorization: MiddlewareHandler<Env> = async (c, next) => {
   return enforceAuth(c, next)
@@ -115,6 +122,14 @@ async function enforceAuth(c: Parameters<MiddlewareHandler<Env>>[0], next: () =>
 }
 
 function isTenantScopedPath(path: string) {
+  if (
+    NON_TENANT_SCOPED_PATHS.some(
+      (noTenantPath) => path === noTenantPath || path.startsWith(`${noTenantPath}/`)
+    )
+  ) {
+    return false
+  }
+
   return TENANT_SCOPED_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
 }
 
@@ -138,6 +153,7 @@ export async function attachTenantContext(
       where: {
         userId: user.id,
         workspaceId: workspaceCookie,
+        status: 'ACTIVE',
       },
       select: {
         role: true,
@@ -155,6 +171,7 @@ export async function attachTenantContext(
     membership = await prisma.workspaceMember.findFirst({
       where: {
         userId: user.id,
+        status: 'ACTIVE',
       },
       select: {
         role: true,
