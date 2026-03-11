@@ -51,6 +51,9 @@ const validateWebsite = (website: string): string | null => {
   return null
 }
 
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+
 function SignUpForm() {
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState("")
@@ -84,7 +87,14 @@ function SignUpForm() {
   const searchParams = useSearchParams()
   const { signUp, signInWithGoogle } = useAuth()
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
-  const redirectTo = searchParams.get("redirectTo") || "/overview"
+  const rawInviteToken = searchParams.get("inviteToken")?.trim() ?? ""
+  const inviteToken = isUuid(rawInviteToken) ? rawInviteToken : ""
+  const hasInviteToken = Boolean(inviteToken)
+  const redirectParam = searchParams.get("redirectTo")
+  const redirectTo = hasInviteToken && redirectParam?.startsWith("/auth/accept-invite")
+    ? "/overview"
+    : (redirectParam || "/overview")
+  const finalStep = hasInviteToken ? 2 : 3
 
   const updateFieldError = (field: keyof FieldErrors, error: string | null) => {
     setFieldErrors((prev) => ({ ...prev, [field]: error }))
@@ -203,7 +213,7 @@ function SignUpForm() {
       setStep(2)
       return
     }
-    if (step === 2 && validateStep2()) {
+    if (step === 2 && !hasInviteToken && validateStep2()) {
       setStep(3)
     }
   }
@@ -213,7 +223,7 @@ function SignUpForm() {
       setStep(1)
       return
     }
-    if (step === 3) {
+    if (step === 3 && !hasInviteToken) {
       setStep(2)
     }
   }
@@ -221,7 +231,11 @@ function SignUpForm() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateStep3()) {
+    if (!validateStep2()) {
+      return
+    }
+
+    if (!hasInviteToken && !validateStep3()) {
       return
     }
 
@@ -233,8 +247,9 @@ function SignUpForm() {
         email,
         password,
         fullName,
-        workspaceName,
-        website: website.trim() ? website.trim() : undefined,
+        workspaceName: hasInviteToken ? undefined : workspaceName,
+        website: hasInviteToken ? undefined : (website.trim() ? website.trim() : undefined),
+        inviteToken: hasInviteToken ? inviteToken : undefined,
       } as Parameters<typeof signUp>[0]
       const result = await signUp(payload)
       if (result.requiresEmailVerification) {
@@ -254,7 +269,9 @@ function SignUpForm() {
   }
 
   const hasValidationErrors = Object.values(fieldErrors).some((error) => error !== null)
-  const requiredFieldsFilled = email && password && repeatPassword && fullName && workspaceName
+  const requiredFieldsFilled = hasInviteToken
+    ? Boolean(email && password && repeatPassword && fullName)
+    : Boolean(email && password && repeatPassword && fullName && workspaceName)
   const isFormValid = requiredFieldsFilled && !hasValidationErrors
 
   return (
@@ -296,18 +313,28 @@ function SignUpForm() {
                 </div>
                 <span className="text-sm font-medium hidden sm:inline">Password</span>
               </div>
-              <div className={`h-px w-10 ${step >= 3 ? 'bg-primary' : 'bg-muted-foreground'}`} />
-              <div className={`flex items-center gap-2 ${step >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                  step >= 3 ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
-                }`}>
-                  3
-                </div>
-                <span className="text-sm font-medium hidden sm:inline">Workspace</span>
-              </div>
+              {!hasInviteToken && (
+                <>
+                  <div className={`h-px w-10 ${step >= 3 ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                  <div className={`flex items-center gap-2 ${step >= 3 ? 'text-primary' : 'text-muted-foreground'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                      step >= 3 ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground'
+                    }`}>
+                      3
+                    </div>
+                    <span className="text-sm font-medium hidden sm:inline">Workspace</span>
+                  </div>
+                </>
+              )}
             </div>
 
-            <form onSubmit={step === 3 ? handleSignUp : (e) => { e.preventDefault(); handleNext(); }} className="space-y-4">
+            {hasInviteToken && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground">
+                You are joining via invitation. Your workspace will be assigned automatically.
+              </div>
+            )}
+
+            <form onSubmit={step === finalStep ? handleSignUp : (e) => { e.preventDefault(); handleNext(); }} className="space-y-4">
               {step === 1 ? (
                 /* Step 1: Basic Information */
                 <div className="space-y-4">
@@ -442,10 +469,16 @@ function SignUpForm() {
                       type="submit"
                       className="flex-1 bg-foreground text-background hover:bg-foreground/90"
                       size="lg"
-                      disabled={isLoading}
+                      disabled={hasInviteToken ? (isLoading || !isFormValid) : isLoading}
                     >
-                      Continue
-                      <ChevronRight className="ml-2 h-4 w-4" />
+                      {hasInviteToken
+                        ? (isLoading ? strings.auth_signup_loading : strings.auth_signup_button)
+                        : (
+                          <>
+                            Continue
+                            <ChevronRight className="ml-2 h-4 w-4" />
+                          </>
+                        )}
                     </Button>
                   </div>
                 </div>
@@ -493,10 +526,6 @@ function SignUpForm() {
                     )}
                   </div>
 
-                  {error && (
-                    <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>
-                  )}
-
                   <div className="flex gap-3">
                     <Button
                       type="button"
@@ -519,6 +548,10 @@ function SignUpForm() {
                     </Button>
                   </div>
                 </div>
+              )}
+
+              {error && (
+                <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>
               )}
 
               {step === 1 && (

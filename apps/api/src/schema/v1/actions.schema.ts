@@ -1,18 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi';
+import { ActionType } from '@repo/database';
 
-const ActionTypeSchema = z.enum([
-  'LINK_SENT',
-  'LINK_CLICKED',
-  'PROMISE_MADE',
-  'PROMISE_UPDATED',
-  'PAYMENT_CONFIRMED',
-  'STATUS_CHANGED',
-  'NOTE_ADDED',
-  'EMAIL_SENT',
-  'SMS_SENT',
-  'PHONE_CALL',
-  'OTHER',
-]);
+const ActionTypeSchema = z.nativeEnum(ActionType);
 
 const ActionSchema = z.object({
   id: z.string().uuid(),

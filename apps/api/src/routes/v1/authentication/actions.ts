@@ -18,7 +18,7 @@ import { AuthenticationService } from "../../../services/authentication.js";
 import { env } from "../../../config/env.js";
 import { logger } from "../../../utils/logger.js";
 import { requireUser } from "../../../utils/auth.js";
-import { setAuthCookies, clearAuthCookies, AUTH_COOKIE_NAMES } from "../../../middleware/cookie.js";
+import { setAuthCookies, clearAuthCookies, AUTH_COOKIE_NAMES, setWorkspaceCookie } from "../../../middleware/cookie.js";
 import { withRouteTryCatch } from '../../../utils/route-helpers.js';
 
 const handler = new OpenAPIHono<Env>();
@@ -61,6 +61,7 @@ handler.openapi(registerUserSchema, withRouteTryCatch('auth.register', async (c)
     const result = await service.registerUser(payload);
     if (result.session) {
       setAuthCookies(c, result.session.accessToken, result.session.refreshToken, result.session.expiresIn);
+      setWorkspaceCookie(c, result.workspace.id);
     }
 
     return c.json(
@@ -79,15 +80,21 @@ handler.openapi(registerUserSchema, withRouteTryCatch('auth.register', async (c)
       error: errorMessage, 
       stack: errorStack,
       scope: "auth.register",
-      payload: { email: payload.email, workspaceName: payload.workspaceName }
+      payload: {
+        email: payload.email,
+        workspaceName: payload.workspaceName,
+        hasInviteToken: Boolean(payload.inviteToken),
+      }
     }, "Failed to register user");
     
     const normalized = normalizeError(error, 400);
     const isConflict = /already/i.test(normalized.message);
-    const status: 400 | 409 | 500 = isConflict
+    const status: 400 | 403 | 404 | 409 | 500 = isConflict
       ? 409
       : normalized.status >= 500
       ? 500
+      : normalized.status === 403 || normalized.status === 404
+      ? normalized.status
       : 400;
 
     return c.json(

@@ -77,6 +77,7 @@ export async function attachTenantContext(
 ```
 
 Result:
+
 - Workspace selection/enforcement is backend-managed (cookie + membership fallback).
 - Tenant-scoped routes use `currentWorkspace` set by middleware.
 
@@ -120,6 +121,7 @@ handler.openapi(setCurrentWorkspaceSchema, withRouteTryCatch('workspaces.setCurr
 ```
 
 Result:
+
 - Frontend requests workspace switch via API.
 - Backend persists selected workspace in cookie.
 
@@ -157,6 +159,7 @@ handler.openapi(getPersonalLinkSchema, withRouteTryCatch('debts.personalLink', a
 ```
 
 Result:
+
 - Endpoint is mounted as `GET /api/v1/debts/{id}/personal-link`.
 - Access is workspace-scoped and protected.
 
@@ -201,6 +204,7 @@ async getPersonalLink(workspaceId: string, debtId: string) {
 ```
 
 Result:
+
 - UUID token generation is cryptographically secure.
 - Link format: `${WEB_URL}/client/view?token=<uuid>`.
 - Existing token remains stable on repeated calls.
@@ -229,6 +233,7 @@ set({ workspace: data.data ?? null, loading: false, error: null })
 ```
 
 Result:
+
 - Frontend asks backend to switch workspace via `/api/v1/workspaces/current`.
 - Active workspace is retrieved from backend, not computed client-side.
 
@@ -250,6 +255,7 @@ const handleWorkspaceSelect = async (workspaceId: string) => {
 ```
 
 Result:
+
 - Workspace switch action in UI calls backend endpoint and refreshes current workspace.
 
 ### 3) Frontend route constants for workspace API
@@ -266,6 +272,7 @@ export const WORKSPACE_ROUTES = {
 ```
 
 Result:
+
 - Frontend and backend stay aligned on workspace endpoints.
 
 ---
@@ -283,6 +290,7 @@ pnpm --filter api run test:tenant-auth
 ```
 
 Validates:
+
 - protected routes return `401` without auth
 - protected routes return `200` with valid auth
 - backend workspace context resolution works for tenant routes
@@ -298,6 +306,7 @@ pnpm --filter api run test:token-workspace
 ```
 
 Validates:
+
 - personal-link unauthorized access returns `401`
 - workspace switch via backend (`POST /api/v1/workspaces/current`)
 - debt list scoped to current workspace
@@ -310,3 +319,39 @@ Validates:
 
 - `docs/DEBT_PERSONAL_LINK_SECURITY.md`
 - `docs/API_REFACTOR_SUMMARY_2026-02-25.md`
+
+---
+
+## Addendum (2026-03-05): Campaigns CSV Import + Dashboard
+
+### Backend
+
+- Added campaign routes under `apps/api/src/routes/v1/campaigns/actions.ts`:
+  - `GET /api/v1/campaigns`
+  - `GET /api/v1/campaigns/{id}`
+  - `POST /api/v1/campaigns/import-csv`
+- Extended campaign schemas in `apps/api/src/schema/v1/campaigns.schema.ts` for list/get/import.
+- Added campaign service methods in `apps/api/src/services/campaigns.ts`:
+  - `list(workspaceId)`
+  - `getById(workspaceId, id)`
+  - CSV parsing/import logic with row-level skip reasons.
+- Updated auth + tenant middleware patterns in `apps/api/src/middleware/authorization.ts` to include `/api/v1/campaigns`.
+
+### Frontend
+
+- Added campaigns service in `apps/web/features/campaigns/services/campaign-service.ts`:
+  - `listCampaigns()`
+  - `getCampaignById(id)`
+  - `importCampaignCsv(payload)`
+- Added client-side preview parser in `apps/web/features/campaigns/utils/csv-preview.ts`.
+- Added dashboard page `apps/web/app/(dashboard)/campaigns/page.tsx`:
+  - CSV upload form
+  - pre-import validation preview
+  - campaign list
+  - campaign details panel
+- Added sidebar navigation entry in `apps/web/config/nav-config.ts` for `/campaigns`.
+
+### Build Validation
+
+- `pnpm --filter api build`: passed.
+- `pnpm --filter web build`: passed after adding required Suspense wrappers around `useSearchParams` in auth public pages (`/auth/accept-invite`, `/auth/login`).

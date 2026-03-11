@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
+import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, CheckCircle2, LayoutGrid, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
-export default function AcceptInvitePage() {
+function AcceptInvitePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { isAuthenticated, hasHydrated } = useAuth()
@@ -180,5 +180,26 @@ export default function AcceptInvitePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+function AcceptInviteFallback() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center bg-background p-4 sm:p-6 relative">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Loading invitation</h1>
+          <p className="text-sm text-muted-foreground">Please wait while we prepare this page.</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<AcceptInviteFallback />}>
+      <AcceptInvitePageContent />
+    </Suspense>
   )
 }

@@ -1,4 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
+import { InvitationStatus, WorkspaceMemberStatus, WorkspaceRole } from '@repo/database'
 import { randomUUID } from 'node:crypto'
 import type { AutoLoadRoute } from 'hono-autoload/types'
 import type { Env } from '../../../types/index.js'
@@ -9,15 +10,22 @@ import { setWorkspaceCookie } from '../../../middleware/cookie.js'
 
 const handler = new OpenAPIHono<Env>()
 
-function roleToString(role: unknown): 'OWNER' | 'MANAGER' | 'AGENT' {
+type InviteRole = Exclude<WorkspaceRole, 'OWNER'>
+
+function roleToString(role: unknown): WorkspaceRole {
   const normalized = String(role)
-  if (normalized === 'OWNER' || normalized === 'MANAGER') return normalized
-  return 'AGENT'
+  if (normalized === WorkspaceRole.OWNER || normalized === WorkspaceRole.MANAGER) return normalized
+  return WorkspaceRole.AGENT
+}
+
+function inviteRoleFromUnknown(role: unknown): InviteRole {
+  const normalized = roleToString(role)
+  return normalized === WorkspaceRole.OWNER ? WorkspaceRole.MANAGER : normalized
 }
 
 function ensureCanInvite(currentRole: unknown) {
   const role = roleToString(currentRole)
-  return role === 'OWNER' || role === 'MANAGER'
+  return role === WorkspaceRole.OWNER || role === WorkspaceRole.MANAGER
 }
 
 handler.openapi(createInvitationSchema, withRouteTryCatch('invitations.create', async (c) => {
@@ -71,10 +79,10 @@ handler.openapi(createInvitationSchema, withRouteTryCatch('invitations.create', 
     where: {
       workspaceId,
       email: normalizedEmail,
-      status: 'PENDING',
+      status: InvitationStatus.PENDING,
     },
     data: {
-      status: 'REVOKED',
+      status: InvitationStatus.REVOKED,
     },
   })
 
@@ -89,7 +97,7 @@ handler.openapi(createInvitationSchema, withRouteTryCatch('invitations.create', 
       role: payload.role,
       token,
       expiresAt,
-      status: 'PENDING',
+      status: InvitationStatus.PENDING,
     },
     select: {
       id: true,
@@ -111,7 +119,7 @@ handler.openapi(createInvitationSchema, withRouteTryCatch('invitations.create', 
       data: {
         id: invitation.id,
         email: invitation.email,
-        role: roleToString(invitation.role) === 'OWNER' ? 'MANAGER' : roleToString(invitation.role),
+        role: inviteRoleFromUnknown(invitation.role),
         token: invitation.token,
         inviteLink,
         expiresAt: invitation.expiresAt.toISOString(),
@@ -150,7 +158,7 @@ handler.openapi(acceptInvitationSchema, withRouteTryCatch('invitations.accept', 
     },
   })
 
-  if (!invitation || invitation.status !== 'PENDING' || invitation.expiresAt < new Date()) {
+  if (!invitation || invitation.status !== InvitationStatus.PENDING || invitation.expiresAt < new Date()) {
     return c.json(
       {
         error: {
@@ -174,7 +182,7 @@ handler.openapi(acceptInvitationSchema, withRouteTryCatch('invitations.accept', 
     )
   }
 
-  const membershipRole = roleToString(invitation.role) === 'OWNER' ? 'MANAGER' : roleToString(invitation.role)
+  const membershipRole = inviteRoleFromUnknown(invitation.role)
 
   await prisma.workspaceMember.upsert({
     where: {
@@ -185,13 +193,13 @@ handler.openapi(acceptInvitationSchema, withRouteTryCatch('invitations.accept', 
     },
     update: {
       role: membershipRole,
-      status: 'ACTIVE',
+      status: WorkspaceMemberStatus.ACTIVE,
     },
     create: {
       userId,
       workspaceId: invitation.workspaceId,
       role: membershipRole,
-      status: 'ACTIVE',
+      status: WorkspaceMemberStatus.ACTIVE,
     },
   })
 
@@ -200,7 +208,7 @@ handler.openapi(acceptInvitationSchema, withRouteTryCatch('invitations.accept', 
       id: invitation.id,
     },
     data: {
-      status: 'ACCEPTED',
+      status: InvitationStatus.ACCEPTED,
     },
   })
 

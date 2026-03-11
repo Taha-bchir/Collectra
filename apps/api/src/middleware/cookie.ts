@@ -1,6 +1,6 @@
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import type { MiddlewareHandler } from 'hono'
-import type { Env } from '../types/index.js'
+import type { AppContext, Env } from '../types/index.js'
 import type { MiddlewareDefinition } from './types.js'
 
 /** Cookie names for auth tokens (HTTP-only, not readable by JS). */
@@ -30,9 +30,9 @@ export const cookieMiddleware: MiddlewareHandler<Env> = async (c, next) => {
   await next()
 }
 
-export const getCookieHelper = (c: any, name: string) => getCookie(c, name)
+export const getCookieHelper = (c: AppContext, name: string) => getCookie(c, name)
 
-const resolveCookieSecurity = (c: any): Pick<CookieOptions, 'secure' | 'sameSite'> => {
+const resolveCookieSecurity = (c: AppContext): Pick<CookieOptions, 'secure' | 'sameSite'> => {
   try {
     const requestUrl = new URL(c.req.url)
     const isHttps = requestUrl.protocol === 'https:'
@@ -49,7 +49,12 @@ const resolveCookieSecurity = (c: any): Pick<CookieOptions, 'secure' | 'sameSite
   }
 }
 
-export const setCookieHelper = (c: any, name: string, value: string, options?: CookieOptions) => {
+export const setCookieHelper = (
+  c: AppContext,
+  name: string,
+  value: string,
+  options?: CookieOptions
+) => {
   const securityOptions = resolveCookieSecurity(c)
   const baseOptions: CookieOptions = {
     httpOnly: true,
@@ -63,7 +68,7 @@ export const setCookieHelper = (c: any, name: string, value: string, options?: C
 
 /** Set auth tokens as HTTP-only cookies. Access token uses expiresIn (seconds); refresh uses long maxAge. */
 export const setAuthCookies = (
-  c: any,
+  c: AppContext,
   accessToken: string,
   refreshToken: string,
   expiresInSeconds: number,
@@ -79,14 +84,14 @@ export const setAuthCookies = (
 }
 
 /** Clear auth cookies (logout). */
-export const clearAuthCookies = (c: any) => {
+export const clearAuthCookies = (c: AppContext) => {
   deleteCookie(c, AUTH_COOKIE_NAMES.accessToken, { path: '/' })
   deleteCookie(c, AUTH_COOKIE_NAMES.refreshToken, { path: '/' })
 }
 
-export const deleteCookieHelper = (c: any, name: string) => deleteCookie(c, name)
+export const deleteCookieHelper = (c: AppContext, name: string) => deleteCookie(c, name)
 
-export const setWorkspaceCookie = (c: any, workspaceId: string) => {
+export const setWorkspaceCookie = (c: AppContext, workspaceId: string) => {
   setCookieHelper(c, WORKSPACE_COOKIE_NAME, workspaceId, { path: '/' })
 }
 

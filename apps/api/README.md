@@ -14,7 +14,7 @@ This API provides a complete backend solution for the SaaS boilerplate, featurin
 
 ## 📁 Project Structure
 
-```
+```text
 src/
 ├── config/           # Configuration (env, etc.)
 │   └── env.ts        # Environment variable validation
@@ -155,70 +155,70 @@ Note: this script creates and cleans up temporary Supabase + database records.
 
 ### Authentication
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/v1/authentication/register` | Register new user | No |
-| POST | `/api/v1/authentication/login` | Sign in | No |
-| POST | `/api/v1/authentication/logout` | Sign out | No |
-| POST | `/api/v1/authentication/refresh` | Refresh access token | No |
-| POST | `/api/v1/authentication/forgot-password` | Request password reset | No |
-| POST | `/api/v1/authentication/reset-password` | Reset password | Yes |
-| POST | `/api/v1/authentication/google/url` | Get Google OAuth URL | No |
-| POST | `/api/v1/authentication/google/callback` | Handle OAuth callback | No |
-| POST | `/api/v1/authentication/google/tokens` | Exchange OAuth tokens | No |
+|Method|Endpoint|Description|Auth Required|
+|---|---|---|---|
+|POST|`/api/v1/authentication/register`|Register new user|No|
+|POST|`/api/v1/authentication/login`|Sign in|No|
+|POST|`/api/v1/authentication/logout`|Sign out|No|
+|POST|`/api/v1/authentication/refresh`|Refresh access token|No|
+|POST|`/api/v1/authentication/forgot-password`|Request password reset|No|
+|POST|`/api/v1/authentication/reset-password`|Reset password|Yes|
+|POST|`/api/v1/authentication/google/url`|Get Google OAuth URL|No|
+|POST|`/api/v1/authentication/google/callback`|Handle OAuth callback|No|
+|POST|`/api/v1/authentication/google/tokens`|Exchange OAuth tokens|No|
 
 ### Users
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/v1/users/me` | Get current user | Yes |
+|Method|Endpoint|Description|Auth Required|
+|---|---|---|---|
+|GET|`/api/v1/users/me`|Get current user|Yes|
 
 ### Customers
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/v1/customers` | List customers in current workspace | Yes |
-| POST | `/api/v1/customers` | Create a customer in current workspace | Yes |
-| GET | `/api/v1/customers/{id}` | Get customer by ID (workspace-scoped) | Yes |
-| PATCH | `/api/v1/customers/{id}` | Update customer by ID (workspace-scoped) | Yes |
+|Method|Endpoint|Description|Auth Required|
+|---|---|---|---|
+|GET|`/api/v1/customers`|List customers in current workspace|Yes|
+|POST|`/api/v1/customers`|Create a customer in current workspace|Yes|
+|GET|`/api/v1/customers/{id}`|Get customer by ID (workspace-scoped)|Yes|
+|PATCH|`/api/v1/customers/{id}`|Update customer by ID (workspace-scoped)|Yes|
 
 ### Debts
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/v1/debts` | List debts in current workspace | Yes |
-| POST | `/api/v1/debts` | Create debt in current workspace | Yes |
-| GET | `/api/v1/debts/{id}` | Get debt by ID (workspace-scoped) | Yes |
-| PATCH | `/api/v1/debts/{id}` | Update debt by ID (workspace-scoped) | Yes |
+|Method|Endpoint|Description|Auth Required|
+|---|---|---|---|
+|GET|`/api/v1/debts`|List debts in current workspace|Yes|
+|POST|`/api/v1/debts`|Create debt in current workspace|Yes|
+|GET|`/api/v1/debts/{id}`|Get debt by ID (workspace-scoped)|Yes|
+|PATCH|`/api/v1/debts/{id}`|Update debt by ID (workspace-scoped)|Yes|
 
 ### Promises
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/v1/debts/{debtId}/promises` | List payment promises for a debt (workspace-scoped) | Yes |
-| POST | `/api/v1/debts/{debtId}/promises` | Create payment promise for a debt (workspace-scoped) | Yes |
+|Method|Endpoint|Description|Auth Required|
+|---|---|---|---|
+|GET|`/api/v1/debts/{debtId}/promises`|List payment promises for a debt (workspace-scoped)|Yes|
+|POST|`/api/v1/debts/{debtId}/promises`|Create payment promise for a debt (workspace-scoped)|Yes|
 
 ### Actions
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/v1/actions` | Record customer/debt action (workspace-scoped) | Yes |
-| GET | `/api/v1/debts/{debtId}/actions` | List action timeline for a debt (workspace-scoped) | Yes |
-| GET | `/api/v1/customers/{customerId}/actions` | List action timeline for a customer (workspace-scoped) | Yes |
+|Method|Endpoint|Description|Auth Required|
+|---|---|---|---|
+|POST|`/api/v1/actions`|Record customer/debt action (workspace-scoped)|Yes|
+|GET|`/api/v1/debts/{debtId}/actions`|List action timeline for a debt (workspace-scoped)|Yes|
+|GET|`/api/v1/customers/{customerId}/actions`|List action timeline for a customer (workspace-scoped)|Yes|
 
 ### Health
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/v1/health` | Health check | No |
-| GET | `/api/v2/health` | Health check (v2) | No |
+|Method|Endpoint|Description|Auth Required|
+|---|---|---|---|
+|GET|`/api/v1/health`|Health check|No|
+|GET|`/api/v2/health`|Health check (v2)|No|
 
 ### Documentation
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/docs` | Swagger UI documentation |
-| GET | `/openapi.json` | OpenAPI specification |
+|Method|Endpoint|Description|
+|---|---|---|
+|GET|`/docs`|Swagger UI documentation|
+|GET|`/openapi.json`|OpenAPI specification|
 
 Internal docs:
 
@@ -277,7 +277,7 @@ export default {
 } satisfies AutoLoadRoute
 ```
 
-3. **Use the standard handler pattern** (required for consistency):
+1. **Use the standard handler pattern** (required for consistency):
 
 ```typescript
 import { withRouteTryCatch, requireWorkspaceId } from '../../../utils/route-helpers.js'
@@ -294,7 +294,7 @@ handler.openapi(getResource, withRouteTryCatch('yourResource.list', async (c) =>
 }))
 ```
 
-4. **Use schema-validated input only**:
+1. **Use schema-validated input only**:
 
 ```typescript
 const payload = c.req.valid('json')
@@ -304,7 +304,7 @@ const query = c.req.valid('query')
 
 Do not use `await c.req.json<...>()` in route handlers when an OpenAPI route schema already defines the request body.
 
-5. **Restart dev server** - routes are auto-discovered on startup
+1. **Restart dev server** - routes are auto-discovered on startup
 
 ### Using Services
 

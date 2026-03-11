@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { Enums } from '@repo/types';
 
 // Extend Hono's context variables
 declare module 'hono' {
@@ -20,7 +21,7 @@ declare module 'hono' {
     currentUser?: {
       id: string;
       email?: string;
-      role: 'OWNER' | 'AGENT';
+      role: Enums<'WorkspaceRole'>;
     };
   }
 }

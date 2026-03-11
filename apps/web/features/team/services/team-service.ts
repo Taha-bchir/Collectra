@@ -1,49 +1,26 @@
 import axios from 'axios'
+import type {
+  AcceptInvitationResult,
+  InviteMemberPayload,
+  InviteMemberResult,
+  TeamManageableRole,
+  TeamMember,
+  TeamMemberStatus,
+  TeamPermissions,
+} from '@repo/types'
 import { createCookieAuthApiClient, ApiError } from '@/lib/api-client'
 import { getApiBaseUrl } from '@/config/env'
 import { AUTH_ROUTES } from '@/features/auth/services/auth-service'
 
-export type TeamRole = 'OWNER' | 'MANAGER' | 'AGENT'
-export type TeamMemberStatus = 'ACTIVE' | 'INACTIVE'
-
-export type TeamMember = {
-  id: string
-  email: string
-  fullName: string | null
-  role: TeamRole
-  status: TeamMemberStatus
-  joinedAt: string
-}
-
-export type TeamPermissions = {
-  canManageMembers: boolean
-  currentUserRole: TeamRole
-}
-
-export type InviteMemberPayload = {
-  email: string
-  role: Exclude<TeamRole, 'OWNER'>
-}
-
-export type InviteMemberResult = {
-  id: string
-  email: string
-  role: Exclude<TeamRole, 'OWNER'>
-  token: string
-  inviteLink: string | null
-  expiresAt: string
-  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED'
-  message: string
-}
-
-export type AcceptInvitationResult = {
-  workspace: {
-    id: string
-    name: string
-  }
-  role: Exclude<TeamRole, 'OWNER'>
-  message: string
-}
+export type {
+  AcceptInvitationResult,
+  InviteMemberPayload,
+  InviteMemberResult,
+  TeamManageableRole,
+  TeamMember,
+  TeamMemberStatus,
+  TeamPermissions,
+} from '@repo/types'
 
 export const TEAM_ROUTES = {
   listMembers: '/api/v1/internal-users',
@@ -104,7 +81,7 @@ export async function inviteTeamMember(payload: InviteMemberPayload): Promise<In
   }
 }
 
-export async function updateTeamMemberRole(memberId: string, role: Exclude<TeamRole, 'OWNER'>): Promise<TeamMember> {
+export async function updateTeamMemberRole(memberId: string, role: TeamManageableRole): Promise<TeamMember> {
   const client = getTeamClient()
   const { data } = await client.patch<{ data: TeamMember }>(TEAM_ROUTES.updateRole(memberId), { role })
   return data.data
@@ -124,7 +101,7 @@ export async function acceptInvitation(token: string): Promise<AcceptInvitationR
         id: string
         name: string
       }
-      role: Exclude<TeamRole, 'OWNER'>
+      role: TeamManageableRole
     }
     message: string
   }>(TEAM_ROUTES.acceptInvite, { token })

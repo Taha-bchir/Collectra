@@ -1,8 +1,9 @@
 import { createRoute, z } from '@hono/zod-openapi'
+import { WorkspaceMemberStatus, WorkspaceRole } from '@repo/database'
 
-const roleSchema = z.enum(['OWNER', 'MANAGER', 'AGENT'])
-const updatableRoleSchema = z.enum(['MANAGER', 'AGENT'])
-const memberStatusSchema = z.enum(['ACTIVE', 'INACTIVE'])
+const roleSchema = z.nativeEnum(WorkspaceRole)
+const updatableRoleSchema = z.union([z.literal(WorkspaceRole.MANAGER), z.literal(WorkspaceRole.AGENT)])
+const memberStatusSchema = z.nativeEnum(WorkspaceMemberStatus)
 
 const errorResponseSchema = z.object({
   error: z.object({
@@ -18,6 +19,8 @@ const internalUserSchema = z.object({
   role: roleSchema,
   status: memberStatusSchema,
   joinedAt: z.string().datetime(),
+  // Optional until a dedicated source for auth last sign-in is wired.
+  lastLogin: z.string().datetime().nullable().optional(),
 })
 
 export const listInternalUsersSchema = createRoute({

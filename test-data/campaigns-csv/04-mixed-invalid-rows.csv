@@ -1,0 +1,7 @@
+fullName,email,phone,address,amount,dueDate,status
+Valid Person,valid.person@example.com,+212666666666,"El Jadida",1200.00,2026-05-01,imported
+,missing.name@example.com,+212677777777,"Kenitra",700.00,2026-05-02,notify
+Bad Email,bad-email,+212688888888,"Safi",550.00,2026-05-03,paid
+Bad Amount,amount.error@example.com,+212699999999,"Tetouan",abc,2026-05-04,promise
+Bad Date,date.error@example.com,+212611122233,"Oujda",450.00,31-02-2026,notified
+Bad Status,status.error@example.com,+212622233344,"Nador",390.00,2026-05-06,waiting

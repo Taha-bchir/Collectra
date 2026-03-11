@@ -1,4 +1,12 @@
 import type { Profile } from '@/lib/db-types'
+import type {
+  LoginPayload,
+  LoginResponseData,
+  LoginResponseUser,
+  RefreshResponseData,
+  RegisterPayload,
+  RegisterResult,
+} from '@repo/types'
 
 export const AUTH_ROUTES = {
   base: '/api/v1/authentication',
@@ -19,44 +27,14 @@ export interface AuthSession {
   profile: Profile
 }
 
-export interface LoginPayload {
-  email: string
-  password: string
-}
-
-export interface RegisterPayload {
-  email: string
-  password: string
-  fullName: string
-  workspaceName: string
-  website?: string
-}
-
-export interface RegisterResult {
-  userId: string
-  email: string
-  requiresEmailVerification: boolean
-}
-
-export interface LoginResponseUser {
-  id: string
-  email: string
-  emailConfirmed?: boolean
-  profile: { fullName?: string | null }
-}
-
-export interface LoginResponseData {
-  accessToken: string
-  refreshToken?: string | null
-  user: LoginResponseUser
-}
-
-export interface RefreshResponseData {
-  accessToken: string
-  refreshToken: string
-  expiresIn: number
-  user: LoginResponseUser
-}
+export type {
+  LoginPayload,
+  LoginResponseData,
+  LoginResponseUser,
+  RefreshResponseData,
+  RegisterPayload,
+  RegisterResult,
+} from '@repo/types'
 
 export function normalizeProfile(payload: LoginResponseUser): Profile {
   return {

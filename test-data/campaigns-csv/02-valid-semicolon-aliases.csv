@@ -1,0 +1,4 @@
+nom;mail;telephone;adresse;montant;date_echeance;statut
+Yassine Arif;yassine.arif@example.com;+212611111111;Rabat Center;799.90;2026-04-10;new
+Meriem K;meriem.k@example.com;+212622222222;Casa Maarif;1600.00;10/04/2026;notified
+Karim B;karim.b@example.com;+212633333333;Agadir Bay;250.75;2026/04/12;late

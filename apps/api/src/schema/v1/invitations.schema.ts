@@ -1,6 +1,7 @@
 import { createRoute, z } from '@hono/zod-openapi'
+import { InvitationStatus, WorkspaceRole } from '@repo/database'
 
-const inviteRoleSchema = z.enum(['MANAGER', 'AGENT'])
+const inviteRoleSchema = z.union([z.literal(WorkspaceRole.MANAGER), z.literal(WorkspaceRole.AGENT)])
 
 const invitationResponseSchema = z.object({
   data: z.object({
@@ -10,7 +11,7 @@ const invitationResponseSchema = z.object({
     token: z.string().uuid(),
     inviteLink: z.string().url().nullable(),
     expiresAt: z.string().datetime(),
-    status: z.enum(['PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED']),
+    status: z.nativeEnum(InvitationStatus),
   }),
   message: z.string(),
 })

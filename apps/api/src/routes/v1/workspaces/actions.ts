@@ -2,7 +2,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 import type { AutoLoadRoute } from "hono-autoload/types";
 import type { Env } from "../../../types/index.js";
-import { WorkspaceRole } from "@repo/database";
+import { WorkspaceMemberStatus, WorkspaceRole } from "@repo/database";
 import {
   getCurrentWorkspaceSchema,
   createWorkspaceSchema,
@@ -26,7 +26,7 @@ handler.openapi(getCurrentWorkspaceSchema, withRouteTryCatch('workspaces.current
         where: {
           userId,
           workspaceId: preferredWorkspaceId,
-          status: 'ACTIVE',
+          status: WorkspaceMemberStatus.ACTIVE,
         },
         select: {
           workspace: {
@@ -35,7 +35,7 @@ handler.openapi(getCurrentWorkspaceSchema, withRouteTryCatch('workspaces.current
         },
       })
     : await prisma.workspaceMember.findFirst({
-      where: { userId, status: 'ACTIVE' },
+      where: { userId, status: WorkspaceMemberStatus.ACTIVE },
         select: {
           workspace: {
             select: { id: true, name: true },
@@ -67,7 +67,7 @@ handler.openapi(setCurrentWorkspaceSchema, withRouteTryCatch('workspaces.setCurr
     where: {
       userId,
       workspaceId: payload.workspaceId,
-      status: 'ACTIVE',
+      status: WorkspaceMemberStatus.ACTIVE,
     },
     select: {
       workspace: {
@@ -97,7 +97,7 @@ handler.openapi(listWorkspacesSchema, withRouteTryCatch('workspaces.list', async
   const userId = requireUserId(c);
 
   const workspaces = await prisma.workspaceMember.findMany({
-    where: { userId, status: 'ACTIVE' },
+    where: { userId, status: WorkspaceMemberStatus.ACTIVE },
     select: {
       workspace: {
         select: {

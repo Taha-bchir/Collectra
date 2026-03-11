@@ -6,6 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronDown, LayoutGrid } from "lucide-react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { listTeamMembers } from "@/features/team/services/team-service"
 import { useWorkspaceStore } from "@/store/workspace-store"
 import { strings } from "@/lib/strings"
 import { validateWorkspaceName, validateWebsite } from "@/features/auth/utils/auth-validation"
@@ -77,6 +78,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [workspaceWebsite, setWorkspaceWebsite] = useState("")
   const [createError, setCreateError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [canManageTeam, setCanManageTeam] = useState(false)
 
   const handleLogout = () => {
     signOut()
@@ -98,8 +100,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (hasHydrated && isAuthenticated) {
       fetchCurrentWorkspace()
       fetchWorkspaces()
+
+      void listTeamMembers()
+        .then(({ permissions }) => {
+          setCanManageTeam(permissions.canManageMembers)
+        })
+        .catch(() => {
+          setCanManageTeam(false)
+        })
+    } else {
+      setCanManageTeam(false)
     }
   }, [hasHydrated, isAuthenticated, fetchCurrentWorkspace, fetchWorkspaces])
+
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.href === "/team") {
+      return canManageTeam
+    }
+    return true
+  })
 
   useEffect(() => {
     // Auto-select first workspace if workspaces are available but none is selected
@@ -276,7 +295,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <NavItemComponent key={item.href} item={item} pathname={pathname} />
               ))}
             </SidebarMenu>

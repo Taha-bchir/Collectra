@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import {
   ApiError,
+  type TeamManageableRole,
   type TeamMember,
   type TeamPermissions,
   inviteTeamMember,
@@ -52,17 +53,24 @@ export default function TeamPage() {
   const [permissions, setPermissions] = useState<TeamPermissions | null>(null);
   const [loading, setLoading] = useState(true);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'AGENT' | 'MANAGER'>('AGENT');
+  const [inviteRole, setInviteRole] = useState<TeamManageableRole>('AGENT');
   const [inviteResult, setInviteResult] = useState<InviteResultState>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
 
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
-  const [newRole, setNewRole] = useState<'AGENT' | 'MANAGER'>('AGENT');
+  const [newRole, setNewRole] = useState<TeamManageableRole>('AGENT');
   const [roleLoading, setRoleLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState<string | null>(null);
 
   const canManage = permissions?.canManageMembers ?? false;
+
+  useEffect(() => {
+    if (!loading && permissions && !permissions.canManageMembers) {
+      toast.error('Only managers can access the Team page');
+      router.replace('/overview');
+    }
+  }, [loading, permissions, router])
 
   const fetchMembers = async () => {
     try {
@@ -86,6 +94,11 @@ export default function TeamPage() {
   }, [isAuthenticated, router]);
 
   const handleInvite = async () => {
+    if (!canManage) {
+      toast.error('Only managers can invite members')
+      return
+    }
+
     if (!inviteEmail.trim()) return toast.error('Email is required');
 
     setInviteLoading(true);
@@ -111,6 +124,11 @@ export default function TeamPage() {
   };
 
   const handleChangeRole = async () => {
+    if (!canManage) {
+      toast.error('Only managers can change member roles')
+      return
+    }
+
     if (!selectedMember) return;
 
     setRoleLoading(true);
@@ -128,6 +146,11 @@ export default function TeamPage() {
   };
 
   const handleToggleStatus = async (member: TeamMember) => {
+    if (!canManage) {
+      toast.error('Only managers can update member status')
+      return
+    }
+
     const newStatus = member.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     setStatusLoading(member.id);
 
@@ -144,6 +167,10 @@ export default function TeamPage() {
 
   if (loading) {
     return <div className="flex items-center justify-center h-64">Loading team members...</div>;
+  }
+
+  if (permissions && !permissions.canManageMembers) {
+    return <div className="flex items-center justify-center h-64">Redirecting...</div>;
   }
 
   return (
@@ -164,7 +191,7 @@ export default function TeamPage() {
               className="flex-1"
               disabled={inviteLoading}
             />
-            <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'AGENT' | 'MANAGER')}>
+            <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as TeamManageableRole)}>
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
@@ -247,13 +274,14 @@ export default function TeamPage() {
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Joined</TableHead>
+              <TableHead>Last login</TableHead>
               {canManage && <TableHead className="text-right">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {members.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canManage ? 6 : 5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={canManage ? 7 : 6} className="text-center text-muted-foreground py-8">
                   No members in this workspace yet.
                 </TableCell>
               </TableRow>
@@ -278,6 +306,9 @@ export default function TeamPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>{new Date(member.joinedAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {member.lastLogin ? new Date(member.lastLogin).toLocaleString() : 'N/A'}
+                  </TableCell>
                   {canManage && (
                     <TableCell className="text-right space-x-2">
                       {/* Role Change */}
@@ -347,7 +378,7 @@ export default function TeamPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <Select value={newRole} onValueChange={(v) => setNewRole(v as 'AGENT' | 'MANAGER')}>
+            <Select value={newRole} onValueChange={(v) => setNewRole(v as TeamManageableRole)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select new role" />
               </SelectTrigger>

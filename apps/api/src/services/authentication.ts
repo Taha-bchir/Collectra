@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@repo/database';
-import { WorkspaceRole } from '@repo/database';
+import { InvitationStatus, WorkspaceMemberStatus, WorkspaceRole } from '@repo/database';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import type { Database } from '@repo/types';
 import type { AuthenticationServiceOptions } from '../types/services.js';
@@ -14,8 +14,9 @@ type UserProfileInput = Partial<UserProfileShape>;
 type RegisterPayload = UserProfileInput & {
   email: string;
   password: string;
-  workspaceName: string;
+  workspaceName?: string;
   website?: string;
+  inviteToken?: string;
 };
 
 type LoginPayload = {
@@ -95,45 +96,13 @@ export class AuthenticationService {
       fullName: profileMetadata.fullName ?? null,
     });
 
-    const workspaceName = payload.workspaceName.trim();
-    if (!workspaceName) {
-      throw new Error('Workspace name is required.');
-    }
-    const website = payload.website?.trim() || null;
-
-    console.log('[registerUser] Creating workspace:', { 
-      userId: dbUser.id, 
-      workspaceName, 
-      website 
-    });
-
-    try {
-      await this.prisma.$transaction(async (tx) => {
-        const workspace = await tx.workspace.create({
-          data: {
-            name: workspaceName,
-            website,
-            createdByUserId: dbUser.id,
-            members: {
-              create: {
-                userId: dbUser.id,
-                role: WorkspaceRole.OWNER,
-              },
-            },
-          },
-        });
-        console.log('[registerUser] Workspace created successfully:', { 
-          workspaceId: workspace.id,
-          workspaceName: workspace.name 
-        });
-      });
-    } catch (wsError) {
-      console.error('[registerUser] Workspace creation failed:', { 
-        error: wsError instanceof Error ? wsError.message : String(wsError),
-        stack: wsError instanceof Error ? wsError.stack : undefined
-      });
-      throw wsError;
-    }
+    const selectedWorkspace = payload.inviteToken
+      ? await this.consumeInvitationOnRegister({
+          userId: dbUser.id,
+          userEmail: dbUser.email,
+          inviteToken: payload.inviteToken,
+        })
+      : await this.createOwnedWorkspace(dbUser.id, payload.workspaceName, payload.website);
 
     const session = data.session;
 
@@ -143,6 +112,7 @@ export class AuthenticationService {
         email: dbUser.email,
         profile: { fullName: dbUser.fullName ?? null },
       },
+      workspace: selectedWorkspace,
       requiresEmailVerification: !session,
       session: session
         ? {
@@ -152,6 +122,107 @@ export class AuthenticationService {
           }
         : null,
     };
+  }
+
+  private async createOwnedWorkspace(
+    userId: string,
+    workspaceName?: string,
+    websiteInput?: string
+  ): Promise<{ id: string; name: string }> {
+    const trimmedWorkspaceName = workspaceName?.trim();
+    if (!trimmedWorkspaceName) {
+      throw new Error('Workspace name is required when no invite token is provided.');
+    }
+
+    const website = websiteInput?.trim() || null;
+
+    return this.prisma.$transaction(async (tx) => {
+      const workspace = await tx.workspace.create({
+        data: {
+          name: trimmedWorkspaceName,
+          website,
+          createdByUserId: userId,
+          members: {
+            create: {
+              userId,
+              role: WorkspaceRole.OWNER,
+            },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      return workspace;
+    });
+  }
+
+  private async consumeInvitationOnRegister(params: {
+    userId: string;
+    userEmail: string;
+    inviteToken: string;
+  }): Promise<{ id: string; name: string }> {
+    return this.prisma.$transaction(async (tx) => {
+      const invitation = await tx.workspaceInvitation.findUnique({
+        where: { token: params.inviteToken },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          status: true,
+          expiresAt: true,
+          workspaceId: true,
+          workspace: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      if (!invitation || invitation.status !== InvitationStatus.PENDING || invitation.expiresAt < new Date()) {
+        const error = new Error('Invitation is invalid or expired.');
+        (error as { status?: number }).status = 404;
+        throw error;
+      }
+
+      if (invitation.email.toLowerCase().trim() !== params.userEmail.toLowerCase().trim()) {
+        const error = new Error('Invitation email does not match this account.');
+        (error as { status?: number }).status = 403;
+        throw error;
+      }
+
+      const membershipRole = invitation.role === WorkspaceRole.OWNER ? WorkspaceRole.MANAGER : invitation.role;
+
+      await tx.workspaceMember.upsert({
+        where: {
+          userId_workspaceId: {
+            userId: params.userId,
+            workspaceId: invitation.workspaceId,
+          },
+        },
+        update: {
+          role: membershipRole,
+          status: WorkspaceMemberStatus.ACTIVE,
+        },
+        create: {
+          userId: params.userId,
+          workspaceId: invitation.workspaceId,
+          role: membershipRole,
+          status: WorkspaceMemberStatus.ACTIVE,
+        },
+      });
+
+      await tx.workspaceInvitation.update({
+        where: { id: invitation.id },
+        data: { status: InvitationStatus.ACCEPTED },
+      });
+
+      return invitation.workspace;
+    });
   }
 
   async signIn(payload: LoginPayload) {

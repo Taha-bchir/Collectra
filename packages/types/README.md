@@ -13,10 +13,15 @@ This package provides:
 
 ## 📁 Structure
 
-```
+```bash
 src/
 ├── types.ts          # Main type definitions
 ├── constants.ts      # Constants and enums
+├── campaigns.ts      # Campaign DTOs shared by API/Web
+├── workspaces.ts     # Workspace/team role & status DTOs
+├── users.ts          # User profile DTOs
+├── auth.ts           # Authentication request/response DTOs
+├── team.ts           # Team/invitation DTOs
 └── index.ts          # Package exports
 ```
 

@@ -16,6 +16,7 @@ This is a **Turborepo monorepo** containing:
 ## ✨ Features
 
 ### Backend (API)
+
 - ✅ **Hono.js** - Fast, lightweight web framework
 - ✅ **Supabase Auth** - Complete authentication system (email/password, OAuth)
 - ✅ **Prisma ORM** - Type-safe database access
@@ -27,6 +28,7 @@ This is a **Turborepo monorepo** containing:
 - ✅ **Request Logging** - Structured logging with Pino
 
 ### Frontend (Web)
+
 - ✅ **Next.js 16** - React framework with App Router
 - ✅ **React 19** - Latest React features
 - ✅ **TypeScript** - Full type safety
@@ -38,6 +40,7 @@ This is a **Turborepo monorepo** containing:
 - ✅ **Form Handling** - React Hook Form with Zod validation
 
 ### Database & Types
+
 - ✅ **Prisma** - Database schema management
 - ✅ **PostgreSQL** - Via Supabase
 - ✅ **Type Generation** - Auto-generated types from database schema
@@ -96,13 +99,13 @@ pnpm --filter @repo/database db:seed:dev
 pnpm dev
 ```
 
-- **API**: http://localhost:3000
-- **Web**: http://localhost:3001
-- **API Docs**: http://localhost:3000/docs
+- **API**: <http://localhost:3000>
+- **Web**: <http://localhost:3001>
+- **API Docs**: <http://localhost:3000/docs>
 
 ## 📁 Project Structure
 
-```
+```bach
 .
 ├── apps/
 │   ├── api/              # Hono.js backend API
@@ -201,8 +204,10 @@ See [docs/AUTH.md](./docs/AUTH.md) for comprehensive documentation on how the au
 
 ## 📚 Documentation
 
+- **[Docs Index](./docs/README.md)** - Central index for all project documentation
 - **[Setup Guide](./docs/SETUP.md)** - Detailed instructions for setting up the project
 - **[Authentication System](./docs/AUTH.md)** - Complete auth system documentation
+- **[Campaigns CSV Import](./docs/CAMPAIGNS_CSV_IMPORT.md)** - CSV import format, API endpoints, and dashboard behavior
 - **[API README](./apps/api/README.md)** - API-specific documentation
 - **[Web README](./apps/web/README.md)** - Frontend-specific documentation
 
@@ -218,6 +223,7 @@ See [docs/AUTH.md](./docs/AUTH.md) for comprehensive documentation on how the au
 Prisma-based database package with schema, migrations, and client generation.
 
 **Key Features:**
+
 - Type-safe database access
 - Migration management
 - Environment-specific seeding
@@ -230,6 +236,7 @@ See [packages/database/README.md](./packages/database/README.md) for details.
 Shared TypeScript types and constants used across the monorepo.
 
 **Exports:**
+
 - Database types (from Prisma)
 - User roles and enums
 - Common type definitions
@@ -241,6 +248,7 @@ See [packages/types/README.md](./packages/types/README.md) for details.
 Shared ESLint configurations for consistent code quality.
 
 **Configs:**
+
 - Base configuration
 - Next.js specific
 - React internal
@@ -252,6 +260,7 @@ See [packages/eslint-config/README.md](./packages/eslint-config/README.md) for d
 Shared TypeScript configurations for consistent type checking.
 
 **Configs:**
+
 - Base TypeScript config
 - Next.js config
 - Node.js config

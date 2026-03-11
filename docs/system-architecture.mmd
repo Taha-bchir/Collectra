@@ -1,0 +1,14 @@
+flowchart LR
+    U["User<br/>Browser"]
+    FE["Next.js Frontend<br/>Dashboard + Auth Pages"]
+    API["Hono API<br/>Routes + Middleware<br/>Auth + Tenant"]
+    SB["Supabase<br/>Auth + Postgres"]
+    PR["Prisma ORM"]
+
+    U -->|UI interactions| FE
+    FE -->|API calls| API
+    API -->|Auth flow| SB
+    API -->|DB queries via ORM| PR
+    PR -->|SQL queries| SB
+    API -->|API responses| FE
+    FE -->|Rendered pages| U

@@ -1,15 +1,7 @@
 /**
  * Workspace API types and route constants. HTTP is done in workspace-store.
  */
-export type BackendWorkspace = {
-  id: string;
-  name: string;
-};
-
-export type CreateWorkspacePayload = {
-  name: string;
-  website?: string;
-};
+export type { CreateWorkspacePayload, WorkspaceSummary as BackendWorkspace } from '@repo/types'
 
 export const WORKSPACE_ROUTES = {
   list: "/api/v1/workspaces",

@@ -1,4 +1,5 @@
 import type { MiddlewareHandler } from 'hono'
+import { WorkspaceMemberStatus } from '@repo/database'
 import { HTTPException } from 'hono/http-exception'
 import type { Env } from '../types/index.js'
 import type { MiddlewareDefinition } from './types.js'
@@ -17,6 +18,8 @@ const PROTECTED_PATTERNS = [
   '/api/v1/invitations/*',
   '/api/v1/customers',
   '/api/v1/customers/*',
+  '/api/v1/campaigns',
+  '/api/v1/campaigns/*',
   '/api/v1/debts',
   '/api/v1/debts/*',
   '/api/v1/actions',
@@ -30,6 +33,7 @@ const TENANT_SCOPED_PREFIXES = [
   '/api/v1/internal-users',
   '/api/v1/invitations',
   '/api/v1/customers',
+  '/api/v1/campaigns',
   '/api/v1/debts',
   '/api/v1/actions',
   '/api/v1/test-tenant',
@@ -45,7 +49,7 @@ export const authorization: MiddlewareHandler<Env> = async (c, next) => {
  * Role-based authorization helper - DEPRECATED.
  * The new schema uses workspace-based roles via WorkspaceMember.
  */
-export function requireRole(roles: string[]): MiddlewareHandler<Env> {
+export function requireRole(): MiddlewareHandler<Env> {
   return async (c, next) => {
     const user = c.get('user')
 
@@ -153,7 +157,7 @@ export async function attachTenantContext(
       where: {
         userId: user.id,
         workspaceId: workspaceCookie,
-        status: 'ACTIVE',
+        status: WorkspaceMemberStatus.ACTIVE,
       },
       select: {
         role: true,
@@ -171,7 +175,7 @@ export async function attachTenantContext(
     membership = await prisma.workspaceMember.findFirst({
       where: {
         userId: user.id,
-        status: 'ACTIVE',
+        status: WorkspaceMemberStatus.ACTIVE,
       },
       select: {
         role: true,

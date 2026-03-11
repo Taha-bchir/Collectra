@@ -1,0 +1,5 @@
+fullName,email,phone,address,amount,dueDate,status
+John Doe,john.doe@example.com,+212600000001,"10 Rue Atlas, Casablanca",1250.50,2026-03-20,imported
+Sara Ben,sara.ben@example.com,+212600000002,"25 Avenue Hassan II, Rabat",980.00,20/03/2026,notify
+Ali Mansour,ali.mansour@example.com,+212600000003,"5 Rue de Paris, Fes",450.25,2026/03/25,promise_to_pay
+Nora El,nora.el@example.com,+212600000004,"17 Centre Ville, Marrakech",300.00,25-03-2026,paid

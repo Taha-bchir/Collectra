@@ -13,7 +13,7 @@ import {
   type RegisterResult,
   type LoginResponseData,
 } from '@/features/auth/services/auth-service'
-import { USER_ROUTES } from '@/features/users/services/user-service'
+import { USER_ROUTES, type BackendUserProfile } from '@/features/users/services/user-service'
 
 export interface AuthState {
   profile: Profile | null
@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>()(
         revalidateSession: async () => {
           try {
             const client = getAuthClient()
-            const { data } = await client.get<{ data: { id: string; email: string; profile: { fullName?: string | null } } }>(USER_ROUTES.me)
+            const { data } = await client.get<{ data: BackendUserProfile }>(USER_ROUTES.me)
             const d = data.data
             set({
               profile: {

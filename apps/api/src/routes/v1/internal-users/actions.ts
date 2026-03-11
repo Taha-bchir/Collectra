@@ -1,4 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
+import { WorkspaceMemberStatus, WorkspaceRole } from '@repo/database'
 import { HTTPException } from 'hono/http-exception'
 import type { Context } from 'hono'
 import type { AutoLoadRoute } from 'hono-autoload/types'
@@ -12,19 +13,21 @@ import { requireWorkspaceId, requireUserId, withRouteTryCatch } from '../../../u
 
 const handler = new OpenAPIHono<Env>()
 
-function roleToString(role: unknown): 'OWNER' | 'MANAGER' | 'AGENT' {
+function roleToString(role: unknown): WorkspaceRole {
   const normalized = String(role)
-  if (normalized === 'OWNER' || normalized === 'MANAGER') return normalized
-  return 'AGENT'
+  if (normalized === WorkspaceRole.OWNER || normalized === WorkspaceRole.MANAGER) return normalized
+  return WorkspaceRole.AGENT
 }
 
-function statusToString(status: unknown): 'ACTIVE' | 'INACTIVE' {
-  return String(status) === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE'
+function statusToString(status: unknown): WorkspaceMemberStatus {
+  return String(status) === WorkspaceMemberStatus.INACTIVE
+    ? WorkspaceMemberStatus.INACTIVE
+    : WorkspaceMemberStatus.ACTIVE
 }
 
 function ensureCanManageMembers(c: Context<Env>) {
   const role = roleToString(c.get('currentUser')?.role)
-  if (role !== 'OWNER' && role !== 'MANAGER') {
+  if (role !== WorkspaceRole.OWNER && role !== WorkspaceRole.MANAGER) {
     throw new HTTPException(403, {
       message: 'Only managers can manage workspace members',
     })
@@ -80,9 +83,11 @@ handler.openapi(listInternalUsersSchema, withRouteTryCatch('internalUsers.list',
         role: roleToString(member.role),
         status: statusToString(member.status),
         joinedAt: member.joinedAt.toISOString(),
+        lastLogin: null,
       })),
       permissions: {
-        canManageMembers: currentUserRole === 'OWNER' || currentUserRole === 'MANAGER',
+        canManageMembers:
+          currentUserRole === WorkspaceRole.OWNER || currentUserRole === WorkspaceRole.MANAGER,
         currentUserRole,
       },
     },
@@ -132,7 +137,7 @@ handler.openapi(updateInternalUserRoleSchema, withRouteTryCatch('internalUsers.u
     )
   }
 
-  if (roleToString(member.role) === 'OWNER') {
+  if (roleToString(member.role) === WorkspaceRole.OWNER) {
     return c.json(
       { error: { message: 'Owner role cannot be changed', code: 'OWNER_ROLE_CHANGE_FORBIDDEN' } },
       400,
@@ -172,6 +177,7 @@ handler.openapi(updateInternalUserRoleSchema, withRouteTryCatch('internalUsers.u
         role: roleToString(updated.role),
         status: statusToString(updated.status),
         joinedAt: updated.joinedAt.toISOString(),
+        lastLogin: null,
       },
     },
     200,
@@ -213,14 +219,17 @@ handler.openapi(updateInternalUserStatusSchema, withRouteTryCatch('internalUsers
     })
   }
 
-  if (member.userId === userId && payload.status === 'INACTIVE') {
+  if (member.userId === userId && payload.status === WorkspaceMemberStatus.INACTIVE) {
     return c.json(
       { error: { message: 'You cannot deactivate your own account', code: 'SELF_DEACTIVATE_FORBIDDEN' } },
       400,
     )
   }
 
-  if (roleToString(member.role) === 'OWNER' && payload.status === 'INACTIVE') {
+  if (
+    roleToString(member.role) === WorkspaceRole.OWNER &&
+    payload.status === WorkspaceMemberStatus.INACTIVE
+  ) {
     return c.json(
       { error: { message: 'Owner account cannot be deactivated', code: 'OWNER_DEACTIVATE_FORBIDDEN' } },
       400,
@@ -260,6 +269,7 @@ handler.openapi(updateInternalUserStatusSchema, withRouteTryCatch('internalUsers
         role: roleToString(updated.role),
         status: statusToString(updated.status),
         joinedAt: updated.joinedAt.toISOString(),
+        lastLogin: null,
       },
     },
     200,

@@ -29,26 +29,40 @@ const authTokensResponseSchema = z.object({
   }),
 });
 
+const registerRequestSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(8).max(72),
+  })
+  .extend(userProfileRequestSchema.shape)
+  .extend({
+    workspaceName: z.string().min(1).max(120).optional(),
+    website: z.string().url().max(255).optional(),
+    inviteToken: z.string().uuid().optional(),
+  })
+  .superRefine((value, ctx) => {
+    // Regular signup needs a workspace; invite onboarding uses inviteToken instead.
+    if (!value.inviteToken && !value.workspaceName?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['workspaceName'],
+        message: 'workspaceName is required when inviteToken is not provided',
+      })
+    }
+  })
+
 export const registerUserSchema = createRoute({
   method: "post",
   path: "/register",
   tags: ["Authentication"],
   summary: "Register a new user",
   description:
-    "Creates a Supabase auth user, persists the profile in the database, and sends a verification email.",
+    "Creates a Supabase auth user. Supports regular signup (new workspace) or invite onboarding via inviteToken.",
   request: {
     body: {
       content: {
         "application/json": {
-          schema: z.object({
-            email: z.string().email(),
-            password: z.string().min(8).max(72),
-          })
-            .extend(userProfileRequestSchema.shape)
-            .extend({
-              workspaceName: z.string().min(1).max(120),
-              website: z.string().url().max(255).optional(),
-            }),
+          schema: registerRequestSchema,
         },
       },
     },
