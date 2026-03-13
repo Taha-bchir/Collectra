@@ -13,6 +13,12 @@ export type ImportCampaignCsvPayload = {
   description?: string
 }
 
+export type DebtPersonalLinkResult = {
+  link: string
+  token: string
+  expiresAt: string
+}
+
 export type GetCampaignByIdOptions = {
   page?: number
   pageSize?: number
@@ -23,6 +29,7 @@ export const CAMPAIGN_ROUTES = {
   listWithSlash: '/api/v1/campaigns/',
   getById: (id: string) => `/api/v1/campaigns/${id}`,
   importCsv: '/api/v1/campaigns/import-csv',
+  debtPersonalLink: (debtId: string) => `/api/v1/debts/${debtId}/personal-link`,
 } as const
 
 const baseURL = getApiBaseUrl()
@@ -99,6 +106,12 @@ export async function importCampaignCsv(payload: ImportCampaignCsvPayload): Prom
     },
   })
 
+  return data.data
+}
+
+export async function getDebtPersonalLink(debtId: string): Promise<DebtPersonalLinkResult> {
+  const client = getCampaignsClient()
+  const { data } = await client.get<{ data: DebtPersonalLinkResult }>(CAMPAIGN_ROUTES.debtPersonalLink(debtId))
   return data.data
 }
 

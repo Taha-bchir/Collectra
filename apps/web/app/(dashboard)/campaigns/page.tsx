@@ -25,6 +25,7 @@ import {
   type CampaignDetails,
   type CampaignImportResult,
   type CampaignSummary,
+  getDebtPersonalLink,
   getCampaignById,
   importCampaignCsv,
   listCampaigns,
@@ -78,6 +79,7 @@ export default function CampaignsPage() {
   const [confirmImportOpen, setConfirmImportOpen] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [lastImportResult, setLastImportResult] = useState<CampaignImportResult | null>(null)
+  const [linkLoadingDebtId, setLinkLoadingDebtId] = useState<string | null>(null)
 
   const refreshCampaigns = useCallback(async () => {
     const items = await listCampaigns()
@@ -246,6 +248,34 @@ export default function CampaignsPage() {
 
     return [fallbackCampaign, ...campaigns]
   }, [campaigns, lastImportResult])
+
+  const handleOpenCustomerLink = useCallback(async (debtId: string) => {
+    setLinkLoadingDebtId(debtId)
+
+    try {
+      const result = await getDebtPersonalLink(debtId)
+      window.open(result.link, '_blank', 'noopener,noreferrer')
+      toast.success('Customer link opened in a new tab')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to generate customer link'))
+    } finally {
+      setLinkLoadingDebtId(null)
+    }
+  }, [])
+
+  const handleCopyCustomerLink = useCallback(async (debtId: string) => {
+    setLinkLoadingDebtId(debtId)
+
+    try {
+      const result = await getDebtPersonalLink(debtId)
+      await navigator.clipboard.writeText(result.link)
+      toast.success('Customer link copied to clipboard')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to copy customer link'))
+    } finally {
+      setLinkLoadingDebtId(null)
+    }
+  }, [])
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-auto">
@@ -561,6 +591,7 @@ export default function CampaignsPage() {
                           <TableHead>Amount</TableHead>
                           <TableHead>Due date</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Link</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -574,6 +605,30 @@ export default function CampaignsPage() {
                             <TableCell>{formatDate(debt.dueDate)}</TableCell>
                             <TableCell>
                               <Badge variant="outline">{debt.status}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenCustomerLink(debt.id)}
+                                  disabled={linkLoadingDebtId === debt.id}
+                                >
+                                  {linkLoadingDebtId === debt.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    'Open'
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleCopyCustomerLink(debt.id)}
+                                  disabled={linkLoadingDebtId === debt.id}
+                                >
+                                  Copy
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}

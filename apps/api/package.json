@@ -27,6 +27,7 @@
     "helmet": "^7.1.0",
     "hono": "^4.8.10",
     "hono-autoload": "^0.1.2",
+    "jose": "^5.10.0",
     "i18next": "^23.10.1",
     "i18next-fs-backend": "^2.4.1",
     "pino": "^8.17.2",

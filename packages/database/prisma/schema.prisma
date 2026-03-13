@@ -165,8 +165,6 @@ model DebtRecord {
   promiseDate    DateTime?
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
-  customerToken  String?    @unique // secure UUID token for client link
-  tokenExpiresAt DateTime? // optional: auto-expire after X days
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)

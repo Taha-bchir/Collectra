@@ -158,15 +158,13 @@ handler.openapi(getPersonalLinkSchema, withRouteTryCatch('debts.personalLink', a
   const { id } = c.req.valid('param');
 
   const service = new DebtsService(c.get('prisma'));
-  const link = await service.getPersonalLink(workspaceId, id);
-
-  const debt = await service.getById(workspaceId, id); // already fetched in service
+  const { link, token, expiresAt } = await service.getPersonalLink(workspaceId, id);
 
   return c.json({
     data: {
       link,
-      token: debt.customerToken,
-      expiresAt: debt.tokenExpiresAt?.toISOString() || null,
+      token,
+      expiresAt: expiresAt.toISOString(),
     },
   });
 }));

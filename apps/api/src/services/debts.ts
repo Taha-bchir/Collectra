@@ -1,20 +1,19 @@
 import { PrismaClient } from '@repo/database'
 import { HTTPException } from 'hono/http-exception'
 import type { DebtStatus } from '@repo/database'
-import { randomUUID } from 'crypto';
 import { env } from '../config/env.js'
-
+import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
 
 /**
  * SECURITY & LINK FORMAT – CUSTOMER PERSONAL LINKS
  *
- * Format: https://app.collectra.com/client/view?token=<uuid-token>
+ * Format: https://app.collectra.com/client/view?token=<jwt-token>
  *
- * - Token is a cryptographically secure UUID (crypto.randomUUID())
- * - Token is unique per debt and stored in DebtRecord.customerToken
+ * - Token is a signed JWT (HS256) — no DB storage required
+ * - debtId is stored in the JWT `sub` claim
+ * - Expiry is enforced by the JWT `exp` claim (30 days)
  * - Link requires NO authentication – pure token-based access
- * - Token is unguessable (128-bit random) and scoped to one debt
- * - Optional expiry: enforced by tokenExpiresAt field (future middleware)
+ * - Token is tamper-proof (HMAC signature) and scoped to one debt
  * - NEVER expose raw debt IDs or predictable patterns in links
  * - Customer actions (view, promise, confirm) are logged anonymously
  */
@@ -49,42 +48,43 @@ export type UpdateDebtInput = Partial<{
 export class DebtsService {
   constructor(private readonly prisma: PrismaClient) {}
 
+  async getByCustomerToken(token: string) {
+    let debtId: string
+    let tokenExpiresAt: Date
+
+    try {
+      const result = await verifyCustomerToken(token)
+      debtId = result.debtId
+      tokenExpiresAt = result.expiresAt
+    } catch {
+      throw new HTTPException(404, { message: 'Debt link is invalid or expired' })
+    }
+
+    const debt = await this.prisma.debtRecord.findUnique({
+      where: { id: debtId },
+      include: { client: true, campaign: true },
+    })
+
+    if (!debt) {
+      throw new HTTPException(404, { message: 'Debt link is invalid or expired' })
+    }
+
+    return { debt, tokenExpiresAt }
+  }
 
   async generateCustomerToken(workspaceId: string, debtId: string) {
-  const debt = await this.getById(workspaceId, debtId); // ensures ownership
-
-  if (debt.customerToken) {
-    // Already exists → return existing (or regenerate if you want)
-    return debt.customerToken;
+    await this.getById(workspaceId, debtId) // ensures ownership
+    return signCustomerToken(debtId)
   }
 
-  const token = randomUUID(); // cryptographically secure UUID
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-
-  const updated = await this.prisma.debtRecord.update({
-    where: { id: debtId },
-    data: {
-      customerToken: token,
-      tokenExpiresAt: expiresAt,
-    },
-    select: { customerToken: true },
-  });
-
-  return updated.customerToken;
-}
-
-async getPersonalLink(workspaceId: string, debtId: string) {
-  const debt = await this.getById(workspaceId, debtId); // ownership check
-
-  if (!debt.customerToken) {
-    // Auto-generate if missing (optional – or force generation via separate endpoint)
-    return this.generateCustomerToken(workspaceId, debtId).then(token => 
-      `${env.WEB_URL}/client/view?token=${token}`
-    );
+  async getPersonalLink(workspaceId: string, debtId: string) {
+    const { token, expiresAt } = await this.generateCustomerToken(workspaceId, debtId)
+    return {
+      link: `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}`,
+      token,
+      expiresAt,
+    }
   }
-
-  return `${env.WEB_URL}/client/view?token=${debt.customerToken}`;
-}
 
   async list(
     workspaceId: string,

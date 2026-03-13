@@ -9,4 +9,5 @@ export * from './health.schema.js'
 export * from './internal-users.schema.js'
 export * from './invitations.schema.js'
 export * from './campaigns.schema.js'
+export * from './public-debts.schema.js'
 
