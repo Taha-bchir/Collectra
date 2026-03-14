@@ -17,7 +17,6 @@ This is the frontend application for the SaaS boilerplate, featuring:
 
 ## 📁 Project Structure
 
-```
 app/
 ├── (dashboard)/          # Protected dashboard routes
 │   ├── layout.tsx        # Dashboard layout
@@ -74,7 +73,63 @@ lib/
 config/
 ├── env.ts                # Environment configuration
 └── nav-config.ts         # Navigation configuration
-```
+
+app/
+├── (dashboard)/          # Protected dashboard routes
+│   ├── layout.tsx        # Dashboard layout
+│   ├── overview/        # Overview page
+│   └── settings/         # Settings pages
+│
+├── (public)/             # Public routes
+│   └── auth/             # Authentication pages
+│       ├── login/        # Login page
+│       ├── sign-up/      # Registration page
+│       ├── forgot-password/ # Password reset request
+│       └── ...
+│
+├── layout.tsx            # Root layout
+├── page.tsx              # Home page
+└── globals.css           # Global styles
+
+components/
+├── common/               # Common components
+│   ├── navbar.tsx        # Navigation bar
+│   ├── footer.tsx        # Footer
+│   ├── theme-provider.tsx # Theme context
+│   └── ...
+│
+├── ui/                   # shadcn/ui components
+│   ├── button.tsx
+│   ├── card.tsx
+│   └── ...
+│
+└── app-sidebar.tsx       # Dashboard sidebar
+
+features/
+├── auth/                 # Authentication feature
+│   ├── hooks/
+│   │   └── use-auth.ts   # Auth hook
+│   └── services/
+│       └── auth-service.ts # Auth API client
+│
+└── users/                # User management feature
+    └── services/
+        └── user-service.ts
+
+store/                    # Zustand stores
+├── auth-store.ts         # Authentication state
+├── user-store.ts         # User state
+└── preferences-store.ts  # User preferences
+
+lib/
+├── api-client.ts         # Axios client with auth
+├── api.ts                # API utilities
+├── db-types.ts           # Database types
+└── utils.ts              # Utility functions
+
+config/
+├── env.ts                # Environment configuration
+└── nav-config.ts         # Navigation configuration
 
 ## 🚀 Getting Started
 
@@ -193,7 +248,7 @@ export default function AboutPage() {
 }
 ```
 
-2. For protected routes, use the dashboard layout:
+1. For protected routes, use the dashboard layout:
 
 ```typescript
 // app/(dashboard)/about/page.tsx

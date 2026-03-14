@@ -57,6 +57,7 @@ pnpm install
 ```
 
 This will install all dependencies for the monorepo, including:
+
 - Root dependencies
 - API app dependencies
 - Web app dependencies
@@ -121,6 +122,7 @@ DIRECT_URL=postgresql://postgres:[YOUR-PASSWORD]@db.[PROJECT-REF].supabase.co:54
 ```
 
 **Important:**
+
 - `DATABASE_URL` uses port **6543** (PgBouncer connection pooling) - for queries
 - `DIRECT_URL` uses port **5432** (direct connection) - for migrations
 - Replace `[YOUR-PASSWORD]` with your database password
@@ -193,6 +195,7 @@ pnpm --filter @repo/database db:generate
 ```
 
 This command:
+
 - Reads the Prisma schema
 - Generates the Prisma Client
 - Creates TypeScript types
@@ -205,12 +208,14 @@ pnpm --filter @repo/database db:migrate:dev
 ```
 
 This will:
+
 - Create a migration file in `packages/database/prisma/migrations/`
 - Apply the migration to your database
 - Create the necessary tables
 
 **Migration Output:**
-```
+
+```bash
 ✔ Generated Prisma Client
 ✔ Created migration: 20260209120903_initial_migration
 ✔ Applied migration: 20260209120903_initial_migration
@@ -225,6 +230,7 @@ pnpm --filter @repo/database db:studio
 ```
 
 This opens a web interface at `http://localhost:5555` where you can:
+
 - View tables
 - Browse data
 - Edit records
@@ -239,11 +245,12 @@ pnpm --filter @repo/database db:seed:dev
 ```
 
 This runs the development seed script which may include:
+
 - Test users
 - Sample data
 - Initial configuration
 
-## Supabase Configuration
+## Supabase Configuration :)
 
 ### 1. Create Supabase Project
 
@@ -287,6 +294,7 @@ pnpm supabase login
 ```
 
 This will:
+
 - Open your browser for authentication
 - Store your access token locally
 - Allow you to generate types from your project
@@ -301,6 +309,7 @@ pnpm dlx supabase gen types typescript --project-id YOUR_PROJECT_ID > packages/t
 ```
 
 **Important:**
+
 - Replace `YOUR_PROJECT_ID` with your actual Supabase project ID
 - You can find your Project ID in **Project Settings** → **General**
 - This command reads your database schema and generates TypeScript types
@@ -343,9 +352,10 @@ pnpm dev
 ```
 
 This starts:
-- **API Server**: http://localhost:3000
-- **Web App**: http://localhost:3001
-- **API Docs**: http://localhost:3000/docs
+
+- **API Server**: <http://localhost:3000>
+- **Web App**: <http://localhost:3001>
+- **API Docs**: <http://localhost:3000/docs>
 
 ### Individual Apps
 
@@ -387,21 +397,25 @@ pnpm --filter web start
 ### Making Schema Changes
 
 1. **Edit Schema**
+
    ```bash
    # Edit packages/database/prisma/schema.prisma
    ```
 
 2. **Create Migration**
+
    ```bash
    pnpm --filter @repo/database db:migrate:dev
    ```
 
 3. **Regenerate Client**
+
    ```bash
    pnpm --filter @repo/database db:generate
    ```
 
 4. **Update Types**
+
    ```bash
    # Regenerate Prisma types (auto-generated)
    pnpm --filter @repo/database db:generate
@@ -416,16 +430,19 @@ pnpm --filter web start
 ### Adding New Routes
 
 1. **Create Route File**
+
    ```bash
    # Create apps/api/src/routes/v1/your-resource/actions.ts
    ```
 
 2. **Define Schema**
+
    ```typescript
    // Use @hono/zod-openapi for OpenAPI schemas
    ```
 
 3. **Restart Dev Server**
+
    ```bash
    # Routes are auto-loaded on restart
    ```
@@ -469,6 +486,7 @@ pnpm check-types
 **Problem:** Cannot connect to database
 
 **Solutions:**
+
 1. Verify `DATABASE_URL` and `DIRECT_URL` are correct
 2. Check database password is correct
 3. Verify Supabase project is active
@@ -480,6 +498,7 @@ pnpm check-types
 **Problem:** Migration fails
 
 **Solutions:**
+
 1. Check migration SQL for syntax errors
 2. Verify database user has migration permissions
 3. Check for conflicting migrations
@@ -490,6 +509,7 @@ pnpm check-types
 **Problem:** Types not available
 
 **Solutions:**
+
 1. Run: `pnpm --filter @repo/database db:generate`
 2. Check `schema.prisma` for syntax errors
 3. Verify Prisma is installed: `pnpm list @prisma/client`
@@ -499,6 +519,7 @@ pnpm check-types
 **Problem:** Variables undefined
 
 **Solutions:**
+
 1. Verify file name: `.env.${NODE_ENV}` (e.g., `.env.development`)
 2. Check `NODE_ENV` is set correctly
 3. Restart dev server after changes
@@ -509,11 +530,15 @@ pnpm check-types
 **Problem:** Port 3000 or 3001 already in use
 
 **Solutions:**
+
 1. Change port in `.env.development`:
+
    ```env
    PORT=3002  # For API
    ```
+
 2. Or kill process using port:
+
    ```bash
    # Find process
    lsof -i :3000
@@ -526,6 +551,7 @@ pnpm check-types
 **Problem:** Authentication not working
 
 **Solutions:**
+
 1. Verify Supabase URLs and keys are correct
 2. Check redirect URLs match Supabase configuration
 3. Verify OAuth providers are configured (if using)
@@ -537,6 +563,7 @@ pnpm check-types
 **Problem:** TypeScript errors
 
 **Solutions:**
+
 1. Regenerate Prisma client: `pnpm --filter @repo/database db:generate`
 2. Regenerate Supabase types: `pnpm dlx supabase gen types typescript --project-id YOUR_PROJECT_ID > packages/types/src/types.ts`
 3. Rebuild packages: `pnpm build`
@@ -548,6 +575,7 @@ pnpm check-types
 **Problem:** Cannot generate Supabase types
 
 **Solutions:**
+
 1. Ensure you're logged in: `pnpm supabase login`
 2. Verify Project ID is correct (find in Supabase dashboard → Project Settings → General)
 3. Check you have access to the project
@@ -559,7 +587,7 @@ pnpm check-types
 After setup is complete:
 
 1. **Read Authentication Docs**: See [AUTH.md](./AUTH.md) for auth system details
-2. **Explore API**: Visit http://localhost:3000/docs for API documentation
+2. **Explore API**: Visit <http://localhost:3000/docs> for API documentation
 3. **Customize**: Start customizing the boilerplate for your needs
 4. **Deploy**: Follow deployment guides for your hosting platform
 
