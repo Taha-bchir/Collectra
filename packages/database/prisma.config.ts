@@ -24,8 +24,16 @@ export default defineConfig({
   schema: schemaPath,
   migrations: { path: migrationsPath },
   engine: "classic",
-  datasource: {
-    url: env("DATABASE_URL"),
-    directUrl: env("DIRECT_URL"),
-  },
+  // Only configure datasource when DATABASE_URL is present.
+  // During `pnpm install` on Vercel's web project, DATABASE_URL is not set
+  // because the frontend doesn't need it. `prisma generate` only needs the
+  // schema file, not a live DB connection.
+  ...(process.env.DATABASE_URL
+    ? {
+        datasource: {
+          url: env("DATABASE_URL"),
+          directUrl: env("DIRECT_URL"),
+        },
+      }
+    : {}),
 });

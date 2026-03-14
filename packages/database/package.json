@@ -27,7 +27,7 @@
     "db:reset:dev": "dotenv -e ../../.env.development -- prisma migrate reset --force -- --environment development",
     "db:resolve:applied:dev": "dotenv -e ../../.env.development -- prisma migrate resolve --applied 20251208145759_make_negotiation_relations_many_to_one",
     "db:status:dev": "dotenv -e ../../.env.development -- prisma migrate status",
-    "postinstall": "pnpm run db:generate",
+    "postinstall": "prisma generate",
     "build": "tsc && tsc-alias",
     "dev": "tsc --watch"
   },
