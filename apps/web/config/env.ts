@@ -20,20 +20,20 @@ const required = (name: string, devFallback?: string): string => {
   return value
 }
 
-/** API base URL for the backend (no trailing slash). Required. */
-export function getApiBaseUrl(): string {
-  return required('NEXT_PUBLIC_API_URL', 'http://localhost:3000').replace(/\/$/, '')
-}
+// /** API base URL for the backend (no trailing slash). Required. */
+// export function getApiBaseUrl(): string {
+//   return required('NEXT_PUBLIC_API_URL', 'http://localhost:3000').replace(/\/$/, '')
+// }
 
-/** LocalStorage key for auth state. Required. Must be unique per app/deployment. */
-export function getAuthStorageKey(): string {
-  return required('NEXT_PUBLIC_APP_AUTH_STORAGE_KEY', 'app.auth')
-}
+// /** LocalStorage key for auth state. Required. Must be unique per app/deployment. */
+// export function getAuthStorageKey(): string {
+//   return required('NEXT_PUBLIC_APP_AUTH_STORAGE_KEY', 'app.auth')
+// }
 
-/** LocalStorage key for user preferences. Required. Must be unique per app/deployment. */
-export function getPreferencesStorageKey(): string {
-  return required('NEXT_PUBLIC_APP_PREFERENCES_STORAGE_KEY', 'app.preferences')
-}
+// /** LocalStorage key for user preferences. Required. Must be unique per app/deployment. */
+// export function getPreferencesStorageKey(): string {
+//   return required('NEXT_PUBLIC_APP_PREFERENCES_STORAGE_KEY', 'app.preferences')
+// }
 
 /** Default theme. Required. One of: light | dark | system */
 export function getDefaultTheme(): 'light' | 'dark' | 'system' {
