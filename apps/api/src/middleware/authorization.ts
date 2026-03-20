@@ -24,6 +24,8 @@ const PROTECTED_PATTERNS = [
   '/api/v1/debts/*',
   '/api/v1/actions',
   '/api/v1/actions/*',
+  '/api/v1/stats',
+  '/api/v1/stats/*',
   '/api/v1/authentication/reset-password',
   '/api/v1/test-tenant',
   '/api/v1/test-tenant/*',
@@ -36,6 +38,7 @@ const TENANT_SCOPED_PREFIXES = [
   '/api/v1/campaigns',
   '/api/v1/debts',
   '/api/v1/actions',
+  '/api/v1/stats',
   '/api/v1/test-tenant',
 ] as const
 
