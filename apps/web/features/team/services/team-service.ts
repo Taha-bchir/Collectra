@@ -9,7 +9,6 @@ import type {
   TeamPermissions,
 } from '@repo/types'
 import { createCookieAuthApiClient, ApiError } from '@/lib/api-client'
-import { getApiBaseUrl } from '@/config/env'
 import { AUTH_ROUTES } from '@/features/auth/services/auth-service'
 
 export type {
@@ -30,7 +29,7 @@ export const TEAM_ROUTES = {
   acceptInvite: '/api/v1/invitations/accept',
 } as const
 
-const baseURL = getApiBaseUrl()
+const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, '')
 
 let teamClient: ReturnType<typeof createCookieAuthApiClient> | null = null
 

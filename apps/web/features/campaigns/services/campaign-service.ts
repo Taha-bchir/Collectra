@@ -1,7 +1,6 @@
 import axios from 'axios'
 import type { CampaignDetails, CampaignImportResult, CampaignSummary } from '@repo/types'
 
-import { getApiBaseUrl } from '@/config/env'
 import { AUTH_ROUTES } from '@/features/auth/services/auth-service'
 import { ApiError, createCookieAuthApiClient } from '@/lib/api-client'
 
@@ -32,7 +31,7 @@ export const CAMPAIGN_ROUTES = {
   debtPersonalLink: (debtId: string) => `/api/v1/debts/${debtId}/personal-link`,
 } as const
 
-const baseURL = getApiBaseUrl()
+const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, '')
 
 let campaignsClient: ReturnType<typeof createCookieAuthApiClient> | null = null
 

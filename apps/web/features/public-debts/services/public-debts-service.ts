@@ -1,6 +1,5 @@
 import axios from 'axios'
 
-import { getApiBaseUrl } from '@/config/env'
 import { ApiError } from '@/lib/api-client'
 
 export type PublicDebtView = {
@@ -17,7 +16,7 @@ export type PublicDebtView = {
   }
 }
 
-const baseURL = getApiBaseUrl().replace(/\/$/, '')
+const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, '')
 
 const client = axios.create({
   baseURL,

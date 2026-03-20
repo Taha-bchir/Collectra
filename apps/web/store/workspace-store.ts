@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import axios from "axios";
 import { createCookieAuthApiClient, ApiError } from "@/lib/api-client";
-import { getApiBaseUrl } from "@/config/env";
 import { AUTH_ROUTES } from "@/features/auth/services/auth-service";
 import {
   WORKSPACE_ROUTES,
@@ -22,7 +21,7 @@ export interface WorkspaceState {
   ensureWorkspaceSelected: () => Promise<void>;
 }
 
-const baseURL = getApiBaseUrl();
+const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, "");
 
 let workspaceClient: ReturnType<typeof createCookieAuthApiClient> | null = null;
 

@@ -2,7 +2,6 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import axios from 'axios'
 import type { Profile } from '@/lib/db-types'
-import { getAuthStorageKey, getApiBaseUrl } from '@/config/env'
 import { createCookieAuthApiClient, ApiError } from '@/lib/api-client'
 import type { AxiosInstance } from 'axios'
 import {
@@ -35,8 +34,8 @@ export interface AuthState {
   handleGoogleTokens: (accessToken: string, refreshToken?: string) => Promise<void>
 }
 
-const STORAGE_KEY = getAuthStorageKey()
-const baseURL = getApiBaseUrl()
+const STORAGE_KEY = process.env.NEXT_PUBLIC_APP_AUTH_STORAGE_KEY!
+const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, '')
 
 type PersistedAuthState = Pick<AuthState, 'profile'>
 
