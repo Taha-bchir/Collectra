@@ -10,6 +10,7 @@ import type {
   CampaignSummary,
 } from '@repo/types'
 import { HTTPException } from 'hono/http-exception'
+import { randomUUID } from 'node:crypto'
 
 const STATUS_MAPPING: Record<string, DebtStatus> = {
   imported: DebtStatus.IMPORTED,
@@ -208,65 +209,185 @@ export class CampaignsService {
           },
         })
 
-        let importedRows = 0
+        const emails = Array.from(
+          new Set(parsed.rows.map((row) => row.email).filter((value): value is string => !!value))
+        )
+        const phones = Array.from(
+          new Set(parsed.rows.map((row) => row.phone).filter((value): value is string => !!value))
+        )
+
+        const identityFilters: Prisma.ClientWhereInput[] = [
+          ...emails.map((email) => ({
+            email: {
+              equals: email,
+              mode: 'insensitive' as const,
+            },
+          })),
+          ...phones.map((phone) => ({ phone })),
+        ]
+
+        const existingClients =
+          identityFilters.length > 0
+            ? await tx.client.findMany({
+                where: {
+                  workspaceId,
+                  OR: identityFilters,
+                },
+                select: {
+                  id: true,
+                  email: true,
+                  phone: true,
+                  createdAt: true,
+                },
+                orderBy: {
+                  createdAt: 'asc',
+                },
+              })
+            : []
+
+        const existingClientByEmail = new Map<string, string>()
+        const existingClientByPhone = new Map<string, string>()
+
+        for (const client of existingClients) {
+          if (client.email) {
+            const emailKey = client.email.toLowerCase()
+            if (!existingClientByEmail.has(emailKey)) {
+              existingClientByEmail.set(emailKey, client.id)
+            }
+          }
+
+          if (client.phone && !existingClientByPhone.has(client.phone)) {
+            existingClientByPhone.set(client.phone, client.id)
+          }
+        }
+
+        const pendingClients: Array<{
+          id: string
+          fullName: string
+          email: string | null
+          phone: string | null
+          address: string | null
+        }> = []
+
+        const pendingClientByEmail = new Map<string, number>()
+        const pendingClientByPhone = new Map<string, number>()
+
+        const debtRows: Prisma.DebtRecordCreateManyInput[] = []
 
         for (const row of parsed.rows) {
-          const identityFilters: Prisma.ClientWhereInput[] = []
+          const emailKey = row.email?.toLowerCase() ?? null
+          const phoneKey = row.phone
 
-          if (row.email) {
-            identityFilters.push({
-              email: {
-                equals: row.email,
-                mode: 'insensitive' as const,
-              },
-            })
+          let clientId: string | null = null
+
+          if (emailKey) {
+            clientId = existingClientByEmail.get(emailKey) ?? null
           }
 
-          if (row.phone) {
-            identityFilters.push({ phone: row.phone })
+          if (!clientId && phoneKey) {
+            clientId = existingClientByPhone.get(phoneKey) ?? null
           }
 
-          const existingClient =
-            identityFilters.length > 0
-              ? await tx.client.findFirst({
-                  where: {
-                    workspaceId,
-                    OR: identityFilters,
-                  },
-                  orderBy: { createdAt: 'asc' },
-                  select: { id: true },
-                })
-              : null
+          if (!clientId) {
+            let pendingIndex: number | undefined
 
-          const client =
-            existingClient ||
-            (await tx.client.create({
-              data: {
-                workspaceId,
+            if (emailKey) {
+              pendingIndex = pendingClientByEmail.get(emailKey)
+            }
+
+            if (pendingIndex === undefined && phoneKey) {
+              pendingIndex = pendingClientByPhone.get(phoneKey)
+            }
+
+            if (pendingIndex === undefined) {
+              const newClientId = randomUUID()
+
+              pendingClients.push({
+                id: newClientId,
                 fullName: row.fullName,
                 email: row.email,
                 phone: row.phone,
                 address: row.address,
-              },
-              select: { id: true },
-            }))
+              })
 
-          await tx.debtRecord.create({
-            data: {
-              campaignId: campaign.id,
-              clientId: client.id,
-              amount: row.amount,
-              dueDate: row.dueDate,
-              status: row.status,
-            },
+              pendingIndex = pendingClients.length - 1
+            } else {
+              const pendingClient = pendingClients[pendingIndex]
+
+              if (!pendingClient) {
+                throw new HTTPException(500, { message: 'Unable to resolve CSV client identity' })
+              }
+
+              if (!pendingClient.email && row.email) {
+                pendingClient.email = row.email
+              }
+
+              if (!pendingClient.phone && row.phone) {
+                pendingClient.phone = row.phone
+              }
+
+              if (!pendingClient.address && row.address) {
+                pendingClient.address = row.address
+              }
+            }
+
+            if (emailKey) {
+              pendingClientByEmail.set(emailKey, pendingIndex)
+            }
+
+            if (phoneKey) {
+              pendingClientByPhone.set(phoneKey, pendingIndex)
+            }
+
+            const pendingClient = pendingClients[pendingIndex]
+
+            if (!pendingClient) {
+              throw new HTTPException(500, { message: 'Unable to resolve CSV client identity' })
+            }
+
+            clientId = pendingClient.id
+          }
+
+          debtRows.push({
+            id: randomUUID(),
+            campaignId: campaign.id,
+            clientId,
+            amount: row.amount,
+            dueDate: row.dueDate,
+            status: row.status,
           })
+        }
 
-          importedRows += 1
+        for (const chunk of chunkArray(pendingClients, 500)) {
+          if (!chunk.length) {
+            continue
+          }
+
+          await tx.client.createMany({
+            data: chunk.map((client) => ({
+              id: client.id,
+              workspaceId,
+              fullName: client.fullName,
+              email: client.email,
+              phone: client.phone,
+              address: client.address,
+            })),
+          })
+        }
+
+        for (const chunk of chunkArray(debtRows, 500)) {
+          if (!chunk.length) {
+            continue
+          }
+
+          await tx.debtRecord.createMany({
+            data: chunk,
+          })
         }
 
         return {
           campaign,
-          importedRows,
+          importedRows: debtRows.length,
         }
       },
       {
@@ -617,4 +738,19 @@ function isEmptyRow(row: string[]) {
 
 function stripBom(value: string) {
   return value.replace(/^\uFEFF/, '')
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  if (!items.length) {
+    return []
+  }
+
+  const safeSize = Math.max(1, Math.floor(size))
+  const chunks: T[][] = []
+
+  for (let index = 0; index < items.length; index += safeSize) {
+    chunks.push(items.slice(index, index + safeSize))
+  }
+
+  return chunks
 }

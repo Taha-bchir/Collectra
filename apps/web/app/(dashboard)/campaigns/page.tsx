@@ -44,12 +44,31 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback
 }
 
-function formatDate(value: string) {
+function formatDateTime(value: string) {
   return new Date(value).toLocaleString()
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString()
 }
 
 function formatAmount(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatDebtStatus(status: string) {
+  return status
+    .toLowerCase()
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function getDebtStatusVariant(status: string) {
+  if (status === 'PAID') return 'default'
+  if (status === 'OVERDUE_AFTER_PROMISE') return 'destructive'
+  if (status === 'PROMISE_TO_PAY') return 'secondary'
+  return 'outline'
 }
 
 function getStatusVariant(status: CampaignSummary['status']) {
@@ -59,7 +78,7 @@ function getStatusVariant(status: CampaignSummary['status']) {
   return 'secondary'
 }
 
-const DETAILS_PAGE_SIZE = 25
+const DETAILS_PAGE_SIZE = 12
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
@@ -514,7 +533,7 @@ export default function CampaignsPage() {
                         <Badge variant={getStatusVariant(campaign.status)}>{campaign.status}</Badge>
                       </TableCell>
                       <TableCell>{campaign.debtsCount}</TableCell>
-                      <TableCell>{formatDate(campaign.createdAt)}</TableCell>
+                      <TableCell>{formatDateTime(campaign.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="outline"
@@ -567,11 +586,11 @@ export default function CampaignsPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Created</p>
-                  <p>{formatDate(selectedCampaign.createdAt)}</p>
+                  <p>{formatDateTime(selectedCampaign.createdAt)}</p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Updated</p>
-                  <p>{formatDate(selectedCampaign.updatedAt)}</p>
+                  <p>{formatDateTime(selectedCampaign.updatedAt)}</p>
                 </div>
               </div>
 
@@ -597,14 +616,16 @@ export default function CampaignsPage() {
                       <TableBody>
                         {selectedCampaign.debts.map((debt) => (
                           <TableRow key={debt.id}>
-                            <TableCell className="font-medium">{debt.client.fullName}</TableCell>
-                            <TableCell>{debt.client.email || '-'}</TableCell>
-                            <TableCell>{debt.client.phone || '-'}</TableCell>
-                            <TableCell>{debt.client.address || '-'}</TableCell>
-                            <TableCell>{formatAmount(debt.amount)}</TableCell>
+                            <TableCell className="max-w-45 truncate font-medium">{debt.client.fullName}</TableCell>
+                            <TableCell className="max-w-55 truncate">{debt.client.email || '-'}</TableCell>
+                            <TableCell className="whitespace-nowrap">{debt.client.phone || '-'}</TableCell>
+                            <TableCell className="max-w-55 truncate">{debt.client.address || '-'}</TableCell>
+                            <TableCell className="whitespace-nowrap">{formatAmount(debt.amount)}</TableCell>
                             <TableCell>{formatDate(debt.dueDate)}</TableCell>
                             <TableCell>
-                              <Badge variant="outline">{debt.status}</Badge>
+                              <Badge variant={getDebtStatusVariant(debt.status)}>
+                                {formatDebtStatus(debt.status)}
+                              </Badge>
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
