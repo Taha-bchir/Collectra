@@ -136,8 +136,6 @@ model Campaign {
 
   workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   debts        DebtRecord[]
-  invitations  Invitation[]
-  clientTokens ClientToken[]
 }
 
 model Client {
@@ -169,36 +167,10 @@ model DebtRecord {
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
-  clientTokens    ClientToken[]           @relation("DebtToClientTokens")
   paymentPromises PaymentPromise[]
   actionHistory   CustomerActionHistory[]
 
   @@map("Debt")
-}
-
-model Invitation {
-  id         String           @id @default(uuid()) @db.Uuid
-  campaignId String           @db.Uuid
-  email      String
-  role       WorkspaceRole    @default(AGENT)
-  token      String           @unique
-  expiresAt  DateTime
-  status     InvitationStatus @default(PENDING)
-  createdAt  DateTime         @default(now())
-
-  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-}
-
-model ClientToken {
-  id         String   @id @default(uuid()) @db.Uuid
-  campaignId String   @db.Uuid
-  debtId     String   @db.Uuid
-  token      String   @unique
-  expiresAt  DateTime @default(dbgenerated("now() + interval '7 days'"))
-  createdAt  DateTime @default(now())
-
-  campaign Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  debt     DebtRecord @relation("DebtToClientTokens", fields: [debtId], references: [id], onDelete: Cascade)
 }
 
 model PaymentPromise {

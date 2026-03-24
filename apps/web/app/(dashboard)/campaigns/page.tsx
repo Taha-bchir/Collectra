@@ -192,7 +192,9 @@ export default function CampaignsPage() {
       })
 
       setLastImportResult(result)
-      toast.success(`Campaign imported: ${result.stats.importedRows} debt(s) inserted`)
+      toast.success(
+        `Campaign imported: ${result.stats.importedRows} debt(s) inserted. Emails sent: ${result.emailStats.sent}, failed: ${result.emailStats.failed}, skipped: ${result.emailStats.skipped}`
+      )
 
       const fallbackCampaign: CampaignSummary = {
         id: result.campaign.id,
@@ -489,6 +491,9 @@ export default function CampaignsPage() {
                 Campaign <span className="font-medium text-foreground">{lastImportResult.campaign.name}</span>:
                 {' '}
                 {lastImportResult.stats.importedRows} imported / {lastImportResult.stats.skippedRows} skipped.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Emails: {lastImportResult.emailStats.sent} sent / {lastImportResult.emailStats.failed} failed / {lastImportResult.emailStats.skipped} skipped.
               </p>
             </div>
           )}

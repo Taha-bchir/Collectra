@@ -62,6 +62,12 @@ const CampaignImportResponseSchema = z.object({
       importedRows: z.number().int().nonnegative(),
       skippedRows: z.number().int().nonnegative(),
     }),
+    emailStats: z.object({
+      attempted: z.number().int().nonnegative(),
+      sent: z.number().int().nonnegative(),
+      failed: z.number().int().nonnegative(),
+      skipped: z.number().int().nonnegative(),
+    }),
     skippedRows: z.array(SkippedRowSchema),
     statusMapping: z.record(z.nativeEnum(DebtStatus)),
   }),

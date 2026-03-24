@@ -146,6 +146,7 @@ handler.openapi(
             createdAt: result.campaign.createdAt.toISOString(),
           },
           stats: result.stats,
+          emailStats: result.emailStats,
           skippedRows: result.skippedRows,
           statusMapping: result.statusMapping,
         },

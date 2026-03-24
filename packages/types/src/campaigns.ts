@@ -52,6 +52,12 @@ export type CampaignImportResult<TDate = string, TDebtStatus = string> = {
     importedRows: number
     skippedRows: number
   }
+  emailStats: {
+    attempted: number
+    sent: number
+    failed: number
+    skipped: number
+  }
   skippedRows: CampaignImportSkippedRow[]
   statusMapping: Record<string, TDebtStatus>
 }

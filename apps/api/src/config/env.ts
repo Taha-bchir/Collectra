@@ -16,12 +16,23 @@ if (fs.existsSync(envFile)) {
   dotenv.config({ path: fallbackEnvFile })
 }
 
+const emptyToUndefined = (value: unknown) => {
+  if (typeof value === 'string' && value.trim() === '') {
+    return undefined
+  }
+  return value
+}
+
+const optionalString = z.preprocess(emptyToUndefined, z.string().optional())
+const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional())
+const optionalEmail = z.preprocess(emptyToUndefined, z.string().email().optional())
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'staging']).default('development'),
   PORT: z.string().default('3000'),
-  API_URL: z.string().optional(),
-  WEB_URL: z.string().optional(),
-  ALLOWED_ORIGINS: z.string().optional(), // Comma-separated list of allowed origins for CORS
+  API_URL: optionalString,
+  WEB_URL: optionalString,
+  ALLOWED_ORIGINS: optionalString, // Comma-separated list of allowed origins for CORS
 
   // Database (Supabase via Prisma)
   DATABASE_URL: z.string().url(),
@@ -30,14 +41,19 @@ const envSchema = z.object({
   // Supabase (Auth/Storage usage)
   SUPABASE_URL: z.string(),
   SUPABASE_ANON_KEY: z.string(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
-  SUPABASE_EMAIL_REDIRECT_URL: z.string().url().optional(),
-  SUPABASE_RESET_REDIRECT_URL: z.string().url().optional(),
-  SUPABASE_OAUTH_REDIRECT_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: optionalString,
+  SUPABASE_EMAIL_REDIRECT_URL: optionalUrl,
+  SUPABASE_RESET_REDIRECT_URL: optionalUrl,
+  SUPABASE_OAUTH_REDIRECT_URL: optionalUrl,
+
+  // Brevo email (used for CSV import notifications)
+  BREVO_API_KEY: optionalString,
+  BREVO_SENDER_EMAIL: optionalEmail,
+  BREVO_SENDER_NAME: optionalString,
 
   // Security
-  JWT_SECRET: z.string().optional(),
-  COOKIE_SECRET: z.string().optional(),
+  JWT_SECRET: optionalString,
+  COOKIE_SECRET: optionalString,
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -11,6 +11,8 @@ import type {
 } from '@repo/types'
 import { HTTPException } from 'hono/http-exception'
 import { randomUUID } from 'node:crypto'
+import { logger } from '../utils/logger.js'
+import { BrevoEmailService } from './brevo-email.js'
 
 const STATUS_MAPPING: Record<string, DebtStatus> = {
   imported: DebtStatus.IMPORTED,
@@ -273,6 +275,14 @@ export class CampaignsService {
         const pendingClientByPhone = new Map<string, number>()
 
         const debtRows: Prisma.DebtRecordCreateManyInput[] = []
+        const debtEmailNotifications: Array<{
+          toEmail: string
+          fullName: string
+          campaignName: string
+          amount: number
+          dueDate: Date
+          debtId: string
+        }> = []
 
         for (const row of parsed.rows) {
           const emailKey = row.email?.toLowerCase() ?? null
@@ -348,14 +358,27 @@ export class CampaignsService {
             clientId = pendingClient.id
           }
 
+          const debtId = randomUUID()
+
           debtRows.push({
-            id: randomUUID(),
+            id: debtId,
             campaignId: campaign.id,
             clientId,
             amount: row.amount,
             dueDate: row.dueDate,
             status: row.status,
           })
+
+          if (row.email) {
+            debtEmailNotifications.push({
+              toEmail: row.email,
+              fullName: row.fullName,
+              campaignName: campaign.name,
+              amount: row.amount,
+              dueDate: row.dueDate,
+              debtId,
+            })
+          }
         }
 
         for (const chunk of chunkArray(pendingClients, 500)) {
@@ -388,6 +411,7 @@ export class CampaignsService {
         return {
           campaign,
           importedRows: debtRows.length,
+          debtEmailNotifications,
         }
       },
       {
@@ -397,6 +421,49 @@ export class CampaignsService {
       }
     )
 
+    let emailStats = {
+      attempted: 0,
+      sent: 0,
+      failed: 0,
+      skipped: importResult.debtEmailNotifications.length,
+    }
+
+    try {
+      const emailService = new BrevoEmailService()
+      const emailResult = await emailService.sendCsvImportedDebtEmails(importResult.debtEmailNotifications)
+      emailStats = emailResult
+
+      if (emailResult.attempted > 0 || emailResult.skipped > 0) {
+        logger.info(
+          {
+            campaignId: importResult.campaign.id,
+            attempted: emailResult.attempted,
+            sent: emailResult.sent,
+            failed: emailResult.failed,
+            skipped: emailResult.skipped,
+            scope: 'campaigns.importCsv.emails',
+          },
+          'Completed CSV import email dispatch'
+        )
+      }
+    } catch (error) {
+      emailStats = {
+        attempted: importResult.debtEmailNotifications.length,
+        sent: 0,
+        failed: importResult.debtEmailNotifications.length,
+        skipped: 0,
+      }
+
+      logger.warn(
+        {
+          campaignId: importResult.campaign.id,
+          error,
+          scope: 'campaigns.importCsv.emails',
+        },
+        'CSV import completed but email dispatch failed'
+      )
+    }
+
     return {
       campaign: importResult.campaign,
       stats: {
@@ -404,6 +471,7 @@ export class CampaignsService {
         importedRows: importResult.importedRows,
         skippedRows: parsed.skippedRows.length,
       },
+      emailStats,
       skippedRows: parsed.skippedRows,
       statusMapping: STATUS_MAPPING,
     }

@@ -1,0 +1,215 @@
+\chapter{Requirements Analysis and System Specification}
+\label{chap:requirements-analysis}
+
+\section*{Introduction}
+This chapter formalizes the business and technical requirements of the Collectra platform. It identifies the stakeholders, defines the functional and non-functional requirements, and describes the system boundaries. It also presents a use-case-oriented view and a conceptual data model extracted from the implementation.
+
+\section{Requirement Elicitation Approach}
+Requirements were consolidated from the following sources:
+\begin{itemize}
+  \item business expectations of debt follow-up teams;
+  \item implemented API contracts and route schemas;
+  \item validated operational flows (CSV campaign import, workspace invitation, customer public links);
+  \item current database schema and domain constraints.
+\end{itemize}
+
+The analysis followed an iterative process where requirements were refined in parallel with implementation and testing.
+
+\section{Stakeholders and Actors}
+\subsection{Primary Stakeholders}
+\begin{itemize}
+  \item \textbf{Collection agency management}: expects traceability, governance, and productivity improvements;
+  \item \textbf{Operational collection team}: needs fast access to customer/debt data and clear action history;
+  \item \textbf{End customers}: access debt details through secure personal links without staff account creation;
+  \item \textbf{Technical maintainers}: require maintainability, observability, and secure architecture.
+\end{itemize}
+
+\subsection{System Actors}
+\begin{itemize}
+  \item \textbf{Workspace Owner / Manager}: manages members, invitations, and workspace-level organization;
+  \item \textbf{Agent}: handles debt follow-up operations and records actions;
+  \item \textbf{Customer (public actor)}: consults debt information using a signed, time-limited tokenized link;
+  \item \textbf{Authentication Provider}: external identity provider used by staff authentication flow.
+\end{itemize}
+
+\section{Functional Requirements}
+\subsection{Authentication and Access Control}
+\begin{itemize}
+  \item FR-01: The system shall authenticate staff users through a secure session/token mechanism.
+  \item FR-02: The system shall enforce workspace-scoped access for all private business operations.
+  \item FR-03: The system shall reject access when workspace context is missing or unauthorized.
+\end{itemize}
+
+\subsection{Workspace and Team Management}
+\begin{itemize}
+  \item FR-04: The system shall allow manager-level users to invite members by email.
+  \item FR-05: The system shall assign and enforce roles (OWNER, MANAGER, AGENT).
+  \item FR-06: The system shall maintain invitation status lifecycle (pending, accepted, expired, revoked).
+\end{itemize}
+
+\subsection{Campaign and Debt Management}
+\begin{itemize}
+  \item FR-07: The system shall allow creating and listing campaigns in the active workspace.
+  \item FR-08: The system shall support CSV import to create campaign debts in batch mode.
+  \item FR-09: The system shall validate imported rows and return skipped rows with explicit reasons.
+  \item FR-10: The system shall create or reuse customer records during import to reduce duplication.
+  \item FR-11: The system shall support debt listing, filtering, creation, update, and detail consultation.
+\end{itemize}
+
+\subsection{Action Tracking and Follow-up}
+\begin{itemize}
+  \item FR-12: The system shall record customer/debt action history with timestamps.
+  \item FR-13: The system shall provide action timeline retrieval per debt and per customer.
+  \item FR-14: The system shall support debt status transitions and promise-related updates.
+\end{itemize}
+
+\subsection{Public Customer Access}
+\begin{itemize}
+  \item FR-15: The system shall generate personal debt links for staff users.
+  \item FR-16: The personal link token shall be signed and time-limited.
+  \item FR-17: Public debt consultation shall not require customer login.
+  \item FR-18: Invalid, tampered, or expired public tokens shall be rejected.
+\end{itemize}
+
+\section{Non-Functional Requirements}
+\subsection{Security}
+\begin{itemize}
+  \item NFR-01: Enforce tenant isolation at route and service levels.
+  \item NFR-02: Use HTTP-only cookie strategy and secure token handling for private sessions.
+  \item NFR-03: Sign public customer tokens with a server-side secret and validate issuer/audience.
+  \item NFR-04: Prevent unauthorized role escalation through backend checks.
+\end{itemize}
+
+\subsection{Reliability and Data Integrity}
+\begin{itemize}
+  \item NFR-05: Execute CSV import persistence inside database transactions.
+  \item NFR-06: Keep invalid CSV rows isolated from valid rows to avoid global import failure.
+  \item NFR-07: Preserve referential consistency between workspace, campaign, client, and debt entities.
+\end{itemize}
+
+\subsection{Maintainability and Evolvability}
+\begin{itemize}
+  \item NFR-08: Keep clear separation between API routes, services, schemas, and data access.
+  \item NFR-09: Use shared typing and schema validation to reduce contract drift.
+  \item NFR-10: Keep modules extensible for future analytics and integrations.
+\end{itemize}
+
+\subsection{Performance and Usability}
+\begin{itemize}
+  \item NFR-11: Support operational bulk imports with controlled timeout/transaction boundaries.
+  \item NFR-12: Provide responsive dashboard interactions for daily collection operations.
+  \item NFR-13: Return explicit API error messages for user-correctable failures.
+\end{itemize}
+
+\section{Main Use Cases}
+\subsection{UC-01: Import CSV as Campaign}
+\textbf{Actor:} Manager or Agent
+
+\textbf{Preconditions:}
+\begin{itemize}
+  \item User is authenticated;
+  \item Active workspace is selected;
+  \item A valid CSV file is provided.
+\end{itemize}
+
+\textbf{Main Scenario:}
+\begin{enumerate}
+  \item User uploads a CSV file with optional campaign metadata.
+  \item System validates file format and parses rows.
+  \item System resolves headers and validates row-level fields.
+  \item System creates campaign and inserts valid debt rows inside one transaction.
+  \item System returns import statistics and skipped-row reasons.
+\end{enumerate}
+
+\textbf{Postconditions:}
+\begin{itemize}
+  \item Campaign is created in workspace;
+  \item Valid debts are persisted;
+  \item Import trace is available through returned statistics.
+\end{itemize}
+
+\subsection{UC-02: Generate Customer Personal Link}
+\textbf{Actor:} Manager or Agent
+
+\textbf{Preconditions:}
+\begin{itemize}
+  \item User is authenticated and authorized in workspace;
+  \item Target debt exists in the same workspace.
+\end{itemize}
+
+\textbf{Main Scenario:}
+\begin{enumerate}
+  \item User requests personal link from debt row.
+  \item System verifies ownership constraints.
+  \item System signs a JWT token containing debt identity and expiration.
+  \item System returns a ready-to-share URL.
+\end{enumerate}
+
+\textbf{Postconditions:}
+\begin{itemize}
+  \item Customer can consult debt via public route until token expiry.
+\end{itemize}
+
+\subsection{UC-03: Consult Debt Through Public Link}
+\textbf{Actor:} Customer
+
+\textbf{Preconditions:}
+\begin{itemize}
+  \item Customer has a generated link.
+\end{itemize}
+
+\textbf{Main Scenario:}
+\begin{enumerate}
+  \item Customer opens URL containing token.
+  \item System validates JWT signature and claims.
+  \item System retrieves debt/customer public payload.
+  \item System displays debt details to customer.
+\end{enumerate}
+
+\textbf{Alternative:}
+\begin{itemize}
+  \item If token is invalid or expired, system returns an error state and denies data access.
+\end{itemize}
+
+\section{Business Rules and Constraints}
+\begin{itemize}
+  \item BR-01: A business operation must always run inside an active workspace context.
+  \item BR-02: A debt is always attached to exactly one campaign and one client.
+  \item BR-03: Campaign and client must belong to the same workspace.
+  \item BR-04: Invitation role assignment cannot exceed permitted manager policy.
+  \item BR-05: Public debt access is token-driven and bounded by token expiration.
+  \item BR-06: Import rows missing required fields (full name, amount, due date) are rejected.
+\end{itemize}
+
+\section{Conceptual Domain Model (Textual)}
+The core domain entities and relationships are:
+\begin{itemize}
+  \item \textbf{Workspace} organizes operational data boundaries.
+  \item \textbf{User} belongs to one or multiple workspaces through \textbf{WorkspaceMember}.
+  \item \textbf{WorkspaceInvitation} manages team onboarding flow.
+  \item \textbf{Campaign} belongs to one workspace and groups debt records.
+  \item \textbf{Client} belongs to one workspace and can own multiple debts.
+  \item \textbf{DebtRecord} links a client to a campaign with amount, due date, and status.
+  \item \textbf{PaymentPromise} tracks commitment made on a debt.
+  \item \textbf{CustomerActionHistory} stores timeline events at customer/debt level.
+\end{itemize}
+
+\section{Prioritization of Requirements}
+For delivery planning, requirements can be grouped as follows:
+\begin{itemize}
+  \item \textbf{Must-have}: authentication, workspace isolation, debt/campaign CRUD, CSV import, action timeline, personal links.
+  \item \textbf{Should-have}: improved operational analytics and richer reporting views.
+  \item \textbf{Could-have}: external ERP integrations and advanced multi-region deployment options.
+\end{itemize}
+
+\section{Acceptance Criteria Snapshot}
+\begin{itemize}
+  \item AC-01: Private endpoints reject requests without valid workspace context.
+  \item AC-02: CSV import returns deterministic stats: total rows, imported rows, skipped rows.
+  \item AC-03: Personal link generation returns URL, token, and expiration timestamp.
+  \item AC-04: Public debt endpoint returns data only for valid unexpired token.
+  \item AC-05: Invitation creation is rejected for unauthorized actor roles.
+\end{itemize}
+
+\section*{Conclusion}
+This chapter translated the project scope into explicit requirements and operational constraints. It established who uses the system, what services must be delivered, and which quality properties must be guaranteed. The next chapter can build on this baseline to present detailed system design (architecture views, sequence diagrams, and schema-level modeling).
