@@ -1,0 +1,10 @@
+fullName,email,phone,address,amount,dueDate,status
+Client 1,tahabchir1@gmail.com,+21650000001,Tunis,120.50,2026-04-01,imported
+Client 2,tahabchir2@gmail.com,+21650000002,Sfax,245.00,2026-04-02,new
+Client 3,tahabchir3@gmail.com,+21650000003,Sousse,89.99,2026-04-03,notified
+Client 4,tahabchir4@gmail.com,+21650000004,Nabeul,310.75,2026-04-04,sent
+Client 5,tahabchir5@gmail.com,+21650000005,Bizerte,150.00,2026-04-05,promise_to_pay
+Client 6,tahabchir6@gmail.com,+21650000006,Gabes,470.20,2026-04-06,promised
+Client 7,tahabchir7@gmail.com,+21650000007,Kairouan,60.00,2026-04-07,paid
+Client 8,tahabchir8@gmail.com,+21650000008,Monastir,980.10,2026-04-08,overdue
+Client 9,tahabchir9@gmail.com,+21650000009,Mahdia,215.40,2026-04-09,late
