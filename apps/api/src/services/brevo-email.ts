@@ -18,6 +18,7 @@ type SendBulkResult = {
   sent: number
   failed: number
   skipped: number
+  sentDebtIds: string[]
 }
 
 export class BrevoEmailService {
@@ -36,6 +37,7 @@ export class BrevoEmailService {
         sent: 0,
         failed: 0,
         skipped: 0,
+        sentDebtIds: [],
       }
     }
 
@@ -45,18 +47,27 @@ export class BrevoEmailService {
         sent: 0,
         failed: 0,
         skipped: payloads.length,
+        sentDebtIds: [],
       }
     }
 
     const results = await runWithConcurrency(payloads, 8, async (payload) => {
       try {
-        return await this.sendOne(payload)
+        const ok = await this.sendOne(payload)
+        return {
+          debtId: payload.debtId,
+          ok,
+        }
       } catch {
-        return false
+        return {
+          debtId: payload.debtId,
+          ok: false,
+        }
       }
     })
 
-    const sent = results.filter((value) => value).length
+    const sentDebtIds = results.filter((value) => value.ok).map((value) => value.debtId)
+    const sent = sentDebtIds.length
     const failed = results.length - sent
 
     return {
@@ -64,6 +75,7 @@ export class BrevoEmailService {
       sent,
       failed,
       skipped: 0,
+      sentDebtIds,
     }
   }
 

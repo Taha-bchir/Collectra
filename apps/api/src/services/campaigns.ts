@@ -1,5 +1,5 @@
 import type { Prisma } from '@repo/database'
-import { CampaignStatus, DebtStatus, PrismaClient } from '@repo/database'
+import { ActionType, CampaignStatus, DebtStatus, PrismaClient } from '@repo/database'
 import type {
   CampaignDetails,
   CampaignCsvImportInput,
@@ -282,6 +282,7 @@ export class CampaignsService {
           amount: number
           dueDate: Date
           debtId: string
+          customerId: string
         }> = []
 
         for (const row of parsed.rows) {
@@ -377,6 +378,7 @@ export class CampaignsService {
               amount: row.amount,
               dueDate: row.dueDate,
               debtId,
+              customerId: clientId,
             })
           }
         }
@@ -426,12 +428,34 @@ export class CampaignsService {
       sent: 0,
       failed: 0,
       skipped: importResult.debtEmailNotifications.length,
+      sentDebtIds: [] as string[],
     }
 
     try {
       const emailService = new BrevoEmailService()
       const emailResult = await emailService.sendCsvImportedDebtEmails(importResult.debtEmailNotifications)
       emailStats = emailResult
+
+      if (emailResult.sentDebtIds.length > 0) {
+        const sentNotifications = importResult.debtEmailNotifications.filter((notification) =>
+          emailResult.sentDebtIds.includes(notification.debtId)
+        )
+
+        if (sentNotifications.length > 0) {
+          await this.prisma.customerActionHistory.createMany({
+            data: sentNotifications.map((notification) => ({
+              debtId: notification.debtId,
+              customerId: notification.customerId,
+              actionType: ActionType.EMAIL_SENT,
+              metadata: {
+                channel: 'brevo',
+                source: 'csv-import',
+                campaignId: importResult.campaign.id,
+              },
+            })),
+          })
+        }
+      }
 
       if (emailResult.attempted > 0 || emailResult.skipped > 0) {
         logger.info(
@@ -452,6 +476,7 @@ export class CampaignsService {
         sent: 0,
         failed: importResult.debtEmailNotifications.length,
         skipped: 0,
+        sentDebtIds: [],
       }
 
       logger.warn(

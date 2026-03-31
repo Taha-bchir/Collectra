@@ -147,7 +147,7 @@ handler.openapi(
     const uniqueCustomers = new Set<string>()
 
     for (const action of actionHistory) {
-      if (action.actionType === 'EMAIL_SENT') {
+      if (action.actionType === 'EMAIL_SENT' || action.actionType === 'LINK_SENT') {
         stats.sent += 1
       } else if (action.actionType === 'LINK_CLICKED') {
         stats.opened += 1
