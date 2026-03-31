@@ -18,6 +18,22 @@ export type DebtPersonalLinkResult = {
   expiresAt: string
 }
 
+export type CampaignEmailStats = {
+  campaignId: string
+  stats: {
+    sent: number
+    opened: number
+    clicked: number
+    other: number
+  }
+  summary: {
+    total: number
+    uniqueDebts: number
+    uniqueCustomers: number
+  }
+  lastEventAt: string | null
+}
+
 export type GetCampaignByIdOptions = {
   page?: number
   pageSize?: number
@@ -28,6 +44,7 @@ export const CAMPAIGN_ROUTES = {
   listWithSlash: '/api/v1/campaigns/',
   getById: (id: string) => `/api/v1/campaigns/${id}`,
   importCsv: '/api/v1/campaigns/import-csv',
+  emailStats: (id: string) => `/api/v1/campaigns/${id}/email-stats`,
   debtPersonalLink: (debtId: string) => `/api/v1/debts/${debtId}/personal-link`,
 } as const
 
@@ -111,6 +128,12 @@ export async function importCampaignCsv(payload: ImportCampaignCsvPayload): Prom
 export async function getDebtPersonalLink(debtId: string): Promise<DebtPersonalLinkResult> {
   const client = getCampaignsClient()
   const { data } = await client.get<{ data: DebtPersonalLinkResult }>(CAMPAIGN_ROUTES.debtPersonalLink(debtId))
+  return data.data
+}
+
+export async function getCampaignEmailStats(id: string): Promise<CampaignEmailStats> {
+  const client = getCampaignsClient()
+  const { data } = await client.get<{ data: CampaignEmailStats }>(CAMPAIGN_ROUTES.emailStats(id))
   return data.data
 }
 

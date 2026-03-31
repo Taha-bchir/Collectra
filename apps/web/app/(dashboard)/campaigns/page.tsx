@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { CampaignEmailStatsCard } from '@/components/campaign-email-stats'
 import {
   ApiError,
   type CampaignDetails,
@@ -598,6 +599,8 @@ export default function CampaignsPage() {
                   <p>{formatDateTime(selectedCampaign.updatedAt)}</p>
                 </div>
               </div>
+
+              <CampaignEmailStatsCard campaignId={selectedCampaign.id} />
 
               <div className="space-y-2">
                 <p className="font-medium">Imported users and debts</p>
