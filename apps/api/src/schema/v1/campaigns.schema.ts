@@ -190,3 +190,54 @@ export const getCampaignByIdSchema = createRoute({
     },
   },
 })
+
+export const getCampaignEmailStatsSchema = createRoute({
+  method: 'get',
+  path: '/{id}/email-stats',
+  tags: ['campaigns'],
+  summary: 'Get email campaign statistics',
+  description: 'Get email statistics for a campaign including sent, opened, clicked, and other events',
+  request: {
+    params: z.object({
+      id: z.string().uuid(),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Email statistics',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              campaignId: z.string().uuid(),
+              stats: z.object({
+                sent: z.number().int().nonnegative(),
+                opened: z.number().int().nonnegative(),
+                clicked: z.number().int().nonnegative(),
+                other: z.number().int().nonnegative(),
+              }),
+              summary: z.object({
+                total: z.number().int().nonnegative(),
+                uniqueDebts: z.number().int().nonnegative(),
+                uniqueCustomers: z.number().int().nonnegative(),
+              }),
+              lastEventAt: z.string().datetime().nullable(),
+            }),
+          }),
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    403: {
+      description: 'No active workspace',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'Campaign not found',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})

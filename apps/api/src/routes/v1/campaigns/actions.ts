@@ -3,6 +3,7 @@ import { HTTPException } from 'hono/http-exception'
 
 import {
   getCampaignByIdSchema,
+  getCampaignEmailStatsSchema,
   importCampaignCsvSchema,
   listCampaignsSchema,
 } from '../../../schema/v1/index.js'
@@ -89,6 +90,99 @@ handler.openapi(
             address: debt.client.address,
           },
         })),
+      },
+    })
+  })
+)
+
+handler.openapi(
+  getCampaignEmailStatsSchema,
+  withRouteTryCatch('campaigns.emailStats', async (c) => {
+    const workspaceId = requireWorkspaceId(c)
+    const { id: campaignId } = c.req.valid('param')
+    const prisma = c.get('prisma')
+
+    // Verify campaign exists and belongs to workspace
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { id: true, workspaceId: true },
+    })
+
+    if (!campaign) {
+      throw new HTTPException(404, { message: 'Campaign not found' })
+    }
+
+    if (campaign.workspaceId !== workspaceId) {
+      throw new HTTPException(403, { message: 'Not authorized to access this campaign' })
+    }
+
+    // Get all action history for debts in this campaign
+    const actionHistory = await prisma.customerActionHistory.findMany({
+      where: {
+        debt: {
+          campaignId: campaignId,
+        },
+      },
+      select: {
+        id: true,
+        actionType: true,
+        timestamp: true,
+        debtId: true,
+        customerId: true,
+      },
+      orderBy: {
+        timestamp: 'desc',
+      },
+    })
+
+    // Aggregate stats
+    const stats = {
+      sent: 0,
+      opened: 0,
+      clicked: 0,
+      other: 0,
+    }
+
+    const uniqueDebts = new Set<string>()
+    const uniqueCustomers = new Set<string>()
+
+    for (const action of actionHistory) {
+      if (action.actionType === 'EMAIL_SENT') {
+        stats.sent += 1
+      } else if (action.actionType === 'LINK_CLICKED') {
+        stats.opened += 1
+      } else {
+        stats.other += 1
+      }
+
+      if (action.debtId) {
+        uniqueDebts.add(action.debtId)
+      }
+      uniqueCustomers.add(action.customerId)
+    }
+
+    const clickedCount = stats.opened
+    stats.clicked = clickedCount
+
+    // Get the most recent event timestamp
+    const lastEventAt = actionHistory.length > 0 ? actionHistory[0].timestamp : null
+    const lastEventAtString = lastEventAt !== null ? lastEventAt.toISOString() : null
+
+    return c.json({
+      data: {
+        campaignId,
+        stats: {
+          sent: stats.sent,
+          opened: stats.opened,
+          clicked: stats.clicked,
+          other: stats.other,
+        },
+        summary: {
+          total: actionHistory.length,
+          uniqueDebts: uniqueDebts.size,
+          uniqueCustomers: uniqueCustomers.size,
+        },
+        lastEventAt: lastEventAtString,
       },
     })
   })
