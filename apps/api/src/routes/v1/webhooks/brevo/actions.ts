@@ -14,6 +14,23 @@ type ResolvedEventTarget = {
   customerId: string
 }
 
+type SkipReason =
+  | 'invalid_payload'
+  | 'missing_event_name'
+  | 'ignored_event_type'
+  | 'unable_to_resolve_target'
+
+type DebugEventResult = {
+  index: number
+  eventName: string | null
+  email: string | null
+  debtIdHint: string | null
+  campaignIdHint: string | null
+  mappedActionType: ActionType | null
+  status: 'created' | 'skipped'
+  reason?: SkipReason
+}
+
 handler.post('/events', async (c) => {
   const configuredToken = env.BREVO_WEBHOOK_TOKEN
   if (configuredToken) {
@@ -35,6 +52,7 @@ handler.post('/events', async (c) => {
 
   const events = Array.isArray(parsedBody) ? parsedBody : [parsedBody]
   const prisma = c.get('prisma')
+  const debugEnabled = c.req.query('debug') === '1'
 
   const rowsToCreate: Array<{
     debtId: string
@@ -46,18 +64,56 @@ handler.post('/events', async (c) => {
 
   let processed = 0
   let skipped = 0
+  const skipReasons: Record<SkipReason, number> = {
+    invalid_payload: 0,
+    missing_event_name: 0,
+    ignored_event_type: 0,
+    unable_to_resolve_target: 0,
+  }
+  const debugEvents: DebugEventResult[] = []
 
-  for (const entry of events) {
+  for (let index = 0; index < events.length; index += 1) {
+    const entry = events[index]
+
     if (!entry || typeof entry !== 'object') {
       skipped += 1
+      skipReasons.invalid_payload += 1
+      if (debugEnabled) {
+        debugEvents.push({
+          index,
+          eventName: null,
+          email: null,
+          debtIdHint: null,
+          campaignIdHint: null,
+          mappedActionType: null,
+          status: 'skipped',
+          reason: 'invalid_payload',
+        })
+      }
       continue
     }
 
     const payload = entry as BrevoEventPayload
     const eventName = getEventName(payload)
+    const email = getEmail(payload)
+    const debtIdHint = getDebtId(payload)
+    const campaignIdHint = getCampaignId(payload)
 
     if (!eventName) {
       skipped += 1
+      skipReasons.missing_event_name += 1
+      if (debugEnabled) {
+        debugEvents.push({
+          index,
+          eventName,
+          email,
+          debtIdHint,
+          campaignIdHint,
+          mappedActionType: null,
+          status: 'skipped',
+          reason: 'missing_event_name',
+        })
+      }
       continue
     }
 
@@ -65,12 +121,38 @@ handler.post('/events', async (c) => {
     if (!actionType) {
       // Ignore events that are not currently tracked in dashboard metrics.
       skipped += 1
+      skipReasons.ignored_event_type += 1
+      if (debugEnabled) {
+        debugEvents.push({
+          index,
+          eventName,
+          email,
+          debtIdHint,
+          campaignIdHint,
+          mappedActionType: null,
+          status: 'skipped',
+          reason: 'ignored_event_type',
+        })
+      }
       continue
     }
 
     const target = await resolveTargetFromPayload(prisma, payload)
     if (!target) {
       skipped += 1
+      skipReasons.unable_to_resolve_target += 1
+      if (debugEnabled) {
+        debugEvents.push({
+          index,
+          eventName,
+          email,
+          debtIdHint,
+          campaignIdHint,
+          mappedActionType: actionType,
+          status: 'skipped',
+          reason: 'unable_to_resolve_target',
+        })
+      }
       continue
     }
 
@@ -89,6 +171,18 @@ handler.post('/events', async (c) => {
     })
 
     processed += 1
+
+    if (debugEnabled) {
+      debugEvents.push({
+        index,
+        eventName,
+        email,
+        debtIdHint,
+        campaignIdHint,
+        mappedActionType: actionType,
+        status: 'created',
+      })
+    }
   }
 
   if (rowsToCreate.length > 0) {
@@ -108,6 +202,7 @@ handler.post('/events', async (c) => {
       totalReceived: events.length,
       processed,
       skipped,
+      skipReasons,
       created: rowsToCreate.length,
       scope: 'webhooks.brevo.events',
     },
@@ -119,6 +214,8 @@ handler.post('/events', async (c) => {
       received: events.length,
       created: rowsToCreate.length,
       skipped,
+      skipReasons,
+      ...(debugEnabled ? { debugEvents } : {}),
     },
   })
 })

@@ -1,7 +1,7 @@
 import { env } from '../config/env.js'
 import { signCustomerToken } from '../lib/customer-jwt.js'
 
-const BREVO_SMTP_API_URL = 'https://api.brevo.com/v3/smtp/email'
+const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
 
 type CsvImportedDebtEmailInput = {
@@ -142,7 +142,7 @@ export class BrevoEmailService {
         ].join('\n')
 
     try {
-      const response = await fetch(BREVO_SMTP_API_URL, {
+      const response = await fetch(BREVO_EMAIL_API_URL, {
         method: 'POST',
         headers: {
           accept: 'application/json',
