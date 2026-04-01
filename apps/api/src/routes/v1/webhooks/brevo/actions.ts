@@ -3,6 +3,7 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import type { Env } from '../../../../types/index.js'
 import { toPrismaMetadata } from '../../../../utils/metadata.js'
 import { logger } from '../../../../utils/logger.js'
+import { env } from '../../../../config/env.js'
 
 const handler = new OpenAPIHono<Env>()
 
@@ -14,6 +15,15 @@ type ResolvedEventTarget = {
 }
 
 handler.post('/events', async (c) => {
+  const configuredToken = env.BREVO_WEBHOOK_TOKEN
+  if (configuredToken) {
+    const providedToken = c.req.query('token')
+
+    if (!providedToken || providedToken !== configuredToken) {
+      return c.json({ error: 'Unauthorized webhook token' }, 401)
+    }
+  }
+
   const rawBody = await c.req.text()
 
   let parsedBody: unknown
@@ -118,6 +128,7 @@ async function resolveTargetFromPayload(
   payload: BrevoEventPayload
 ): Promise<ResolvedEventTarget | null> {
   const debtIdFromPayload = getDebtId(payload)
+  const campaignIdFromPayload = getCampaignId(payload)
 
   if (debtIdFromPayload) {
     const debt = await prisma.debtRecord.findUnique({
@@ -150,6 +161,29 @@ async function resolveTargetFromPayload(
 
   if (!customer) {
     return null
+  }
+
+  if (campaignIdFromPayload) {
+    const campaignDebt = await prisma.debtRecord.findFirst({
+      where: {
+        clientId: customer.id,
+        campaignId: campaignIdFromPayload,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        clientId: true,
+      },
+    })
+
+    if (campaignDebt) {
+      return {
+        debtId: campaignDebt.id,
+        customerId: campaignDebt.clientId,
+      }
+    }
   }
 
   const latestDebt = await prisma.debtRecord.findFirst({
@@ -287,6 +321,47 @@ function getDebtId(payload: BrevoEventPayload): string | null {
   return null
 }
 
+function getCampaignId(payload: BrevoEventPayload): string | null {
+  const tags = getTags(payload)
+
+  for (const tag of tags) {
+    const lower = tag.toLowerCase()
+    if (lower.startsWith('campaign:')) {
+      const maybeId = tag.slice(9)
+      if (isUuid(maybeId)) {
+        return maybeId
+      }
+    }
+  }
+
+  const directCampaignId =
+    getString(payload.campaignId) ??
+    getString(payload.campaign_id) ??
+    getString(payload['campaign-id'])
+
+  if (directCampaignId && isUuid(directCampaignId)) {
+    return directCampaignId
+  }
+
+  const customHeader = getString(payload['X-Mailin-custom']) ?? getString(payload['x-mailin-custom'])
+  if (customHeader) {
+    const pairs = customHeader.split(/[|,;&]/)
+    for (const pair of pairs) {
+      const [rawKey, rawValue] = pair.split('=')
+      if (!rawKey || !rawValue) {
+        continue
+      }
+      const key = rawKey.trim().toLowerCase()
+      const value = rawValue.trim()
+      if ((key === 'campaignid' || key === 'campaign_id' || key === 'campaign-id') && isUuid(value)) {
+        return value
+      }
+    }
+  }
+
+  return null
+}
+
 function getTags(payload: BrevoEventPayload): string[] {
   const tagsValue = payload.tags
   const tagValue = payload.tag
@@ -297,6 +372,14 @@ function getTags(payload: BrevoEventPayload): string[] {
     for (const tag of tagsValue) {
       if (typeof tag === 'string' && tag.trim().length > 0) {
         values.push(tag.trim())
+        continue
+      }
+
+      if (typeof tag === 'object' && tag !== null) {
+        const nestedName = getString((tag as Record<string, unknown>).name)
+        if (nestedName) {
+          values.push(nestedName)
+        }
       }
     }
   }

@@ -156,6 +156,12 @@ export class BrevoEmailService {
           },
           to: [{ email: payload.toEmail, name: displayName }],
           tags: ['collectra', `debt:${payload.debtId}`, ...(payload.campaignId ? [`campaign:${payload.campaignId}`] : [])],
+          headers: {
+            'X-Mailin-custom': [
+              `debt_id=${payload.debtId}`,
+              ...(payload.campaignId ? [`campaign_id=${payload.campaignId}`] : []),
+            ].join('|'),
+          },
           subject: 'Collectra - Debt Notification',
           htmlContent,
           textContent,
