@@ -279,6 +279,7 @@ export class CampaignsService {
           toEmail: string
           fullName: string
           campaignName: string
+          campaignId: string
           amount: number
           dueDate: Date
           debtId: string
@@ -375,6 +376,7 @@ export class CampaignsService {
               toEmail: row.email,
               fullName: row.fullName,
               campaignName: campaign.name,
+              campaignId: campaign.id,
               amount: row.amount,
               dueDate: row.dueDate,
               debtId,

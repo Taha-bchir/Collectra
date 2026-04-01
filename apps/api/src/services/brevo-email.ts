@@ -8,6 +8,7 @@ type CsvImportedDebtEmailInput = {
   toEmail: string
   fullName: string
   campaignName: string
+  campaignId?: string
   amount: number
   dueDate: Date
   debtId: string
@@ -154,6 +155,7 @@ export class BrevoEmailService {
             name: this.senderName,
           },
           to: [{ email: payload.toEmail, name: displayName }],
+          tags: ['collectra', `debt:${payload.debtId}`, ...(payload.campaignId ? [`campaign:${payload.campaignId}`] : [])],
           subject: 'Collectra - Debt Notification',
           htmlContent,
           textContent,
