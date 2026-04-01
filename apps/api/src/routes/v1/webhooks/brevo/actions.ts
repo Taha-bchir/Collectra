@@ -12,6 +12,8 @@ type BrevoEventPayload = Record<string, unknown>
 type ResolvedEventTarget = {
   debtId: string
   customerId: string
+  campaignId: string | null
+  strategy: 'debt_hint' | 'customer_campaign_match' | 'recent_email_sent' | 'latest_debt'
 }
 
 type SkipReason =
@@ -28,6 +30,9 @@ type DebugEventResult = {
   campaignIdHint: string | null
   mappedActionType: ActionType | null
   status: 'created' | 'skipped'
+  resolvedDebtId?: string
+  resolvedCampaignId?: string | null
+  resolutionStrategy?: ResolvedEventTarget['strategy']
   reason?: SkipReason
 }
 
@@ -137,7 +142,8 @@ handler.post('/events', async (c) => {
       continue
     }
 
-    const target = await resolveTargetFromPayload(prisma, payload)
+    const eventTimestamp = getEventTimestamp(payload)
+    const target = await resolveTargetFromPayload(prisma, payload, eventTimestamp)
     if (!target) {
       skipped += 1
       skipReasons.unable_to_resolve_target += 1
@@ -164,9 +170,10 @@ handler.post('/events', async (c) => {
       metadata: toPrismaMetadata({
         provider: 'brevo',
         event: eventName,
-        email: getEmail(payload),
+        email,
         messageId: getString(payload['message-id']) ?? getString(payload.messageId),
         tags: getTags(payload),
+        resolutionStrategy: target.strategy,
       }),
     })
 
@@ -181,6 +188,9 @@ handler.post('/events', async (c) => {
         campaignIdHint,
         mappedActionType: actionType,
         status: 'created',
+        resolvedDebtId: target.debtId,
+        resolvedCampaignId: target.campaignId,
+        resolutionStrategy: target.strategy,
       })
     }
   }
@@ -222,7 +232,8 @@ handler.post('/events', async (c) => {
 
 async function resolveTargetFromPayload(
   prisma: Env['Variables']['prisma'],
-  payload: BrevoEventPayload
+  payload: BrevoEventPayload,
+  eventTimestamp?: Date
 ): Promise<ResolvedEventTarget | null> {
   const debtIdFromPayload = getDebtId(payload)
   const campaignIdFromPayload = getCampaignId(payload)
@@ -234,9 +245,16 @@ async function resolveTargetFromPayload(
     })
 
     if (debt) {
+      const debtWithCampaign = await prisma.debtRecord.findUnique({
+        where: { id: debt.id },
+        select: { campaignId: true },
+      })
+
       return {
         debtId: debt.id,
         customerId: debt.clientId,
+        campaignId: debtWithCampaign?.campaignId ?? null,
+        strategy: 'debt_hint',
       }
     }
   }
@@ -279,7 +297,44 @@ async function resolveTargetFromPayload(
       return {
         debtId: campaignDebt.id,
         customerId: campaignDebt.clientId,
+        campaignId: campaignIdFromPayload,
+        strategy: 'customer_campaign_match',
       }
+    }
+  }
+
+  const recentSentAction = await prisma.customerActionHistory.findFirst({
+    where: {
+      customerId: customer.id,
+      actionType: ActionType.EMAIL_SENT,
+      ...(eventTimestamp
+        ? {
+            timestamp: {
+              lte: eventTimestamp,
+            },
+          }
+        : {}),
+    },
+    orderBy: {
+      timestamp: 'desc',
+    },
+    select: {
+      debtId: true,
+      customerId: true,
+      debt: {
+        select: {
+          campaignId: true,
+        },
+      },
+    },
+  })
+
+  if (recentSentAction?.debtId) {
+    return {
+      debtId: recentSentAction.debtId,
+      customerId: recentSentAction.customerId,
+      campaignId: recentSentAction.debt?.campaignId ?? null,
+      strategy: 'recent_email_sent',
     }
   }
 
@@ -303,6 +358,8 @@ async function resolveTargetFromPayload(
   return {
     debtId: latestDebt.id,
     customerId: latestDebt.clientId,
+    campaignId: null,
+    strategy: 'latest_debt',
   }
 }
 
