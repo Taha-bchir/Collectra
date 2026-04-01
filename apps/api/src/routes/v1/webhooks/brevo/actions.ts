@@ -32,7 +32,7 @@ type DebugEventResult = {
 }
 
 handler.post('/events', async (c) => {
-  const configuredToken = env.BREVO_WEBHOOK_TOKEN
+  const configuredToken = env.BREVO_WEBHOOK_TOKEN ?? env.BREVO_WEBHOOK_SECRET
   if (configuredToken) {
     const providedToken = c.req.query('token')
 

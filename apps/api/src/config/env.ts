@@ -51,6 +51,7 @@ const envSchema = z.object({
   BREVO_SENDER_EMAIL: optionalEmail,
   BREVO_SENDER_NAME: optionalString,
   BREVO_WEBHOOK_TOKEN: optionalString,
+  BREVO_WEBHOOK_SECRET: optionalString,
 
   // Security
   JWT_SECRET: optionalString,
