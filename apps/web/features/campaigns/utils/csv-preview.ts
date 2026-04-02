@@ -1,4 +1,4 @@
-const REQUIRED_FIELDS = ['fullName', 'amount', 'dueDate'] as const
+const REQUIRED_FIELDS = ['fullName', 'email', 'amount', 'dueDate'] as const
 
 const HEADER_ALIASES: Record<string, readonly string[]> = {
   fullName: ['fullname', 'full_name', 'name', 'clientname', 'customername', 'debtorname', 'nom'],
@@ -124,6 +124,11 @@ export function previewCampaignCsv(csvText: string): CsvPreviewResult {
 
     if (!parseDateValue(dueDateRaw)) {
       issues.push({ rowNumber, reason: 'Invalid due date' })
+      continue
+    }
+
+    if (!emailRaw) {
+      issues.push({ rowNumber, reason: 'Missing email' })
       continue
     }
 

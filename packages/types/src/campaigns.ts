@@ -16,6 +16,7 @@ export type CampaignDebtDetail<TDate = string, TDebtStatus = string> = {
   id: string
   amount: number
   dueDate: TDate
+  promiseDate?: TDate | null
   status: TDebtStatus
   createdAt: TDate
   updatedAt: TDate
@@ -63,7 +64,7 @@ export type CampaignImportResult<TDate = string, TDebtStatus = string> = {
 }
 
 export type CampaignCsvImportInput = {
-  campaignName?: string
+  campaignName: string
   description?: string
   fileName?: string
   csvText: string

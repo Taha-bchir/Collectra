@@ -72,6 +72,103 @@ export class DebtsService {
     return { debt, tokenExpiresAt }
   }
 
+  async createPromiseByCustomerToken(token: string, promisedDate: Date) {
+    const { debt } = await this.getByCustomerToken(token)
+
+    const normalizedPromisedDate = new Date(promisedDate)
+    if (Number.isNaN(normalizedPromisedDate.getTime())) {
+      throw new HTTPException(400, { message: 'Invalid promise date' })
+    }
+
+    const now = new Date()
+    const dueDate = debt.dueDate
+
+    if (normalizedPromisedDate < now) {
+      throw new HTTPException(400, { message: 'Promise date cannot be in the past' })
+    }
+
+    if (normalizedPromisedDate > dueDate) {
+      throw new HTTPException(400, { message: 'Promise date must be on or before due date' })
+    }
+
+    const [updatedDebt, paymentPromise] = await this.prisma.$transaction([
+      this.prisma.debtRecord.update({
+        where: { id: debt.id },
+        data: {
+          promiseDate: normalizedPromisedDate,
+          status: 'PROMISE_TO_PAY',
+        },
+      }),
+      this.prisma.paymentPromise.create({
+        data: {
+          debtId: debt.id,
+          promisedDate: normalizedPromisedDate,
+          status: 'ACTIVE',
+        },
+      }),
+    ])
+
+    await this.prisma.customerActionHistory.create({
+      data: {
+        debtId: debt.id,
+        customerId: debt.clientId,
+        actionType: 'PROMISE_MADE',
+        metadata: {
+          promiseId: paymentPromise.id,
+          promisedDate: normalizedPromisedDate.toISOString(),
+          channel: 'public_link',
+        },
+      },
+    })
+
+    return updatedDebt
+  }
+
+  async confirmFakePaymentByCustomerToken(token: string) {
+    const { debt } = await this.getByCustomerToken(token)
+
+    if (debt.status !== 'PROMISE_TO_PAY') {
+      throw new HTTPException(400, {
+        message: 'Fake payment is only available for debts in PROMISE_TO_PAY status',
+      })
+    }
+
+    const updatedDebt = await this.prisma.$transaction(async (tx) => {
+      const paidDebt = await tx.debtRecord.update({
+        where: { id: debt.id },
+        data: {
+          status: 'PAID',
+        },
+      })
+
+      await tx.paymentPromise.updateMany({
+        where: {
+          debtId: debt.id,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'KEPT',
+        },
+      })
+
+      await tx.customerActionHistory.create({
+        data: {
+          debtId: debt.id,
+          customerId: debt.clientId,
+          actionType: 'PAYMENT_CONFIRMED',
+          metadata: {
+            channel: 'public_link',
+            fakePayment: true,
+          },
+        },
+      })
+
+      return paidDebt
+    })
+
+    return updatedDebt
+  }
+
   async generateCustomerToken(workspaceId: string, debtId: string) {
     await this.getById(workspaceId, debtId) // ensures ownership
     return signCustomerToken(debtId)

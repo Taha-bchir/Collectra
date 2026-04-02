@@ -189,9 +189,7 @@ export class CampaignsService {
     }
 
     const campaignName =
-      input.campaignName?.trim() ||
-      this.normalizeCampaignName(input.fileName) ||
-      `Campaign ${new Date().toISOString().slice(0, 10)}`
+      input.campaignName.trim()
 
     const importResult = await this.prisma.$transaction(
       async (tx) => {
@@ -559,7 +557,13 @@ export class CampaignsService {
         continue
       }
 
-      const email = normalizeEmail(getCell(row, headerMap.email))
+      const rawEmail = getCell(row, headerMap.email)
+      if (!rawEmail) {
+        skippedRows.push({ rowNumber, reason: 'Missing email' })
+        continue
+      }
+
+      const email = normalizeEmail(rawEmail)
       if (email === 'INVALID') {
         skippedRows.push({ rowNumber, reason: 'Invalid email format' })
         continue
@@ -616,6 +620,12 @@ export class CampaignsService {
       })
     }
 
+    if (headerMap.email === -1) {
+      throw new HTTPException(400, {
+        message: 'CSV must include an email column',
+      })
+    }
+
     if (headerMap.amount === -1) {
       throw new HTTPException(400, {
         message: 'CSV must include an amount column',
@@ -629,15 +639,6 @@ export class CampaignsService {
     }
 
     return headerMap
-  }
-
-  private normalizeCampaignName(fileName?: string) {
-    if (!fileName) {
-      return null
-    }
-
-    const withoutExt = fileName.replace(/\.[^/.]+$/, '').trim()
-    return withoutExt.length > 0 ? withoutExt : null
   }
 }
 

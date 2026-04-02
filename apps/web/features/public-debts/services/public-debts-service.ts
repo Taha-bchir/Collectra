@@ -6,6 +6,7 @@ export type PublicDebtView = {
   debtId: string
   amount: number
   dueDate: string
+  promiseDate?: string | null
   status: 'IMPORTED' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
   campaignName: string
   tokenExpiresAt: string | null
@@ -42,5 +43,51 @@ export async function getPublicDebtByToken(token: string): Promise<PublicDebtVie
     }
 
     throw new ApiError(error instanceof Error ? error.message : 'Failed to load debt details', 0)
+  }
+}
+
+export async function createPublicPromiseByToken(token: string, promisedDate: string) {
+  try {
+    const { data } = await client.post<{
+      data: { debtId: string; status: PublicDebtView['status']; promiseDate: string }
+    }>(`/api/v1/public/debts/${token}/promise`, {
+      promisedDate,
+    })
+
+    return data.data
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0
+      const payload = error.response?.data as
+        | { error?: { message?: string }; message?: string }
+        | undefined
+
+      const message = payload?.error?.message || payload?.message || error.message || 'Failed to save promise date'
+      throw new ApiError(message, status, payload)
+    }
+
+    throw new ApiError(error instanceof Error ? error.message : 'Failed to save promise date', 0)
+  }
+}
+
+export async function createPublicFakePaymentByToken(token: string) {
+  try {
+    const { data } = await client.post<{
+      data: { debtId: string; status: PublicDebtView['status'] }
+    }>(`/api/v1/public/debts/${token}/fake-payment`)
+
+    return data.data
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0
+      const payload = error.response?.data as
+        | { error?: { message?: string }; message?: string }
+        | undefined
+
+      const message = payload?.error?.message || payload?.message || error.message || 'Failed to process fake payment'
+      throw new ApiError(message, status, payload)
+    }
+
+    throw new ApiError(error instanceof Error ? error.message : 'Failed to process fake payment', 0)
   }
 }

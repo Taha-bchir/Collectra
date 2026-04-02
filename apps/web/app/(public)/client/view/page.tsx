@@ -3,11 +3,16 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api-client'
 import {
+  createPublicFakePaymentByToken,
+  createPublicPromiseByToken,
   getPublicDebtByToken,
   type PublicDebtView,
 } from '@/features/public-debts/services/public-debts-service'
@@ -35,6 +40,9 @@ function ClientDebtViewContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [debt, setDebt] = useState<PublicDebtView | null>(null)
+  const [promiseDate, setPromiseDate] = useState('')
+  const [submittingPromise, setSubmittingPromise] = useState(false)
+  const [submittingFakePayment, setSubmittingFakePayment] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -50,6 +58,9 @@ function ClientDebtViewContent() {
       try {
         const details = await getPublicDebtByToken(token)
         setDebt(details)
+        if (details.promiseDate) {
+          setPromiseDate(details.promiseDate.slice(0, 10))
+        }
       } catch (err) {
         if (err instanceof ApiError) {
           setError(err.message)
@@ -65,6 +76,79 @@ function ClientDebtViewContent() {
 
     load()
   }, [token])
+
+  const minPromiseDate = useMemo(() => {
+    const now = new Date()
+    now.setHours(0, 0, 0, 0)
+    return now.toISOString().slice(0, 10)
+  }, [])
+
+  const maxPromiseDate = useMemo(() => {
+    if (!debt) {
+      return undefined
+    }
+
+    return new Date(debt.dueDate).toISOString().slice(0, 10)
+  }, [debt])
+
+  const handleSubmitPromiseDate = async () => {
+    if (!token || !debt || !promiseDate) {
+      return
+    }
+
+    setSubmittingPromise(true)
+
+    try {
+      const promisedDate = new Date(`${promiseDate}T00:00:00.000Z`).toISOString()
+      const result = await createPublicPromiseByToken(token, promisedDate)
+
+      setDebt((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: result.status,
+              promiseDate: result.promiseDate,
+            }
+          : prev,
+      )
+
+      toast.success('Promise date submitted successfully')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message)
+      } else if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Unable to submit promise date')
+      }
+    } finally {
+      setSubmittingPromise(false)
+    }
+  }
+
+  const handleFakePayment = async () => {
+    if (!token || !debt || debt.status !== 'PROMISE_TO_PAY') {
+      return
+    }
+
+    setSubmittingFakePayment(true)
+
+    try {
+      const result = await createPublicFakePaymentByToken(token)
+      setDebt((prev) => (prev ? { ...prev, status: result.status } : prev))
+      toast.success('Payment recorded successfully')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message)
+      } else if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Unable to process payment')
+      }
+    } finally {
+      setSubmittingFakePayment(false)
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
@@ -109,10 +193,63 @@ function ClientDebtViewContent() {
                   <Badge variant={getStatusVariant(debt.status)}>{debt.status}</Badge>
                 </div>
                 <div>
+                  <p className="text-muted-foreground">Promised date</p>
+                  <p className="font-medium">{debt.promiseDate ? formatDate(debt.promiseDate) : 'Not set'}</p>
+                </div>
+                <div>
                   <p className="text-muted-foreground">Contact</p>
                   <p className="font-medium">{debt.customer.email || debt.customer.phone || 'N/A'}</p>
                 </div>
               </div>
+
+              {debt.status !== 'PAID' && (
+                <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                  <p className="font-medium">Choose your payment promise date</p>
+                  <p className="text-xs text-muted-foreground">
+                    Select a date between today and the date limit set by the manager. Dates after that limit are blocked.
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <Input
+                      type="date"
+                      value={promiseDate}
+                      onChange={(event) => setPromiseDate(event.target.value)}
+                      min={minPromiseDate}
+                      max={maxPromiseDate}
+                      disabled={submittingPromise}
+                      className="sm:max-w-xs"
+                    />
+                    <Button onClick={handleSubmitPromiseDate} disabled={!promiseDate || submittingPromise}>
+                      {submittingPromise ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Submit promise date'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {debt.status === 'PROMISE_TO_PAY' && (
+                <div className="space-y-2 rounded-md border bg-primary/5 p-3">
+                  <p className="font-medium">Fake payment (demo)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Available only after a promise to pay has been submitted.
+                  </p>
+                  <Button onClick={handleFakePayment} disabled={submittingFakePayment}>
+                    {submittingFakePayment ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Pay now (fake)'
+                    )}
+                  </Button>
+                </div>
+              )}
 
               {debt.tokenExpiresAt && (
                 <p className="text-xs text-muted-foreground">

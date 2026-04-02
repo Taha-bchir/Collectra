@@ -79,6 +79,7 @@ handler.openapi(
           id: debt.id,
           amount: debt.amount,
           dueDate: debt.dueDate.toISOString(),
+          promiseDate: debt.promiseDate ? debt.promiseDate.toISOString() : null,
           status: debt.status,
           createdAt: debt.createdAt.toISOString(),
           updatedAt: debt.updatedAt.toISOString(),
@@ -212,9 +213,11 @@ handler.openapi(
     const descriptionValue = body.description
 
     const campaignName =
-      typeof campaignNameValue === 'string' && campaignNameValue.trim().length > 0
-        ? campaignNameValue
-        : undefined
+      typeof campaignNameValue === 'string' ? campaignNameValue.trim() : ''
+
+    if (!campaignName) {
+      throw new HTTPException(400, { message: 'Missing required form-data field "campaignName"' })
+    }
 
     const description =
       typeof descriptionValue === 'string' && descriptionValue.trim().length > 0

@@ -8,7 +8,7 @@ export type { CampaignDetails, CampaignImportResult, CampaignSummary } from '@re
 
 export type ImportCampaignCsvPayload = {
   file: File
-  campaignName?: string
+  campaignName: string
   description?: string
 }
 
@@ -39,6 +39,14 @@ export type GetCampaignByIdOptions = {
   pageSize?: number
 }
 
+export type DebtStatus = 'IMPORTED' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
+
+export type UpdateDebtInput = {
+  status?: DebtStatus
+  dueDate?: string
+  promiseDate?: string | null
+}
+
 export const CAMPAIGN_ROUTES = {
   list: '/api/v1/campaigns',
   listWithSlash: '/api/v1/campaigns/',
@@ -46,6 +54,7 @@ export const CAMPAIGN_ROUTES = {
   importCsv: '/api/v1/campaigns/import-csv',
   emailStats: (id: string) => `/api/v1/campaigns/${id}/email-stats`,
   debtPersonalLink: (debtId: string) => `/api/v1/debts/${debtId}/personal-link`,
+  updateDebt: (debtId: string) => `/api/v1/debts/${debtId}`,
 } as const
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, '')
@@ -107,10 +116,7 @@ export async function importCampaignCsv(payload: ImportCampaignCsvPayload): Prom
   const formData = new FormData()
 
   formData.append('file', payload.file)
-
-  if (payload.campaignName?.trim()) {
-    formData.append('campaignName', payload.campaignName.trim())
-  }
+  formData.append('campaignName', payload.campaignName.trim())
 
   if (payload.description?.trim()) {
     formData.append('description', payload.description.trim())
@@ -134,6 +140,12 @@ export async function getDebtPersonalLink(debtId: string): Promise<DebtPersonalL
 export async function getCampaignEmailStats(id: string): Promise<CampaignEmailStats> {
   const client = getCampaignsClient()
   const { data } = await client.get<{ data: CampaignEmailStats }>(CAMPAIGN_ROUTES.emailStats(id))
+  return data.data
+}
+
+export async function updateDebt(debtId: string, input: UpdateDebtInput) {
+  const client = getCampaignsClient()
+  const { data } = await client.patch<{ data: unknown }>(CAMPAIGN_ROUTES.updateDebt(debtId), input)
   return data.data
 }
 

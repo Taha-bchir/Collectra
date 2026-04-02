@@ -26,6 +26,7 @@ const CampaignDebtDetailSchema = z.object({
   id: z.string().uuid(),
   amount: z.number(),
   dueDate: z.string().datetime(),
+  promiseDate: z.string().datetime().nullable().optional(),
   status: z.nativeEnum(DebtStatus),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -85,7 +86,7 @@ export const importCampaignCsvSchema = createRoute({
       content: {
         'multipart/form-data': {
           schema: z.object({
-            campaignName: z.string().min(1).max(120).optional(),
+            campaignName: z.string().trim().min(1).max(120),
             description: z.string().max(500).optional(),
             // Accept runtime File objects while preserving binary OpenAPI docs.
             file: z
