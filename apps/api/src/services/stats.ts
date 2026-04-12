@@ -177,11 +177,12 @@ export class StatsService {
 
 function createEmptyStatusCounts(): DashboardDebtStatusCounts {
   return {
-    [DebtStatus.IMPORTED]: 0,
-    [DebtStatus.NOTIFIED]: 0,
-    [DebtStatus.PROMISE_TO_PAY]: 0,
-    [DebtStatus.PAID]: 0,
-    [DebtStatus.OVERDUE_AFTER_PROMISE]: 0,
+    IMPORTED: 0,
+    UNPAID: 0,
+    NOTIFIED: 0,
+    PROMISE_TO_PAY: 0,
+    PAID: 0,
+    OVERDUE_AFTER_PROMISE: 0,
   }
 }
 

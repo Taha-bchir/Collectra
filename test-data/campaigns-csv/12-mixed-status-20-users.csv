@@ -1,0 +1,21 @@
+fullName,email,phone,address,amount,dueDate,status
+Amina El Fassi,amina.elfassi1@example.com,+212600000101,Casablanca,500.00,2026-04-20,unpaid
+Bilal Rachdi,bilal.rachdi2@example.com,+212600000102,Rabat,325.00,2026-04-21,promise
+Chaymae Idrissi,chaymae.idrissi3@example.com,+212600000103,Fes,780.00,2026-04-22,paid
+Driss Benali,driss.benali4@example.com,+212600000104,Tangier,210.00,2026-04-23,overdue
+Elham Kettani,elham.kettani5@example.com,+212600000105,Agadir,999.99,2026-04-24,unpaid
+Fouad Ziani,fouad.ziani6@example.com,+212600000106,Marrakesh,150.75,2026-04-25,promised
+Ghita Lamrani,ghita.lamrani7@example.com,+212600000107,Meknes,430.20,2026-04-26,paied
+Hamza Najih,hamza.najih8@example.com,+212600000108,Oujda,265.40,2026-04-27,late
+Imane Azzouzi,imane.azzouzi9@example.com,+212600000109,Kenitra,540.00,2026-04-28,new
+Jawad Fikri,jawad.fikri10@example.com,+212600000110,Temara,120.00,2026-04-29,notify
+Khadija Ouali,khadija.ouali11@example.com,+212600000111,Salé,610.60,2026-04-30,settled
+Lina Berrada,lina.berrada12@example.com,+212600000112,El Jadida,375.30,2026-05-01,defaulted
+Marouane Sefrioui,marouane.sefrioui13@example.com,+212600000113,Safi,440.00,2026-05-02,UNPAID
+Nada Ait Lahcen,nada.aitlahcen14@example.com,+212600000114,Tetouan,289.95,2026-05-03,not_paid
+Othman Dakhli,othman.dakhli15@example.com,+212600000115,Nador,720.10,2026-05-04,impaye
+Paula El Idrissi,paula.elidrissi16@example.com,+212600000116,Khouribga,310.00,2026-05-05,promise_to_pay
+Qays Ait Bouzid,qays.aitbouzid17@example.com,+212600000117,Beni Mellal,555.55,2026-05-06,imporTed
+Rania Chafik,rania.chafik18@example.com,+212600000118,Settat,240.80,2026-05-07,promis
+Soufiane Haddi,soufiane.haddi19@example.com,+212600000119,Guelmim,680.00,2026-05-08,paid
+Toufik Miftah,toufik.miftah20@example.com,+212600000120,Laayoune,199.99,2026-05-09,overdue

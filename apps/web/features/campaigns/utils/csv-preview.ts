@@ -26,8 +26,11 @@ const STATUS_MAPPING: Record<string, string> = {
   settled: 'PAID',
   overdue: 'OVERDUE_AFTER_PROMISE',
   late: 'OVERDUE_AFTER_PROMISE',
-  unpaid: 'OVERDUE_AFTER_PROMISE',
+  unpaid: 'UNPAID',
+  not_paid: 'UNPAID',
+  impaye: 'UNPAID',
   defaulted: 'OVERDUE_AFTER_PROMISE',
+  promis: 'PROMISE_TO_PAY',
 }
 
 export type CsvPreviewIssue = {

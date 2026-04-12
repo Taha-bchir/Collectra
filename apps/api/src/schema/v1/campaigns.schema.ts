@@ -28,6 +28,9 @@ const CampaignDebtDetailSchema = z.object({
   dueDate: z.string().datetime(),
   promiseDate: z.string().datetime().nullable().optional(),
   status: z.nativeEnum(DebtStatus),
+  emailStatus: z.enum(['NOT_SENT', 'SENT', 'CLICKED']),
+  linkOpenCount: z.number().int().nonnegative(),
+  linkOpenTimes: z.array(z.string().datetime()),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   client: z.object({
@@ -192,6 +195,140 @@ export const getCampaignByIdSchema = createRoute({
   },
 })
 
+export const updateCampaignDueDateSchema = createRoute({
+  method: 'patch',
+  path: '/{id}/due-date',
+  tags: ['campaigns'],
+  summary: 'Set due date limit for all unpaid debts in a campaign',
+  request: {
+    params: z.object({
+      id: z.string().uuid(),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            dueDate: z.string().datetime(),
+          }).strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Campaign due date updated',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              campaignId: z.string().uuid(),
+              dueDate: z.string().datetime(),
+              updatedCount: z.number().int().nonnegative(),
+            }),
+          }),
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    403: {
+      description: 'No active workspace',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'Campaign not found',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
+export const updateCampaignStatusSchema = createRoute({
+  method: 'patch',
+  path: '/{id}/status',
+  tags: ['campaigns'],
+  summary: 'Update campaign status',
+  request: {
+    params: z.object({
+      id: z.string().uuid(),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z
+            .object({
+              status: z.nativeEnum(CampaignStatus),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Campaign status updated',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: CampaignSummarySchema,
+          }),
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    403: {
+      description: 'No active workspace',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'Campaign not found',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
+export const deleteCampaignSchema = createRoute({
+  method: 'delete',
+  path: '/{id}',
+  tags: ['campaigns'],
+  summary: 'Delete campaign',
+  request: {
+    params: z.object({
+      id: z.string().uuid(),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Campaign deleted',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              id: z.string().uuid(),
+            }),
+          }),
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    403: {
+      description: 'No active workspace',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'Campaign not found',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
 export const getCampaignEmailStatsSchema = createRoute({
   method: 'get',
   path: '/{id}/email-stats',
@@ -227,6 +364,69 @@ export const getCampaignEmailStatsSchema = createRoute({
           }),
         },
       },
+    },
+    401: {
+      description: 'Unauthorized',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    403: {
+      description: 'No active workspace',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'Campaign not found',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
+export const syncCampaignBrevoLogsSchema = createRoute({
+  method: 'post',
+  path: '/{id}/brevo-logs/sync',
+  tags: ['campaigns'],
+  summary: 'Sync Brevo transactional logs for a campaign',
+  description: 'Pull recent Brevo transactional email logs and store the matching events in BrevoEventLog.',
+  request: {
+    params: z.object({
+      id: z.string().uuid(),
+    }),
+    body: {
+      content: {
+        'application/json': {
+          schema: z
+            .object({
+              lookbackDays: z.coerce.number().int().min(1).max(90).optional(),
+              pageSize: z.coerce.number().int().min(1).max(100).optional(),
+            })
+            .strict(),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Brevo logs synced',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              campaignId: z.string().uuid(),
+              lookbackDays: z.number().int().positive(),
+              pageSize: z.number().int().positive(),
+              emailsScanned: z.number().int().nonnegative(),
+              pagesFetched: z.number().int().nonnegative(),
+              rowsFetched: z.number().int().nonnegative(),
+              created: z.number().int().nonnegative(),
+              deduplicated: z.number().int().nonnegative(),
+              unresolved: z.number().int().nonnegative(),
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Invalid sync request',
+      content: { 'application/json': { schema: ErrorResponse } },
     },
     401: {
       description: 'Unauthorized',

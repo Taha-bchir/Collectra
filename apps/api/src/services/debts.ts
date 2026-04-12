@@ -2,7 +2,9 @@ import { PrismaClient } from '@repo/database'
 import { HTTPException } from 'hono/http-exception'
 import type { DebtStatus } from '@repo/database'
 import { env } from '../config/env.js'
+import { logBrevoEvent } from './brevo-event-logs.js'
 import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
+import { logger } from '../utils/logger.js'
 
 /**
  * SECURITY & LINK FORMAT – CUSTOMER PERSONAL LINKS
@@ -47,6 +49,130 @@ export type UpdateDebtInput = Partial<{
 
 export class DebtsService {
   constructor(private readonly prisma: PrismaClient) {}
+
+  async recordEmailOpenByDebtId(debtId: string) {
+    const debt = await this.prisma.debtRecord.findUnique({
+      where: { id: debtId },
+      select: { id: true, clientId: true, campaignId: true },
+    })
+
+    if (!debt) {
+      throw new HTTPException(404, { message: 'Debt not found' })
+    }
+
+    await this.prisma.customerActionHistory.create({
+      data: {
+        debtId: debt.id,
+        customerId: debt.clientId,
+        actionType: 'OTHER',
+        metadata: {
+          channel: 'email_pixel',
+          event: 'email_opened',
+          source: 'brevo-email-pixel',
+        },
+      },
+    })
+
+    try {
+      await logBrevoEvent(this.prisma, {
+        provider: 'collectra',
+        source: 'brevo-email-pixel',
+        eventName: 'email_opened',
+        status: 'created',
+        debtId: debt.id,
+        customerId: debt.clientId,
+        campaignId: debt.campaignId,
+        payload: {
+          debtId,
+        },
+      })
+    } catch (error) {
+      logger.warn({ debtId: debt.id, error, scope: 'debts.recordEmailOpenByDebtId.logBrevoEvent' }, 'Failed to persist Brevo event log for email open')
+    }
+
+    return {
+      debtId: debt.id,
+      customerId: debt.clientId,
+    }
+  }
+
+  async recordLinkClickByCustomerToken(token: string) {
+    const { debt } = await this.getByCustomerToken(token)
+
+    await this.prisma.customerActionHistory.create({
+      data: {
+        debtId: debt.id,
+        customerId: debt.clientId,
+        actionType: 'LINK_CLICKED',
+        metadata: {
+          channel: 'public_link',
+          event: 'link_clicked',
+          source: 'public-debts.track-click',
+        },
+      },
+    })
+
+    try {
+      await logBrevoEvent(this.prisma, {
+        provider: 'collectra',
+        source: 'public_link',
+        eventName: 'link_clicked',
+        status: 'created',
+        debtId: debt.id,
+        customerId: debt.clientId,
+        campaignId: debt.campaignId,
+        payload: {
+          tokenScopedDebtId: debt.id,
+        },
+      })
+    } catch (error) {
+      logger.warn({ debtId: debt.id, error, scope: 'debts.recordLinkClickByCustomerToken.logBrevoEvent' }, 'Failed to persist Brevo event log for link click')
+    }
+
+    return {
+      debtId: debt.id,
+      customerId: debt.clientId,
+    }
+  }
+
+  async recordLinkOpenByCustomerToken(token: string) {
+    const { debt } = await this.getByCustomerToken(token)
+
+    await this.prisma.customerActionHistory.create({
+      data: {
+        debtId: debt.id,
+        customerId: debt.clientId,
+        actionType: 'OTHER',
+        metadata: {
+          channel: 'public_link',
+          event: 'link_opened',
+          source: 'public-debts.track-open',
+        },
+      },
+    })
+
+    try {
+      await logBrevoEvent(this.prisma, {
+        provider: 'collectra',
+        source: 'public_link',
+        eventName: 'link_opened',
+        status: 'created',
+        debtId: debt.id,
+        customerId: debt.clientId,
+        campaignId: debt.campaignId,
+        payload: {
+          tokenScopedDebtId: debt.id,
+        },
+      })
+    } catch (error) {
+      logger.warn({ debtId: debt.id, error, scope: 'debts.recordLinkOpenByCustomerToken.logBrevoEvent' }, 'Failed to persist Brevo event log for link open')
+    }
+
+    return {
+      debtId: debt.id,
+      customerId: debt.clientId,
+    }
+  }
 
   async getByCustomerToken(token: string) {
     let debtId: string

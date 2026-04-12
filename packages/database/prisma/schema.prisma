@@ -43,6 +43,7 @@ enum ActionType {
 
 enum DebtStatus {
   IMPORTED
+  UNPAID
   NOTIFIED
   PROMISE_TO_PAY        @map("PROMISED")
   PAID
@@ -134,8 +135,11 @@ model Campaign {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  debts        DebtRecord[]
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  debts          DebtRecord[]
+  brevoEventLogs BrevoEventLog[]
+
+  @@index([workspaceId])
 }
 
 model Client {
@@ -151,6 +155,10 @@ model Client {
   workspace     Workspace               @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   debts         DebtRecord[]
   actionHistory CustomerActionHistory[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, fullName])
+  @@index([workspaceId, email])
 }
 
 model DebtRecord {
@@ -159,7 +167,7 @@ model DebtRecord {
   clientId    String     @db.Uuid
   amount      Decimal
   dueDate     DateTime
-  status      DebtStatus @default(IMPORTED)
+  status      DebtStatus @default(UNPAID)
   promiseDate DateTime?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -170,6 +178,9 @@ model DebtRecord {
   paymentPromises PaymentPromise[]
   actionHistory   CustomerActionHistory[]
 
+  @@index([campaignId, status, createdAt])
+  @@index([campaignId, clientId])
+  @@index([clientId, createdAt])
   @@map("Debt")
 }
 
@@ -203,4 +214,31 @@ model CustomerActionHistory {
   @@index([customerId, timestamp(sort: Desc)]) // Timeline per customer, newest first
   @@index([debtId])
   @@index([actionType])
+}
+
+model BrevoEventLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  provider           String
+  source             String
+  status             String   @default("created")
+  eventName          String
+  email              String?
+  messageId          String?
+  debtId             String?  @db.Uuid
+  customerId         String?  @db.Uuid
+  campaignId         String?  @db.Uuid
+  occurredAt         DateTime @default(now())
+  payload            Json
+  resolutionStrategy String?
+  skipReason         String?
+  createdAt          DateTime @default(now())
+
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId, occurredAt])
+  @@index([campaignId, eventName, occurredAt])
+  @@index([debtId, occurredAt])
+  @@index([customerId, occurredAt])
+  @@index([eventName, occurredAt])
+  @@index([status, occurredAt])
 }

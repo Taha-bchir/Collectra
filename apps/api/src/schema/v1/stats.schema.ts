@@ -26,6 +26,7 @@ const includeRecentCampaignsSchema = z.preprocess((value) => {
 
 const DashboardStatusCountsSchema = z.object({
   IMPORTED: z.number().int().nonnegative(),
+  UNPAID: z.number().int().nonnegative(),
   NOTIFIED: z.number().int().nonnegative(),
   PROMISE_TO_PAY: z.number().int().nonnegative(),
   PAID: z.number().int().nonnegative(),

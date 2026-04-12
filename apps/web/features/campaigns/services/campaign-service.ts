@@ -39,7 +39,7 @@ export type GetCampaignByIdOptions = {
   pageSize?: number
 }
 
-export type DebtStatus = 'IMPORTED' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
+export type DebtStatus = 'IMPORTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
 
 export type UpdateDebtInput = {
   status?: DebtStatus
@@ -47,14 +47,32 @@ export type UpdateDebtInput = {
   promiseDate?: string | null
 }
 
+export type UpdateCampaignDueDateInput = {
+  dueDate: string
+}
+
+export type UpdateCampaignStatusInput = {
+  status: CampaignSummary['status']
+}
+
+export type SyncCampaignBrevoLogsInput = {
+  lookbackDays?: number
+  pageSize?: number
+}
+
 export const CAMPAIGN_ROUTES = {
   list: '/api/v1/campaigns',
   listWithSlash: '/api/v1/campaigns/',
   getById: (id: string) => `/api/v1/campaigns/${id}`,
+  getByIdWithSlash: (id: string) => `/api/v1/campaigns/${id}/`,
   importCsv: '/api/v1/campaigns/import-csv',
+  updateDueDate: (id: string) => `/api/v1/campaigns/${id}/due-date`,
+  updateStatus: (id: string) => `/api/v1/campaigns/${id}/status`,
+  delete: (id: string) => `/api/v1/campaigns/${id}`,
   emailStats: (id: string) => `/api/v1/campaigns/${id}/email-stats`,
   debtPersonalLink: (debtId: string) => `/api/v1/debts/${debtId}/personal-link`,
   updateDebt: (debtId: string) => `/api/v1/debts/${debtId}`,
+  syncBrevoLogs: (id: string) => `/api/v1/campaigns/${id}/brevo-logs/sync`,
 } as const
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, '')
@@ -102,13 +120,27 @@ export async function getCampaignById(
   options?: GetCampaignByIdOptions
 ): Promise<CampaignDetails> {
   const client = getCampaignsClient()
-  const { data } = await client.get<{ data: CampaignDetails }>(CAMPAIGN_ROUTES.getById(id), {
-    params: {
-      page: options?.page,
-      pageSize: options?.pageSize,
-    },
-  })
-  return data.data
+  try {
+    const { data } = await client.get<{ data: CampaignDetails }>(CAMPAIGN_ROUTES.getById(id), {
+      params: {
+        page: options?.page,
+        pageSize: options?.pageSize,
+      },
+    })
+    return data.data
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      const { data } = await client.get<{ data: CampaignDetails }>(CAMPAIGN_ROUTES.getByIdWithSlash(id), {
+        params: {
+          page: options?.page,
+          pageSize: options?.pageSize,
+        },
+      })
+      return data.data
+    }
+
+    throw error
+  }
 }
 
 export async function importCampaignCsv(payload: ImportCampaignCsvPayload): Promise<CampaignImportResult> {
@@ -146,6 +178,46 @@ export async function getCampaignEmailStats(id: string): Promise<CampaignEmailSt
 export async function updateDebt(debtId: string, input: UpdateDebtInput) {
   const client = getCampaignsClient()
   const { data } = await client.patch<{ data: unknown }>(CAMPAIGN_ROUTES.updateDebt(debtId), input)
+  return data.data
+}
+
+export async function updateCampaignDueDate(campaignId: string, input: UpdateCampaignDueDateInput) {
+  const client = getCampaignsClient()
+  const { data } = await client.patch<{ data: { campaignId: string; dueDate: string; updatedCount: number } }>(
+    CAMPAIGN_ROUTES.updateDueDate(campaignId),
+    input
+  )
+  return data.data
+}
+
+export async function updateCampaignStatus(campaignId: string, input: UpdateCampaignStatusInput) {
+  const client = getCampaignsClient()
+  const { data } = await client.patch<{ data: CampaignSummary }>(CAMPAIGN_ROUTES.updateStatus(campaignId), input)
+  return data.data
+}
+
+export async function deleteCampaign(campaignId: string) {
+  const client = getCampaignsClient()
+  const { data } = await client.delete<{ data: { id: string } }>(CAMPAIGN_ROUTES.delete(campaignId))
+  return data.data
+}
+
+export async function syncCampaignBrevoLogs(campaignId: string, input: SyncCampaignBrevoLogsInput = {}) {
+  const client = getCampaignsClient()
+  const { data } = await client.post<{
+    data: {
+      campaignId: string
+      lookbackDays: number
+      pageSize: number
+      emailsScanned: number
+      pagesFetched: number
+      rowsFetched: number
+      created: number
+      deduplicated: number
+      unresolved: number
+    }
+  }>(CAMPAIGN_ROUTES.syncBrevoLogs(campaignId), input)
+
   return data.data
 }
 

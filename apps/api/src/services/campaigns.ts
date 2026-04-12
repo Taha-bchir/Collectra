@@ -13,6 +13,7 @@ import { HTTPException } from 'hono/http-exception'
 import { randomUUID } from 'node:crypto'
 import { logger } from '../utils/logger.js'
 import { BrevoEmailService } from './brevo-email.js'
+import { logBrevoEvent } from './brevo-event-logs.js'
 
 const STATUS_MAPPING: Record<string, DebtStatus> = {
   imported: DebtStatus.IMPORTED,
@@ -30,8 +31,11 @@ const STATUS_MAPPING: Record<string, DebtStatus> = {
   settled: DebtStatus.PAID,
   overdue: DebtStatus.OVERDUE_AFTER_PROMISE,
   late: DebtStatus.OVERDUE_AFTER_PROMISE,
-  unpaid: DebtStatus.OVERDUE_AFTER_PROMISE,
+  unpaid: DebtStatus.UNPAID,
+  not_paid: DebtStatus.UNPAID,
+  impaye: DebtStatus.UNPAID,
   defaulted: DebtStatus.OVERDUE_AFTER_PROMISE,
+  promis: DebtStatus.PROMISE_TO_PAY,
 }
 
 const HEADER_ALIASES = {
@@ -126,8 +130,23 @@ export class CampaignsService {
         amount: true,
         dueDate: true,
         status: true,
+        promiseDate: true,
         createdAt: true,
         updatedAt: true,
+        actionHistory: {
+          where: {
+            actionType: {
+              in: [ActionType.EMAIL_SENT, ActionType.LINK_SENT, ActionType.LINK_CLICKED],
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          select: {
+            actionType: true,
+            createdAt: true,
+          },
+        },
         client: {
           select: {
             id: true,
@@ -148,27 +167,128 @@ export class CampaignsService {
       createdAt: campaign.createdAt,
       updatedAt: campaign.updatedAt,
       debtsCount: campaign._count.debts,
-      debts: debts.map((debt) => ({
-        id: debt.id,
-        amount: Number(debt.amount),
-        dueDate: debt.dueDate,
-        status: debt.status,
-        createdAt: debt.createdAt,
-        updatedAt: debt.updatedAt,
-        client: {
-          id: debt.client.id,
-          fullName: debt.client.fullName,
-          email: debt.client.email,
-          phone: debt.client.phone,
-          address: debt.client.address,
-        },
-      })),
+      debts: debts.map((debt) => {
+        const linkOpenTimes = debt.actionHistory
+          .filter((action) => action.actionType === ActionType.LINK_CLICKED)
+          .map((action) => action.createdAt)
+
+        return {
+          id: debt.id,
+          amount: Number(debt.amount),
+          dueDate: debt.dueDate,
+          promiseDate: debt.promiseDate,
+          status: debt.status,
+          emailStatus: linkOpenTimes.length > 0
+            ? 'CLICKED'
+            : debt.actionHistory.length > 0
+              ? 'SENT'
+              : 'NOT_SENT',
+          linkOpenCount: linkOpenTimes.length,
+          linkOpenTimes,
+          createdAt: debt.createdAt,
+          updatedAt: debt.updatedAt,
+          client: {
+            id: debt.client.id,
+            fullName: debt.client.fullName,
+            email: debt.client.email,
+            phone: debt.client.phone,
+            address: debt.client.address,
+          },
+        }
+      }),
       pagination: {
         page,
         pageSize,
         total,
         totalPages,
       },
+    }
+  }
+
+  async updateCampaignDueDateLimit(workspaceId: string, campaignId: string, dueDate: Date) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { id: true, workspaceId: true },
+    })
+
+    if (!campaign || campaign.workspaceId !== workspaceId) {
+      throw new HTTPException(404, { message: 'Campaign not found or not in your workspace' })
+    }
+
+    const result = await this.prisma.debtRecord.updateMany({
+      where: {
+        campaignId,
+        status: {
+          not: DebtStatus.PAID,
+        },
+      },
+      data: {
+        dueDate,
+      },
+    })
+
+    return {
+      campaignId,
+      dueDate,
+      updatedCount: result.count,
+    }
+  }
+
+  async updateStatus(workspaceId: string, campaignId: string, status: CampaignStatus) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { id: true, workspaceId: true },
+    })
+
+    if (!campaign || campaign.workspaceId !== workspaceId) {
+      throw new HTTPException(404, { message: 'Campaign not found or not in your workspace' })
+    }
+
+    const updated = await this.prisma.campaign.update({
+      where: { id: campaignId },
+      data: { status },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            debts: true,
+          },
+        },
+      },
+    })
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      description: updated.description,
+      status: updated.status,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      debtsCount: updated._count.debts,
+    }
+  }
+
+  async delete(workspaceId: string, campaignId: string) {
+    const campaign = await this.prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { id: true, workspaceId: true },
+    })
+
+    if (!campaign || campaign.workspaceId !== workspaceId) {
+      throw new HTTPException(404, { message: 'Campaign not found or not in your workspace' })
+    }
+
+    await this.prisma.campaign.delete({
+      where: { id: campaignId },
+    })
+
+    return {
+      id: campaignId,
     }
   }
 
@@ -442,6 +562,10 @@ export class CampaignsService {
         )
 
         if (sentNotifications.length > 0) {
+          const messageIdByDebtId = new Map(
+            emailResult.sentMessages.map((message) => [message.debtId, message.messageId ?? null])
+          )
+
           await this.prisma.customerActionHistory.createMany({
             data: sentNotifications.map((notification) => ({
               debtId: notification.debtId,
@@ -454,6 +578,41 @@ export class CampaignsService {
               },
             })),
           })
+
+          const logResults = await Promise.allSettled(
+            sentNotifications.map((notification) =>
+              logBrevoEvent(this.prisma, {
+                provider: 'collectra',
+                source: 'csv_import',
+                eventName: 'email_sent',
+                status: 'created',
+                email: notification.toEmail,
+                messageId: messageIdByDebtId.get(notification.debtId) ?? null,
+                debtId: notification.debtId,
+                customerId: notification.customerId,
+                campaignId: importResult.campaign.id,
+                payload: {
+                  campaignName: importResult.campaign.name,
+                  amount: notification.amount,
+                  dueDate: notification.dueDate.toISOString(),
+                },
+                occurredAt: new Date(),
+              })
+            )
+          )
+
+          const failedLogCount = logResults.filter((result) => result.status === 'rejected').length
+          if (failedLogCount > 0) {
+            logger.warn(
+              {
+                campaignId: importResult.campaign.id,
+                failedLogCount,
+                attemptedLogCount: sentNotifications.length,
+                scope: 'campaigns.importCsv.emailSent.logBrevoEvent',
+              },
+              'Some email_sent Brevo logs failed to persist'
+            )
+          }
         }
       }
 

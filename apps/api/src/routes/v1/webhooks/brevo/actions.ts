@@ -4,6 +4,8 @@ import type { Env } from '../../../../types/index.js'
 import { toPrismaMetadata } from '../../../../utils/metadata.js'
 import { logger } from '../../../../utils/logger.js'
 import { env } from '../../../../config/env.js'
+import { verifyCustomerToken } from '../../../../lib/customer-jwt.js'
+import { logBrevoEvent } from '../../../../services/brevo-event-logs.js'
 
 const handler = new OpenAPIHono<Env>()
 
@@ -13,7 +15,12 @@ type ResolvedEventTarget = {
   debtId: string
   customerId: string
   campaignId: string | null
-  strategy: 'debt_hint' | 'customer_campaign_match' | 'recent_email_sent' | 'latest_debt'
+  strategy:
+    | 'debt_hint'
+    | 'token_url'
+    | 'customer_campaign_match'
+    | 'recent_email_sent'
+    | 'latest_debt'
 }
 
 type SkipReason =
@@ -66,6 +73,7 @@ handler.post('/events', async (c) => {
     timestamp?: Date
     metadata: ReturnType<typeof toPrismaMetadata>
   }> = []
+  const brevoLogsToCreate: Array<Parameters<typeof logBrevoEvent>[1]> = []
 
   let processed = 0
   let skipped = 0
@@ -83,6 +91,14 @@ handler.post('/events', async (c) => {
     if (!entry || typeof entry !== 'object') {
       skipped += 1
       skipReasons.invalid_payload += 1
+      brevoLogsToCreate.push({
+        provider: 'brevo',
+        source: 'webhook',
+        eventName: 'invalid_payload',
+        status: 'skipped',
+        payload: entry,
+        skipReason: 'invalid_payload',
+      })
       if (debugEnabled) {
         debugEvents.push({
           index,
@@ -107,6 +123,17 @@ handler.post('/events', async (c) => {
     if (!eventName) {
       skipped += 1
       skipReasons.missing_event_name += 1
+      brevoLogsToCreate.push({
+        provider: 'brevo',
+        source: 'webhook',
+        eventName: 'missing_event_name',
+        status: 'skipped',
+        email,
+        debtId: debtIdHint,
+        campaignId: campaignIdHint,
+        payload,
+        skipReason: 'missing_event_name',
+      })
       if (debugEnabled) {
         debugEvents.push({
           index,
@@ -127,6 +154,17 @@ handler.post('/events', async (c) => {
       // Ignore events that are not currently tracked in dashboard metrics.
       skipped += 1
       skipReasons.ignored_event_type += 1
+      brevoLogsToCreate.push({
+        provider: 'brevo',
+        source: 'webhook',
+        eventName,
+        status: 'skipped',
+        email,
+        debtId: debtIdHint,
+        campaignId: campaignIdHint,
+        payload,
+        skipReason: 'ignored_event_type',
+      })
       if (debugEnabled) {
         debugEvents.push({
           index,
@@ -147,6 +185,17 @@ handler.post('/events', async (c) => {
     if (!target) {
       skipped += 1
       skipReasons.unable_to_resolve_target += 1
+      brevoLogsToCreate.push({
+        provider: 'brevo',
+        source: 'webhook',
+        eventName,
+        status: 'skipped',
+        email,
+        debtId: debtIdHint,
+        campaignId: campaignIdHint,
+        payload,
+        skipReason: 'unable_to_resolve_target',
+      })
       if (debugEnabled) {
         debugEvents.push({
           index,
@@ -174,7 +223,23 @@ handler.post('/events', async (c) => {
         messageId: getString(payload['message-id']) ?? getString(payload.messageId),
         tags: getTags(payload),
         resolutionStrategy: target.strategy,
+        rawPayload: sanitizePayload(payload),
       }),
+    })
+
+    brevoLogsToCreate.push({
+      provider: 'brevo',
+      source: 'webhook',
+      eventName,
+      status: 'created',
+      email,
+      messageId: getString(payload['message-id']) ?? getString(payload.messageId),
+      debtId: target.debtId,
+      customerId: target.customerId,
+      campaignId: target.campaignId,
+      occurredAt: eventTimestamp ?? undefined,
+      payload,
+      resolutionStrategy: target.strategy,
     })
 
     processed += 1
@@ -205,6 +270,22 @@ handler.post('/events', async (c) => {
         metadata: row.metadata,
       })),
     })
+  }
+
+  if (brevoLogsToCreate.length > 0) {
+    const logResults = await Promise.allSettled(brevoLogsToCreate.map((row) => logBrevoEvent(prisma, row)))
+    const failedLogCount = logResults.filter((result) => result.status === 'rejected').length
+
+    if (failedLogCount > 0) {
+      logger.warn(
+        {
+          failedLogCount,
+          attemptedLogCount: brevoLogsToCreate.length,
+          scope: 'webhooks.brevo.events.logBrevoEvent',
+        },
+        'Some Brevo webhook event logs failed to persist'
+      )
+    }
   }
 
   logger.info(
@@ -255,6 +336,27 @@ async function resolveTargetFromPayload(
         customerId: debt.clientId,
         campaignId: debtWithCampaign?.campaignId ?? null,
         strategy: 'debt_hint',
+      }
+    }
+  }
+
+  const debtIdFromUrlToken = await resolveDebtIdFromPayloadUrls(payload)
+  if (debtIdFromUrlToken) {
+    const debt = await prisma.debtRecord.findUnique({
+      where: { id: debtIdFromUrlToken },
+      select: {
+        id: true,
+        clientId: true,
+        campaignId: true,
+      },
+    })
+
+    if (debt) {
+      return {
+        debtId: debt.id,
+        customerId: debt.clientId,
+        campaignId: debt.campaignId,
+        strategy: 'token_url',
       }
     }
   }
@@ -371,6 +473,10 @@ function getEventName(payload: BrevoEventPayload): string | null {
 function mapBrevoEventToActionType(eventName: string): ActionType | null {
   const value = eventName.toLowerCase()
 
+  if (value.includes('deliver')) {
+    return ActionType.OTHER
+  }
+
   if (value.includes('click') || value.includes('open')) {
     return ActionType.LINK_CLICKED
   }
@@ -388,8 +494,8 @@ function mapBrevoEventToActionType(eventName: string): ActionType | null {
     return ActionType.OTHER
   }
 
-  // Sent/delivered are already tracked at CSV import send-time.
-  if (value.includes('sent') || value.includes('deliver')) {
+  // Sent is already tracked at CSV import send-time.
+  if (value.includes('sent')) {
     return null
   }
 
@@ -547,6 +653,71 @@ function getTags(payload: BrevoEventPayload): string[] {
 
 function getString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+async function resolveDebtIdFromPayloadUrls(payload: BrevoEventPayload): Promise<string | null> {
+  const urlCandidates = getUrlCandidates(payload)
+
+  for (const candidate of urlCandidates) {
+    const token = extractTokenFromUrl(candidate)
+    if (!token) {
+      continue
+    }
+
+    try {
+      const verified = await verifyCustomerToken(token)
+      return verified.debtId
+    } catch {
+      // Ignore invalid tokens and continue checking other URL fields.
+    }
+  }
+
+  return null
+}
+
+function getUrlCandidates(payload: BrevoEventPayload): string[] {
+  const directCandidates = [
+    payload.url,
+    payload.link,
+    payload.href,
+    payload.clickedUrl,
+    payload.clicked_url,
+    payload['clicked-url'],
+  ]
+
+  const values = directCandidates
+    .map((value) => (typeof value === 'string' ? value.trim() : ''))
+    .filter((value) => value.length > 0)
+
+  const urlInMessage = getString(payload.message)
+  if (urlInMessage) {
+    const matches = urlInMessage.match(/https?:\/\/[^\s)\]>"']+/gi) ?? []
+    values.push(...matches)
+  }
+
+  return Array.from(new Set(values))
+}
+
+function extractTokenFromUrl(rawUrl: string): string | null {
+  try {
+    const parsed = new URL(rawUrl)
+    const token = parsed.searchParams.get('token')
+    return token && token.trim().length > 0 ? token.trim() : null
+  } catch {
+    return null
+  }
+}
+
+function sanitizePayload(payload: BrevoEventPayload) {
+  const clone: Record<string, unknown> = { ...payload }
+
+  // Keep auth-like values out of stored metadata.
+  delete clone.authorization
+  delete clone.Authorization
+  delete clone.apiKey
+  delete clone.api_key
+
+  return clone
 }
 
 function isUuid(value: string): boolean {

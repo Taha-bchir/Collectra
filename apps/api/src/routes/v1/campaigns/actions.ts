@@ -2,12 +2,18 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 import { HTTPException } from 'hono/http-exception'
 
 import {
+  deleteCampaignSchema,
   getCampaignByIdSchema,
   getCampaignEmailStatsSchema,
   importCampaignCsvSchema,
   listCampaignsSchema,
+  syncCampaignBrevoLogsSchema,
+  updateCampaignDueDateSchema,
+  updateCampaignStatusSchema,
 } from '../../../schema/v1/index.js'
+import { getCampaignBrevoStats } from '../../../services/brevo-event-logs.js'
 import { CampaignsService } from '../../../services/campaigns.js'
+import { BrevoTransactionalLogsService } from '../../../services/brevo-transactional-logs.js'
 import type { Env } from '../../../types/index.js'
 import { requireWorkspaceId, withRouteTryCatch } from '../../../utils/route-helpers.js'
 
@@ -60,10 +66,43 @@ handler.openapi(
   getCampaignByIdSchema,
   withRouteTryCatch('campaigns.getById', async (c) => {
     const workspaceId = requireWorkspaceId(c)
+    const userId = c.get('currentUser')?.id
     const { id } = c.req.valid('param')
     const { page, pageSize } = c.req.valid('query')
     const service = new CampaignsService(c.get('prisma'))
-    const campaign = await service.getById(workspaceId, id, { page, pageSize })
+
+    let campaign
+    try {
+      campaign = await service.getById(workspaceId, id, { page, pageSize })
+    } catch (error) {
+      if (!(error instanceof HTTPException) || error.status !== 404 || !userId) {
+        throw error
+      }
+
+      const prisma = c.get('prisma')
+      const accessibleWorkspace = await prisma.workspaceMember.findFirst({
+        where: {
+          userId,
+          status: 'ACTIVE',
+          workspace: {
+            campaigns: {
+              some: {
+                id,
+              },
+            },
+          },
+        },
+        select: {
+          workspaceId: true,
+        },
+      })
+
+      if (!accessibleWorkspace?.workspaceId || accessibleWorkspace.workspaceId === workspaceId) {
+        throw error
+      }
+
+      campaign = await service.getById(accessibleWorkspace.workspaceId, id, { page, pageSize })
+    }
 
     return c.json({
       data: {
@@ -81,6 +120,9 @@ handler.openapi(
           dueDate: debt.dueDate.toISOString(),
           promiseDate: debt.promiseDate ? debt.promiseDate.toISOString() : null,
           status: debt.status,
+          emailStatus: debt.emailStatus,
+          linkOpenCount: debt.linkOpenCount,
+          linkOpenTimes: debt.linkOpenTimes.map((value) => value.toISOString()),
           createdAt: debt.createdAt.toISOString(),
           updatedAt: debt.updatedAt.toISOString(),
           client: {
@@ -97,13 +139,72 @@ handler.openapi(
 )
 
 handler.openapi(
+  updateCampaignDueDateSchema,
+  withRouteTryCatch('campaigns.updateDueDate', async (c) => {
+    const workspaceId = requireWorkspaceId(c)
+    const { id: campaignId } = c.req.valid('param')
+    const { dueDate } = c.req.valid('json')
+
+    const service = new CampaignsService(c.get('prisma'))
+    const result = await service.updateCampaignDueDateLimit(workspaceId, campaignId, new Date(dueDate))
+
+    return c.json(
+      {
+        data: {
+          campaignId: result.campaignId,
+          dueDate: result.dueDate.toISOString(),
+          updatedCount: result.updatedCount,
+        },
+      },
+      200
+    )
+  })
+)
+
+handler.openapi(
+  updateCampaignStatusSchema,
+  withRouteTryCatch('campaigns.updateStatus', async (c) => {
+    const workspaceId = requireWorkspaceId(c)
+    const { id: campaignId } = c.req.valid('param')
+    const { status } = c.req.valid('json')
+
+    const service = new CampaignsService(c.get('prisma'))
+    const result = await service.updateStatus(workspaceId, campaignId, status)
+
+    return c.json({
+      data: {
+        id: result.id,
+        name: result.name,
+        description: result.description,
+        status: result.status,
+        createdAt: result.createdAt.toISOString(),
+        updatedAt: result.updatedAt.toISOString(),
+        debtsCount: result.debtsCount,
+      },
+    })
+  })
+)
+
+handler.openapi(
+  deleteCampaignSchema,
+  withRouteTryCatch('campaigns.delete', async (c) => {
+    const workspaceId = requireWorkspaceId(c)
+    const { id: campaignId } = c.req.valid('param')
+
+    const service = new CampaignsService(c.get('prisma'))
+    const result = await service.delete(workspaceId, campaignId)
+
+    return c.json({ data: result })
+  })
+)
+
+handler.openapi(
   getCampaignEmailStatsSchema,
   withRouteTryCatch('campaigns.emailStats', async (c) => {
     const workspaceId = requireWorkspaceId(c)
     const { id: campaignId } = c.req.valid('param')
     const prisma = c.get('prisma')
 
-    // Verify campaign exists and belongs to workspace
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
       select: { id: true, workspaceId: true },
@@ -117,57 +218,7 @@ handler.openapi(
       throw new HTTPException(403, { message: 'Not authorized to access this campaign' })
     }
 
-    // Get all action history for debts in this campaign
-    const actionHistory = await prisma.customerActionHistory.findMany({
-      where: {
-        debt: {
-          campaignId: campaignId,
-        },
-      },
-      select: {
-        id: true,
-        actionType: true,
-        timestamp: true,
-        debtId: true,
-        customerId: true,
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
-    })
-
-    // Aggregate stats
-    const stats = {
-      sent: 0,
-      opened: 0,
-      clicked: 0,
-      other: 0,
-    }
-
-    const uniqueDebts = new Set<string>()
-    const uniqueCustomers = new Set<string>()
-
-    for (const action of actionHistory) {
-      if (action.actionType === 'EMAIL_SENT' || action.actionType === 'LINK_SENT') {
-        stats.sent += 1
-      } else if (action.actionType === 'LINK_CLICKED') {
-        stats.opened += 1
-      } else {
-        stats.other += 1
-      }
-
-      if (action.debtId) {
-        uniqueDebts.add(action.debtId)
-      }
-      uniqueCustomers.add(action.customerId)
-    }
-
-    const clickedCount = stats.opened
-    stats.clicked = clickedCount
-
-    // Get the most recent event timestamp
-    const lastEventAt = actionHistory.length > 0 ? actionHistory[0].timestamp : null
-    const lastEventAtString = lastEventAt !== null ? lastEventAt.toISOString() : null
+    const stats = await getCampaignBrevoStats(prisma, campaignId)
 
     return c.json({
       data: {
@@ -179,12 +230,45 @@ handler.openapi(
           other: stats.other,
         },
         summary: {
-          total: actionHistory.length,
-          uniqueDebts: uniqueDebts.size,
-          uniqueCustomers: uniqueCustomers.size,
+          total: stats.total,
+          uniqueDebts: stats.uniqueDebts,
+          uniqueCustomers: stats.uniqueCustomers,
         },
-        lastEventAt: lastEventAtString,
+        lastEventAt: stats.lastEventAt ? stats.lastEventAt.toISOString() : null,
       },
+    })
+  })
+)
+
+handler.openapi(
+  syncCampaignBrevoLogsSchema,
+  withRouteTryCatch('campaigns.syncBrevoLogs', async (c) => {
+    const workspaceId = requireWorkspaceId(c)
+    const { id: campaignId } = c.req.valid('param')
+    const { lookbackDays, pageSize } = c.req.valid('json')
+    const prisma = c.get('prisma')
+
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      select: { id: true, workspaceId: true },
+    })
+
+    if (!campaign) {
+      throw new HTTPException(404, { message: 'Campaign not found' })
+    }
+
+    if (campaign.workspaceId !== workspaceId) {
+      throw new HTTPException(403, { message: 'Not authorized to access this campaign' })
+    }
+
+    const service = new BrevoTransactionalLogsService(prisma)
+    const result = await service.syncCampaignLogs(campaignId, {
+      lookbackDays,
+      pageSize,
+    })
+
+    return c.json({
+      data: result,
     })
   })
 )
@@ -212,8 +296,7 @@ handler.openapi(
     const campaignNameValue = body.campaignName
     const descriptionValue = body.description
 
-    const campaignName =
-      typeof campaignNameValue === 'string' ? campaignNameValue.trim() : ''
+    const campaignName = typeof campaignNameValue === 'string' ? campaignNameValue.trim() : ''
 
     if (!campaignName) {
       throw new HTTPException(400, { message: 'Missing required form-data field "campaignName"' })

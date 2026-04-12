@@ -1,0 +1,246 @@
+{
+  "info": {
+    "_postman_id": "d3b53e02-6c9b-4d85-a1b1-2eb438d6d8b7",
+    "name": "Collectra - Customers Endpoint Tests",
+    "description": "Tests for GET /api/v1/customers with pagination and filters.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "workspaceId",
+      "value": ""
+    },
+    {
+      "key": "campaignId",
+      "value": ""
+    },
+    {
+      "key": "search",
+      "value": "ali"
+    }
+  ],
+  "item": [
+    {
+      "name": "Customers - Pagination Only",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Cookie",
+            "value": "workspace_id={{workspaceId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/customers?page=1&limit=5",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "customers"
+          ],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "5"
+            }
+          ]
+        },
+        "description": "Checks basic pagination response structure."
+      }
+    },
+    {
+      "name": "Customers - Status Filter",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Cookie",
+            "value": "workspace_id={{workspaceId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/customers?status=UNPAID&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "customers"
+          ],
+          "query": [
+            {
+              "key": "status",
+              "value": "UNPAID"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Filters customer rows by debt status."
+      }
+    },
+    {
+      "name": "Customers - Search Filter",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Cookie",
+            "value": "workspace_id={{workspaceId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/customers?search={{search}}&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "customers"
+          ],
+          "query": [
+            {
+              "key": "search",
+              "value": "{{search}}"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Searches by customer full name or email."
+      }
+    },
+    {
+      "name": "Customers - Campaign Filter",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Cookie",
+            "value": "workspace_id={{workspaceId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/customers?campaignId={{campaignId}}&page=1&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "customers"
+          ],
+          "query": [
+            {
+              "key": "campaignId",
+              "value": "{{campaignId}}"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Scopes list to a specific campaign."
+      }
+    },
+    {
+      "name": "Customers - Combined Filters",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Cookie",
+            "value": "workspace_id={{workspaceId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/customers?campaignId={{campaignId}}&status=UNPAID&search={{search}}&page=2&limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "customers"
+          ],
+          "query": [
+            {
+              "key": "campaignId",
+              "value": "{{campaignId}}"
+            },
+            {
+              "key": "status",
+              "value": "UNPAID"
+            },
+            {
+              "key": "search",
+              "value": "{{search}}"
+            },
+            {
+              "key": "page",
+              "value": "2"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Validates all filters together and non-first page behavior."
+      }
+    }
+  ]
+}

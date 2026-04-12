@@ -141,3 +141,80 @@ export const createPublicFakePaymentByTokenSchema = createRoute({
     },
   },
 })
+
+export const createPublicTrackOpenByTokenSchema = createRoute({
+  method: 'post',
+  path: '/{token}/track-open',
+  tags: ['public-debts'],
+  summary: 'Track customer opening a personal debt link',
+  description:
+    'Public endpoint used by the client page to record link-open/click analytics for campaign performance.',
+  request: {
+    params: z.object({
+      token: z.string().min(1),
+    }),
+  },
+  responses: {
+    201: {
+      description: 'Link open tracked',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              debtId: z.string().uuid(),
+              tracked: z.literal(true),
+            }),
+          }),
+        },
+      },
+    },
+    404: {
+      description: 'Token not found or expired',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
+export const createPublicTrackClickByTokenSchema = createRoute({
+  method: 'get',
+  path: '/{token}/track-click',
+  tags: ['public-debts'],
+  summary: 'Track customer clicking a personal debt link',
+  description: 'Public endpoint used by the client page to record the actual email link click.',
+  request: {
+    params: z.object({
+      token: z.string().min(1),
+    }),
+  },
+  responses: {
+    302: {
+      description: 'Link click tracked and redirected to the customer view',
+    },
+    404: {
+      description: 'Token not found or expired',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
+export const trackPublicEmailOpenSchema = createRoute({
+  method: 'get',
+  path: '/{debtId}/open.gif',
+  tags: ['public-debts'],
+  summary: 'Track email open pixel',
+  description: '1x1 transparent pixel used to record actual email opens from Brevo campaigns.',
+  request: {
+    params: z.object({
+      debtId: z.string().uuid(),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Tracking pixel',
+    },
+    404: {
+      description: 'Debt not found',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})

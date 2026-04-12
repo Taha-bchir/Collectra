@@ -20,6 +20,10 @@ type SendBulkResult = {
   failed: number
   skipped: number
   sentDebtIds: string[]
+  sentMessages: Array<{
+    debtId: string
+    messageId: string | null
+  }>
 }
 
 export class BrevoEmailService {
@@ -39,6 +43,7 @@ export class BrevoEmailService {
         failed: 0,
         skipped: 0,
         sentDebtIds: [],
+        sentMessages: [],
       }
     }
 
@@ -49,25 +54,34 @@ export class BrevoEmailService {
         failed: 0,
         skipped: payloads.length,
         sentDebtIds: [],
+        sentMessages: [],
       }
     }
 
     const results = await runWithConcurrency(payloads, 8, async (payload) => {
       try {
-        const ok = await this.sendOne(payload)
+        const result = await this.sendOne(payload)
         return {
           debtId: payload.debtId,
-          ok,
+          ok: result.ok,
+          messageId: result.messageId,
         }
       } catch {
         return {
           debtId: payload.debtId,
           ok: false,
+          messageId: null,
         }
       }
     })
 
     const sentDebtIds = results.filter((value) => value.ok).map((value) => value.debtId)
+    const sentMessages = results
+      .filter((value) => value.ok)
+      .map((value) => ({
+        debtId: value.debtId,
+        messageId: value.messageId ?? null,
+      }))
     const sent = sentDebtIds.length
     const failed = results.length - sent
 
@@ -77,12 +91,16 @@ export class BrevoEmailService {
       failed,
       skipped: 0,
       sentDebtIds,
+      sentMessages,
     }
   }
 
-  private async sendOne(payload: CsvImportedDebtEmailInput): Promise<boolean> {
+  private async sendOne(payload: CsvImportedDebtEmailInput): Promise<{
+    ok: boolean
+    messageId: string | null
+  }> {
     if (!this.apiKey || !this.senderEmail) {
-      return false
+      return { ok: false, messageId: null }
     }
 
     const displayName = payload.fullName.trim() || 'Customer'
@@ -91,7 +109,8 @@ export class BrevoEmailService {
     try {
       if (env.WEB_URL) {
         const { token } = await signCustomerToken(payload.debtId)
-        debtLink = `${env.WEB_URL.replace(/\/$/, '')}/client/view?token=${encodeURIComponent(token)}`
+        const baseUrl = (env.API_URL ?? env.WEB_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+        debtLink = `${baseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/track-click`
       }
     } catch {
       // If token signing fails, still send a plain notification email.
@@ -110,12 +129,14 @@ export class BrevoEmailService {
           `<p><strong>Amount:</strong> ${amountText}<br/><strong>Due date:</strong> ${dueDateText}</p>`,
           `<p>You can review it securely using this link:</p>`,
           `<p><a href="${escapeHtml(debtLink)}">Open your secure debt page</a></p>`,
+          `<img src="${escapeHtml(buildEmailOpenPixelUrl(payload.debtId))}" alt="" width="1" height="1" style="display:none;opacity:0;overflow:hidden" />`,
           '<p>If you were not expecting this message, please contact support.</p>',
         ].join('')
       : [
           `<p>Hello ${safeName},</p>`,
           `<p>A debt item related to you was imported into campaign <strong>${safeCampaignName}</strong>.</p>`,
           `<p><strong>Amount:</strong> ${amountText}<br/><strong>Due date:</strong> ${dueDateText}</p>`,
+          `<img src="${escapeHtml(buildEmailOpenPixelUrl(payload.debtId))}" alt="" width="1" height="1" style="display:none;opacity:0;overflow:hidden" />`,
           '<p>If you were not expecting this message, please contact support.</p>',
         ].join('')
 
@@ -168,9 +189,21 @@ export class BrevoEmailService {
         }),
       })
 
-      return response.ok
+      if (!response.ok) {
+        return { ok: false, messageId: null }
+      }
+
+      let messageId: string | null = null
+      try {
+        const responseBody = (await response.json()) as Record<string, unknown>
+        messageId = getString(responseBody.messageId) ?? getString(responseBody['message-id']) ?? getString(responseBody.message_id)
+      } catch {
+        messageId = null
+      }
+
+      return { ok: true, messageId }
     } catch {
-      return false
+      return { ok: false, messageId: null }
     }
   }
 }
@@ -186,6 +219,12 @@ function escapeHtml(input: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
+}
+
+function buildEmailOpenPixelUrl(debtId: string): string {
+  const origin = env.API_URL ?? env.WEB_URL ?? 'http://localhost:3000'
+  const base = origin.replace(/\/$/, '')
+  return `${base}/api/v1/public/debts/${encodeURIComponent(debtId)}/open.gif`
 }
 
 async function runWithConcurrency<T, TResult>(
@@ -218,4 +257,8 @@ async function runWithConcurrency<T, TResult>(
   await Promise.all(Array.from({ length: Math.min(safeConcurrency, items.length) }, () => runNext()))
 
   return results
+}
+
+function getString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }

@@ -73,11 +73,40 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const client = getWorkspaceClient();
-      const { data } = await client.get<{ data: BackendWorkspace[] }>(
-        WORKSPACE_ROUTES.list
-      );
-      console.log('[workspace-store] fetchWorkspaces success:', { count: data.data.length, data });
-      set({ workspaces: data.data, loading: false, error: null });
+      let workspaces: BackendWorkspace[] = [];
+
+      try {
+        const { data } = await client.get<{ data: BackendWorkspace[] }>(
+          WORKSPACE_ROUTES.list
+        );
+        workspaces = data.data;
+      } catch (primaryErr) {
+        if (primaryErr instanceof ApiError && primaryErr.status === 404) {
+          const { data } = await client.get<{ data: BackendWorkspace[] }>(
+            `${WORKSPACE_ROUTES.list}/`
+          );
+          workspaces = data.data;
+        } else {
+          throw primaryErr;
+        }
+      }
+
+      if (workspaces.length === 0) {
+        try {
+          const { data } = await client.get<{ data: BackendWorkspace | null }>(
+            WORKSPACE_ROUTES.current
+          );
+
+          if (data.data) {
+            workspaces = [data.data];
+          }
+        } catch {
+          // Keep empty list when fallback cannot resolve a workspace.
+        }
+      }
+
+      console.log('[workspace-store] fetchWorkspaces success:', { count: workspaces.length });
+      set({ workspaces, loading: false, error: null });
     } catch (err) {
       const message =
         err instanceof ApiError
@@ -85,6 +114,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           : "Failed to load workspaces. Please try again.";
       const status = err instanceof ApiError ? err.status : 'unknown';
       console.error('[workspace-store] fetchWorkspaces error:', message, { status, statusCode: err instanceof ApiError ? err.status : undefined });
+
+      const existingCurrentWorkspace = get().workspace;
+      if (existingCurrentWorkspace) {
+        set({ workspaces: [existingCurrentWorkspace], loading: false, error: null });
+        return;
+      }
+
       set({ error: message, loading: false });
     }
   },

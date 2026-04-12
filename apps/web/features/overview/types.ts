@@ -6,6 +6,7 @@ export interface GetDashboardStatsOptions {
 
 export interface DashboardDebtStatusCounts {
 	IMPORTED: number
+	UNPAID: number
 	NOTIFIED: number
 	PROMISE_TO_PAY: number
 	PAID: number

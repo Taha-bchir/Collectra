@@ -11,6 +11,7 @@ import { AUTH_COOKIE_NAMES, WORKSPACE_COOKIE_NAME } from './cookie.js'
 /** Path patterns that require a valid JWT. Only these receive the authorization middleware. */
 const PROTECTED_PATTERNS = [
   '/api/v1/users/*',
+  '/api/v1/workspaces',
   '/api/v1/workspaces/*',
   '/api/v1/internal-users',
   '/api/v1/internal-users/*',

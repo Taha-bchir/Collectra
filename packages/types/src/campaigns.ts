@@ -2,6 +2,8 @@ import type { Enums } from './types.js'
 
 export type CampaignStatus = Enums<'CampaignStatus'>
 
+export type CampaignDebtEmailStatus = 'NOT_SENT' | 'SENT' | 'CLICKED'
+
 export type CampaignSummary<TDate = string> = {
   id: string
   name: string
@@ -18,6 +20,9 @@ export type CampaignDebtDetail<TDate = string, TDebtStatus = string> = {
   dueDate: TDate
   promiseDate?: TDate | null
   status: TDebtStatus
+  emailStatus: CampaignDebtEmailStatus
+  linkOpenCount: number
+  linkOpenTimes: TDate[]
   createdAt: TDate
   updatedAt: TDate
   client: {

@@ -1,36 +1,109 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Mail, Eye, MousePointer, Zap } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Mail, MousePointer, RefreshCw, Zap } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { getCampaignEmailStats, type CampaignEmailStats } from '@/features/campaigns/services/campaign-service'
+import {
+  getCampaignEmailStats,
+  syncCampaignBrevoLogs,
+  type CampaignEmailStats,
+} from '@/features/campaigns/services/campaign-service'
 
 interface CampaignEmailStatsProps {
   campaignId: string
 }
 
+const AUTO_REFRESH_MS = 8000
+
 export function CampaignEmailStatsCard({ campaignId }: CampaignEmailStatsProps) {
   const [stats, setStats] = useState<CampaignEmailStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const inFlightRef = useRef(false)
+  const aliveRef = useRef(true)
+  const requestSeqRef = useRef(0)
 
   useEffect(() => {
-    async function fetchStats() {
-      setLoading(true)
+    return () => {
+      aliveRef.current = false
+    }
+  }, [])
+
+  const fetchStats = useCallback(
+    async ({ initial = false, withSync = false }: { initial?: boolean; withSync?: boolean } = {}) => {
+      if (inFlightRef.current) {
+        return
+      }
+
+      inFlightRef.current = true
+      const seq = ++requestSeqRef.current
+
+      if (initial) {
+        setLoading(true)
+      } else {
+        setRefreshing(true)
+      }
+
       setError(null)
+
       try {
+        if (withSync) {
+          try {
+            await syncCampaignBrevoLogs(campaignId)
+          } catch {
+            // If sync is unavailable, fall back to latest local stats.
+          }
+        }
+
         const result = await getCampaignEmailStats(campaignId)
+
+        if (!aliveRef.current || seq !== requestSeqRef.current) {
+          return
+        }
+
         setStats(result)
       } catch (err) {
+        if (!aliveRef.current || seq !== requestSeqRef.current) {
+          return
+        }
+
         setError(err instanceof Error ? err.message : 'Failed to load email stats')
       } finally {
-        setLoading(false)
+        if (aliveRef.current && seq === requestSeqRef.current) {
+          setLoading(false)
+          setRefreshing(false)
+        }
+        inFlightRef.current = false
+      }
+    },
+    [campaignId]
+  )
+
+  useEffect(() => {
+    void fetchStats({ initial: true, withSync: false })
+
+    const syncIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchStats({ initial: false, withSync: false })
       }
     }
 
-    fetchStats()
-  }, [campaignId])
+    const interval = window.setInterval(syncIfVisible, AUTO_REFRESH_MS)
+    window.addEventListener('focus', syncIfVisible)
+    document.addEventListener('visibilitychange', syncIfVisible)
+
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', syncIfVisible)
+      document.removeEventListener('visibilitychange', syncIfVisible)
+    }
+  }, [fetchStats])
+
+  const handleRefresh = async () => {
+    await fetchStats({ initial: false, withSync: true })
+  }
 
   if (loading) {
     return (
@@ -66,11 +139,8 @@ export function CampaignEmailStatsCard({ campaignId }: CampaignEmailStatsProps) 
     )
   }
 
-  // Calculate open rate and click rate
-  const openRate =
-    stats.stats.sent > 0 ? Math.round((stats.stats.opened / stats.stats.sent) * 100) : 0
   const clickRate =
-    stats.stats.opened > 0 ? Math.round((stats.stats.clicked / stats.stats.opened) * 100) : 0
+    stats.stats.sent > 0 ? Math.round((stats.stats.clicked / stats.stats.sent) * 100) : 0
 
   const lastEventDate = stats.lastEventAt
     ? new Date(stats.lastEventAt).toLocaleDateString(undefined, {
@@ -86,13 +156,26 @@ export function CampaignEmailStatsCard({ campaignId }: CampaignEmailStatsProps) 
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Email Campaign Performance</CardTitle>
-            <CardDescription>Real-time tracking via Brevo webhooks</CardDescription>
+            <CardDescription>Auto-refresh every 8s (plus on focus) via Brevo tracking</CardDescription>
           </div>
-          <Badge variant="outline">Live Tracking</Badge>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                void handleRefresh()
+              }}
+              className="inline-flex items-center rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
+              aria-label="Refresh email stats"
+            >
+              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <Badge variant="outline">Live Tracking</Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {/* Sent */}
           <div className="space-y-2 rounded-lg border p-4">
             <div className="flex items-center gap-2">
@@ -101,16 +184,6 @@ export function CampaignEmailStatsCard({ campaignId }: CampaignEmailStatsProps) 
             </div>
             <div className="text-3xl font-bold">{stats.stats.sent}</div>
             <p className="text-xs text-muted-foreground">{stats.summary.uniqueDebts} unique debts</p>
-          </div>
-
-          {/* Opened */}
-          <div className="space-y-2 rounded-lg border p-4">
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-green-500" />
-              <span className="text-sm font-medium text-muted-foreground">Opened</span>
-            </div>
-            <div className="text-3xl font-bold">{stats.stats.opened}</div>
-            <p className="text-xs text-muted-foreground">{openRate}% open rate</p>
           </div>
 
           {/* Clicked */}

@@ -1,7 +1,7 @@
 'use client'
 
-import { type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { Loader2, Upload } from 'lucide-react'
+import { Fragment, type MouseEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { CheckCircle2, Loader2, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -32,6 +32,9 @@ import {
   getCampaignById,
   importCampaignCsv,
   listCampaigns,
+  updateCampaignDueDate,
+  updateCampaignStatus,
+  deleteCampaign,
   updateDebt,
 } from '@/features/campaigns/services/campaign-service'
 import { previewCampaignCsv, type CsvPreviewResult } from '@/features/campaigns/utils/csv-preview'
@@ -60,18 +63,34 @@ function formatAmount(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function formatDebtStatus(status: string) {
-  return status
-    .toLowerCase()
-    .split('_')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+type UiDebtStatus = 'UNPAID' | 'PROMISE' | 'PAID' | 'OVERDUE'
+type UiDebtFilter = 'ALL' | UiDebtStatus
+
+function mapDebtStatusToUiStatus(status: DebtStatus): UiDebtStatus {
+  if (status === 'PAID') return 'PAID'
+  if (status === 'PROMISE_TO_PAY') return 'PROMISE'
+  if (status === 'OVERDUE_AFTER_PROMISE') return 'OVERDUE'
+  return 'UNPAID'
 }
 
-function getDebtStatusVariant(status: string) {
+function mapUiStatusToDebtStatus(status: UiDebtStatus): DebtStatus {
+  if (status === 'PAID') return 'PAID'
+  if (status === 'PROMISE') return 'PROMISE_TO_PAY'
+  if (status === 'OVERDUE') return 'OVERDUE_AFTER_PROMISE'
+  return 'UNPAID'
+}
+
+function formatUiDebtStatus(status: UiDebtStatus) {
+  if (status === 'UNPAID') return 'Unpaid'
+  if (status === 'PROMISE') return 'Promise'
+  if (status === 'PAID') return 'Paid'
+  return 'Overdue'
+}
+
+function getUiDebtStatusVariant(status: UiDebtStatus) {
   if (status === 'PAID') return 'default'
-  if (status === 'OVERDUE_AFTER_PROMISE') return 'destructive'
-  if (status === 'PROMISE_TO_PAY') return 'secondary'
+  if (status === 'OVERDUE') return 'destructive'
+  if (status === 'PROMISE') return 'secondary'
   return 'outline'
 }
 
@@ -84,8 +103,8 @@ function getStatusVariant(status: CampaignSummary['status']) {
 
 const DETAILS_PAGE_SIZE = 12
 const CAMPAIGNS_PAGE_SIZE = 4
-const DISPLAYABLE_DEBT_STATUSES: DebtStatus[] = ['PROMISE_TO_PAY', 'OVERDUE_AFTER_PROMISE']
-const MANUAL_STATUS_OPTIONS: DebtStatus[] = ['PROMISE_TO_PAY', 'PAID', 'OVERDUE_AFTER_PROMISE']
+const MANUAL_STATUS_OPTIONS: UiDebtStatus[] = ['UNPAID', 'PROMISE', 'PAID', 'OVERDUE']
+type CampaignCompletionFilter = 'ALL' | 'DONE' | 'NOT_DONE'
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
@@ -94,7 +113,9 @@ export default function CampaignsPage() {
   const [selectedCampaign, setSelectedCampaign] = useState<CampaignDetails | null>(null)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null)
   const [selectedCampaignLoading, setSelectedCampaignLoading] = useState(false)
+  const [selectedCampaignError, setSelectedCampaignError] = useState<string | null>(null)
   const [campaignSearch, setCampaignSearch] = useState('')
+  const [campaignCompletionFilter, setCampaignCompletionFilter] = useState<CampaignCompletionFilter>('ALL')
   const [campaignsPage, setCampaignsPage] = useState(1)
 
   const [campaignName, setCampaignName] = useState('')
@@ -109,9 +130,14 @@ export default function CampaignsPage() {
   const [lastImportResult, setLastImportResult] = useState<CampaignImportResult | null>(null)
   const [linkLoadingDebtId, setLinkLoadingDebtId] = useState<string | null>(null)
   const [statusUpdatingDebtId, setStatusUpdatingDebtId] = useState<string | null>(null)
-  const [dueDateUpdatingDebtId, setDueDateUpdatingDebtId] = useState<string | null>(null)
-  const [pendingDebtStatuses, setPendingDebtStatuses] = useState<Record<string, DebtStatus>>({})
-  const [pendingDueDateLimits, setPendingDueDateLimits] = useState<Record<string, string>>({})
+  const [campaignDueDateUpdating, setCampaignDueDateUpdating] = useState(false)
+  const [campaignStatusUpdatingId, setCampaignStatusUpdatingId] = useState<string | null>(null)
+  const [campaignDeletingId, setCampaignDeletingId] = useState<string | null>(null)
+  const [campaignToDelete, setCampaignToDelete] = useState<CampaignSummary | null>(null)
+  const [editingDebtId, setEditingDebtId] = useState<string | null>(null)
+  const [pendingDebtStatuses, setPendingDebtStatuses] = useState<Record<string, UiDebtStatus>>({})
+  const [statusFilter, setStatusFilter] = useState<UiDebtFilter>('UNPAID')
+  const [campaignDueDateLimit, setCampaignDueDateLimit] = useState('')
 
   const refreshCampaigns = useCallback(async () => {
     const items = await listCampaigns()
@@ -136,12 +162,18 @@ export default function CampaignsPage() {
   const handleSelectCampaign = useCallback(async (campaignId: string, page = 1) => {
     setSelectedCampaignId(campaignId)
     setSelectedCampaignLoading(true)
+    setSelectedCampaignError(null)
 
     try {
       const details = await getCampaignById(campaignId, { page, pageSize: DETAILS_PAGE_SIZE })
       setSelectedCampaign(details)
+      const firstUnpaidDebt = details.debts.find((debt) => debt.status !== 'PAID')
+      setCampaignDueDateLimit(firstUnpaidDebt ? firstUnpaidDebt.dueDate.slice(0, 10) : '')
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to load campaign details'))
+      const message = getErrorMessage(error, 'Failed to load campaign details')
+      setSelectedCampaignError(message)
+      setSelectedCampaign(null)
+      toast.error(message)
     } finally {
       setSelectedCampaignLoading(false)
     }
@@ -289,18 +321,36 @@ export default function CampaignsPage() {
 
   const filteredCampaigns = useMemo(() => {
     const query = campaignSearch.trim().toLowerCase()
-    if (!query) {
-      return renderedCampaigns
-    }
+    return renderedCampaigns
+      .filter((campaign) => {
+        if (campaignCompletionFilter === 'DONE') {
+          return campaign.status === 'COMPLETED'
+        }
 
-    return renderedCampaigns.filter((campaign) => campaign.name.toLowerCase().includes(query))
-  }, [campaignSearch, renderedCampaigns])
+        if (campaignCompletionFilter === 'NOT_DONE') {
+          return campaign.status !== 'COMPLETED'
+        }
+
+        return true
+      })
+      .filter((campaign) => (query ? campaign.name.toLowerCase().includes(query) : true))
+  }, [campaignCompletionFilter, campaignSearch, renderedCampaigns])
+
+  const campaignCounters = useMemo(() => {
+    const total = renderedCampaigns.length
+    const done = renderedCampaigns.filter((campaign) => campaign.status === 'COMPLETED').length
+    return {
+      total,
+      done,
+      notDone: total - done,
+    }
+  }, [renderedCampaigns])
 
   const totalCampaignPages = Math.max(1, Math.ceil(filteredCampaigns.length / CAMPAIGNS_PAGE_SIZE))
 
   useEffect(() => {
     setCampaignsPage(1)
-  }, [campaignSearch])
+  }, [campaignSearch, campaignCompletionFilter])
 
   useEffect(() => {
     setCampaignsPage((current) => Math.min(current, totalCampaignPages))
@@ -325,65 +375,52 @@ export default function CampaignsPage() {
     }
   }, [])
 
-  const handleDueDateLimitSelection = useCallback((debtId: string, dueDateValue: string) => {
-    setPendingDueDateLimits((prev) => ({ ...prev, [debtId]: dueDateValue }))
-  }, [])
+  const handleUpdateCampaignDueDateLimit = useCallback(async () => {
+    if (!selectedCampaignId || !campaignDueDateLimit) {
+      return
+    }
 
-  const handleUpdateDueDateLimit = useCallback(
-    async (debtId: string, currentDueDateIso: string, currentStatus: DebtStatus) => {
-      if (currentStatus === 'PAID') {
-        return
-      }
+    setCampaignDueDateUpdating(true)
 
-      const currentDueDateValue = currentDueDateIso.slice(0, 10)
-      const nextDueDateValue = pendingDueDateLimits[debtId] ?? currentDueDateValue
+    try {
+      const dueDate = new Date(`${campaignDueDateLimit}T23:59:59.999Z`).toISOString()
+      const result = await updateCampaignDueDate(selectedCampaignId, { dueDate })
 
-      if (!nextDueDateValue || nextDueDateValue === currentDueDateValue) {
-        return
-      }
+      setSelectedCampaign((prev) => {
+        if (!prev) return prev
 
-      setDueDateUpdatingDebtId(debtId)
+        return {
+          ...prev,
+          debts: prev.debts.map((debt) =>
+            debt.status === 'PAID'
+              ? debt
+              : {
+                  ...debt,
+                  dueDate: result.dueDate,
+                },
+          ),
+        }
+      })
 
-      try {
-        const dueDate = new Date(`${nextDueDateValue}T23:59:59.999Z`).toISOString()
-        await updateDebt(debtId, { dueDate })
+      toast.success(`Date limit updated for ${result.updatedCount} user(s)`)
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to update campaign date limit'))
+    } finally {
+      setCampaignDueDateUpdating(false)
+    }
+  }, [campaignDueDateLimit, selectedCampaignId])
 
-        toast.success('Date limit updated')
-
-        setSelectedCampaign((prev) => {
-          if (!prev) return prev
-
-          return {
-            ...prev,
-            debts: prev.debts.map((debt) =>
-              debt.id === debtId
-                ? {
-                    ...debt,
-                    dueDate,
-                  }
-                : debt,
-            ),
-          }
-        })
-
-        setPendingDueDateLimits((prev) => ({ ...prev, [debtId]: nextDueDateValue }))
-      } catch (error) {
-        toast.error(getErrorMessage(error, 'Failed to update date limit'))
-      } finally {
-        setDueDateUpdatingDebtId(null)
-      }
-    },
-    [pendingDueDateLimits],
-  )
-
-  const handleDebtStatusSelection = useCallback((debtId: string, status: DebtStatus) => {
+  const handleDebtStatusSelection = useCallback((debtId: string, status: UiDebtStatus) => {
     setPendingDebtStatuses((prev) => ({ ...prev, [debtId]: status }))
   }, [])
 
   const handleUpdateDebtStatus = useCallback(
     async (debtId: string, currentStatus: DebtStatus) => {
-      const nextStatus = pendingDebtStatuses[debtId] ?? currentStatus
-      if (nextStatus === currentStatus || !selectedCampaignId) {
+      const currentUiStatus = mapDebtStatusToUiStatus(currentStatus)
+      const nextUiStatus = pendingDebtStatuses[debtId] ?? currentUiStatus
+      const nextStatus = mapUiStatusToDebtStatus(nextUiStatus)
+
+      if (nextUiStatus === currentUiStatus || !selectedCampaignId) {
         return
       }
 
@@ -414,7 +451,7 @@ export default function CampaignsPage() {
           }
         })
 
-        setPendingDebtStatuses((prev) => ({ ...prev, [debtId]: nextStatus }))
+        setPendingDebtStatuses((prev) => ({ ...prev, [debtId]: nextUiStatus }))
       } catch (error) {
         toast.error(getErrorMessage(error, 'Failed to update debt status'))
       } finally {
@@ -424,15 +461,70 @@ export default function CampaignsPage() {
     [pendingDebtStatuses, selectedCampaignId],
   )
 
+  const handleToggleCampaignDone = useCallback(async (campaign: CampaignSummary) => {
+    const nextStatus = campaign.status === 'COMPLETED' ? 'ACTIVE' : 'COMPLETED'
+    setCampaignStatusUpdatingId(campaign.id)
+
+    try {
+      const updated = await updateCampaignStatus(campaign.id, { status: nextStatus })
+
+      setCampaigns((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+
+      setSelectedCampaign((prev) => {
+        if (!prev || prev.id !== updated.id) return prev
+        return {
+          ...prev,
+          status: updated.status,
+          updatedAt: updated.updatedAt,
+        }
+      })
+
+      toast.success(nextStatus === 'COMPLETED' ? 'Campaign marked as done' : 'Campaign marked as not done')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to update campaign status'))
+    } finally {
+      setCampaignStatusUpdatingId(null)
+    }
+  }, [])
+
+  const handleConfirmDeleteCampaign = useCallback(async () => {
+    if (!campaignToDelete) return
+
+    setCampaignDeletingId(campaignToDelete.id)
+
+    try {
+      await deleteCampaign(campaignToDelete.id)
+
+      setCampaigns((prev) => prev.filter((item) => item.id !== campaignToDelete.id))
+
+      if (selectedCampaignId === campaignToDelete.id) {
+        setSelectedCampaignId(null)
+        setSelectedCampaign(null)
+        setSelectedCampaignError(null)
+      }
+
+      toast.success('Campaign deleted')
+      setCampaignToDelete(null)
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to delete campaign'))
+    } finally {
+      setCampaignDeletingId(null)
+    }
+  }, [campaignToDelete, selectedCampaignId])
+
   const displayedDebts = useMemo(() => {
     if (!selectedCampaign) {
       return []
     }
 
-    return selectedCampaign.debts.filter((debt) =>
-      DISPLAYABLE_DEBT_STATUSES.includes(debt.status as DebtStatus),
+    if (statusFilter === 'ALL') {
+      return selectedCampaign.debts
+    }
+
+    return selectedCampaign.debts.filter(
+      (debt) => mapDebtStatusToUiStatus(debt.status as DebtStatus) === statusFilter,
     )
-  }, [selectedCampaign])
+  }, [selectedCampaign, statusFilter])
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-auto">
@@ -640,15 +732,35 @@ export default function CampaignsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Imported Campaigns</CardTitle>
-          <CardDescription>Latest campaigns in your current workspace.</CardDescription>
+          <CardDescription>Latest campaigns in your workspace with quick completion and delete actions.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="max-w-sm">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Badge variant="outline">Total: {campaignCounters.total}</Badge>
+            <Badge variant="secondary">Done: {campaignCounters.done}</Badge>
+            <Badge variant="outline">Not done: {campaignCounters.notDone}</Badge>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-[1fr_220px]">
             <Input
               value={campaignSearch}
               onChange={(event) => setCampaignSearch(event.target.value)}
               placeholder="Search by campaign name"
             />
+
+            <Select
+              value={campaignCompletionFilter}
+              onValueChange={(value) => setCampaignCompletionFilter(value as CampaignCompletionFilter)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Filter completion" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All campaigns</SelectItem>
+                <SelectItem value="DONE">Done only</SelectItem>
+                <SelectItem value="NOT_DONE">Not done only</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {campaignsLoading ? (
@@ -665,34 +777,75 @@ export default function CampaignsPage() {
                 {pagedCampaigns.map((campaign) => {
                 const isSelected = selectedCampaignId === campaign.id
                 const isLoadingSelected = selectedCampaignLoading && isSelected
+                const isDone = campaign.status === 'COMPLETED'
+                const isUpdatingStatus = campaignStatusUpdatingId === campaign.id
+                const isDeleting = campaignDeletingId === campaign.id
 
                 return (
                   <div
                     key={campaign.id}
-                    className={`cursor-pointer rounded-md border p-4 transition-colors hover:bg-muted/30 ${isSelected ? 'border-primary/50 bg-primary/5' : ''}`}
+                    className={`cursor-pointer rounded-lg border p-4 transition-colors hover:bg-muted/30 ${isSelected ? 'border-primary/50 bg-primary/5 shadow-sm' : ''}`}
                     onClick={() => handleSelectCampaign(campaign.id, 1)}
                   >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="space-y-1">
-                        <p className="font-medium">{campaign.name}</p>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="space-y-1.5">
+                        <p className="font-semibold leading-none">{campaign.name}</p>
+                        {campaign.description ? (
+                          <p className="text-xs text-muted-foreground line-clamp-2">{campaign.description}</p>
+                        ) : null}
                         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant={getStatusVariant(campaign.status)}>{campaign.status}</Badge>
-                          <span>Debts: {campaign.debtsCount}</span>
-                          <span>Created: {formatDateTime(campaign.createdAt)}</span>
+                          <Badge variant={isDone ? 'secondary' : getStatusVariant(campaign.status)}>
+                            {isDone ? 'Done' : 'In progress'}
+                          </Badge>
+                          <Badge variant="outline">Debts: {campaign.debtsCount}</Badge>
+                          <span>Updated: {formatDateTime(campaign.updatedAt)}</span>
                         </div>
                       </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleSelectCampaign(campaign.id, 1)
-                        }}
-                        disabled={isLoadingSelected}
-                      >
-                        {isLoadingSelected ? <Loader2 className="h-4 w-4 animate-spin" /> : 'View'}
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant={isDone ? 'outline' : 'secondary'}
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            void handleToggleCampaignDone(campaign)
+                          }}
+                          disabled={isUpdatingStatus || isDeleting}
+                        >
+                          {isUpdatingStatus ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                              {isDone ? 'Mark not done' : 'Mark done'}
+                            </>
+                          )}
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            handleSelectCampaign(campaign.id, 1)
+                          }}
+                          disabled={isLoadingSelected || isDeleting}
+                        >
+                          {isLoadingSelected ? <Loader2 className="h-4 w-4 animate-spin" /> : 'View'}
+                        </Button>
+
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setCampaignToDelete(campaign)
+                          }}
+                          disabled={isUpdatingStatus || isDeleting}
+                        >
+                          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -727,6 +880,33 @@ export default function CampaignsPage() {
               </div>
             </div>
           )}
+
+          <AlertDialog open={Boolean(campaignToDelete)} onOpenChange={(open) => (!open ? setCampaignToDelete(null) : null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete campaign?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {campaignToDelete
+                    ? `This will permanently delete "${campaignToDelete.name}" and its campaign debts.`
+                    : 'This action cannot be undone.'}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={campaignDeletingId !== null}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(event) => {
+                    event.preventDefault()
+                    void handleConfirmDeleteCampaign()
+                  }}
+                  disabled={campaignDeletingId !== null}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {campaignDeletingId !== null ? 'Deleting...' : 'Delete campaign'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardContent>
       </Card>
 
@@ -736,7 +916,16 @@ export default function CampaignsPage() {
           <CardDescription>Selected campaign summary with imported users.</CardDescription>
         </CardHeader>
         <CardContent>
-          {!selectedCampaign ? (
+          {selectedCampaignLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading campaign details...
+            </div>
+          ) : selectedCampaignError ? (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              {selectedCampaignError}
+            </div>
+          ) : !selectedCampaign ? (
             <p className="text-sm text-muted-foreground">Select a campaign to view details.</p>
           ) : (
             <div className="space-y-4 text-sm">
@@ -770,10 +959,52 @@ export default function CampaignsPage() {
               <CampaignEmailStatsCard campaignId={selectedCampaign.id} />
 
               <div className="space-y-2">
-                <p className="font-medium">Users with overdue or promised debts</p>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div className="space-y-2">
+                    <p className="font-medium">Campaign date limit (all unpaid users)</p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={campaignDueDateLimit}
+                        onChange={(event) => setCampaignDueDateLimit(event.target.value)}
+                        className="w-44"
+                      />
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleUpdateCampaignDueDateLimit}
+                        disabled={!campaignDueDateLimit || campaignDueDateUpdating}
+                      >
+                        {campaignDueDateUpdating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          'Set for campaign'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Status filter</p>
+                    <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as UiDebtFilter)}>
+                      <SelectTrigger className="w-44">
+                        <SelectValue placeholder="Filter status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All statuses</SelectItem>
+                        <SelectItem value="UNPAID">Unpaid</SelectItem>
+                        <SelectItem value="PROMISE">Promise</SelectItem>
+                        <SelectItem value="PAID">Paid</SelectItem>
+                        <SelectItem value="OVERDUE">Overdue</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <p className="font-medium">Users</p>
                 {displayedDebts.length === 0 ? (
                   <p className="text-muted-foreground">
-                    No users currently in overdue or promised status for this campaign.
+                    No users found for this status filter in this campaign.
                   </p>
                 ) : (
                   <div className="rounded-md border overflow-x-auto">
@@ -781,96 +1012,85 @@ export default function CampaignsPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>User</TableHead>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead>Address</TableHead>
+                          <TableHead>Contact</TableHead>
                           <TableHead>Amount</TableHead>
-                          <TableHead>Date limit (you set)</TableHead>
+                          <TableHead>Date limit</TableHead>
                           <TableHead>Promised date</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Link opens</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Update status</TableHead>
-                          <TableHead className="text-right">Link</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {displayedDebts.map((debt) => (
-                          <TableRow key={debt.id}>
-                            <TableCell className="max-w-45 truncate font-medium">{debt.client.fullName}</TableCell>
-                            <TableCell className="max-w-55 truncate">{debt.client.email || '-'}</TableCell>
-                            <TableCell className="whitespace-nowrap">{debt.client.phone || '-'}</TableCell>
-                            <TableCell className="max-w-55 truncate">{debt.client.address || '-'}</TableCell>
-                            <TableCell className="whitespace-nowrap">{formatAmount(debt.amount)}</TableCell>
+                          <Fragment key={debt.id}>
+                          <TableRow>
+                            <TableCell className="font-medium">{debt.client.fullName}</TableCell>
                             <TableCell>
-                              {debt.status === 'PAID' ? (
-                                <span>-</span>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    type="date"
-                                    value={pendingDueDateLimits[debt.id] ?? debt.dueDate.slice(0, 10)}
-                                    onChange={(event) =>
-                                      handleDueDateLimitSelection(debt.id, event.target.value)
-                                    }
-                                    className="w-40"
-                                  />
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() =>
-                                      handleUpdateDueDateLimit(debt.id, debt.dueDate, debt.status as DebtStatus)
-                                    }
-                                    disabled={dueDateUpdatingDebtId === debt.id}
-                                  >
-                                    {dueDateUpdatingDebtId === debt.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      'Set'
-                                    )}
-                                  </Button>
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>{debt.promiseDate ? formatDate(debt.promiseDate) : '-'}</TableCell>
-                            <TableCell>
-                              <Badge variant={getDebtStatusVariant(debt.status)}>
-                                {formatDebtStatus(debt.status)}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Select
-                                  value={pendingDebtStatuses[debt.id] ?? (debt.status as DebtStatus)}
-                                  onValueChange={(value) =>
-                                    handleDebtStatusSelection(debt.id, value as DebtStatus)
-                                  }
-                                >
-                                  <SelectTrigger className="w-42.5">
-                                    <SelectValue placeholder="Select status" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {MANUAL_STATUS_OPTIONS.map((statusOption) => (
-                                      <SelectItem key={statusOption} value={statusOption}>
-                                        {formatDebtStatus(statusOption)}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={() => handleUpdateDebtStatus(debt.id, debt.status as DebtStatus)}
-                                  disabled={statusUpdatingDebtId === debt.id}
-                                >
-                                  {statusUpdatingDebtId === debt.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    'Save'
-                                  )}
-                                </Button>
+                              <div className="text-xs">
+                                <p>{debt.client.email || '-'}</p>
+                                <p className="text-muted-foreground">{debt.client.phone || '-'}</p>
                               </div>
                             </TableCell>
+                            <TableCell className="whitespace-nowrap">{formatAmount(debt.amount)}</TableCell>
+                            <TableCell className="whitespace-nowrap">{formatDate(debt.dueDate)}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {debt.promiseDate ? formatDate(debt.promiseDate) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  debt.emailStatus === 'CLICKED'
+                                    ? 'default'
+                                    : debt.emailStatus === 'SENT'
+                                      ? 'secondary'
+                                      : 'outline'
+                                }
+                              >
+                                {debt.emailStatus === 'CLICKED'
+                                  ? 'Clicked'
+                                  : debt.emailStatus === 'SENT'
+                                    ? 'Sent'
+                                    : 'Not sent'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {debt.linkOpenCount > 0 ? (
+                                <div className="text-xs">
+                                  <p className="font-medium">{debt.linkOpenCount}</p>
+                                  <p className="text-muted-foreground">
+                                    Last: {formatDateTime(debt.linkOpenTimes[0])}
+                                  </p>
+                                  {debt.linkOpenTimes.length > 1 ? (
+                                    <p
+                                      className="text-muted-foreground"
+                                      title={debt.linkOpenTimes.map((time) => formatDateTime(time)).join('\n')}
+                                    >
+                                      View all times
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getUiDebtStatusVariant(mapDebtStatusToUiStatus(debt.status as DebtStatus))}>
+                                {formatUiDebtStatus(mapDebtStatusToUiStatus(debt.status as DebtStatus))}
+                              </Badge>
+                            </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex justify-end">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    setEditingDebtId((current) => (current === debt.id ? null : debt.id))
+                                  }
+                                >
+                                  {editingDebtId === debt.id ? 'Close' : 'Edit'}
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -886,6 +1106,49 @@ export default function CampaignsPage() {
                               </div>
                             </TableCell>
                           </TableRow>
+                          {editingDebtId === debt.id && (
+                            <TableRow>
+                              <TableCell colSpan={8} className="bg-muted/20">
+                                <div className="grid gap-4 lg:grid-cols-1">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium text-muted-foreground">Update status</p>
+                                    <div className="flex items-center gap-2">
+                                      <Select
+                                        value={pendingDebtStatuses[debt.id] ?? mapDebtStatusToUiStatus(debt.status as DebtStatus)}
+                                        onValueChange={(value) =>
+                                          handleDebtStatusSelection(debt.id, value as UiDebtStatus)
+                                        }
+                                      >
+                                        <SelectTrigger className="w-47.5">
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {MANUAL_STATUS_OPTIONS.map((statusOption) => (
+                                            <SelectItem key={statusOption} value={statusOption}>
+                                              {formatUiDebtStatus(statusOption)}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => handleUpdateDebtStatus(debt.id, debt.status as DebtStatus)}
+                                        disabled={statusUpdatingDebtId === debt.id}
+                                      >
+                                        {statusUpdatingDebtId === debt.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          'Save'
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          </Fragment>
                         ))}
                       </TableBody>
                     </Table>
@@ -894,7 +1157,7 @@ export default function CampaignsPage() {
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
                   <p className="text-xs text-muted-foreground">
-                    Showing {displayedDebts.length} overdue/promised row(s) from this page
+                    Showing {displayedDebts.length} row(s) for filter: {statusFilter.toLowerCase()}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
