@@ -1,0 +1,1494 @@
+===== PAGE 1 =====
+Subject:Dynamic Email Composition Platform:A Comprehensive Implementation with Vue.js andFastify for Effective Content Creation andManagementSubmitted By: Mohamed Khalil BchirHost Organisation: JoodLabProfessional Supervisor: Mr.Raed BahriAcademic Supervisor: Mr.Yamen Mkaddem
+
+===== PAGE 2 =====
+Dedication
+This work is dedicated to my dearest family, whose love and support have been the
+cornerstone of my journey.
+To my parents, whose unwavering belief in me has been my greatest strength. Mom,
+your endless patience, and boundless love have been my guiding light. Dad, your wisdom
+and encouragement have been my anchor in the stormy seas of life. Your sacrifices and
+hard work have given me the foundation to reach for my dreams.
+To my brothers, who have always been my first friends and constant companions.
+Your camaraderie, support, and belief in me have been a source of immense strength and
+joy. You are my pillars of strength, my partners in crime, and my best friends.
+To my grandmother, whose warm hugs and wise words have been a source of comfort
+and inspiration. Your stories, your laughter, and your endless love have filled my life with
+immeasurable happiness. Your presence in my life is a blessing I cherish every day.
+This dedication is a small token of my immense gratitude and love for you all. Your
+unwavering support has been my beacon of hope and inspiration. I could not have
+accomplished this without you. This is for you, with all my love.
+ii
+
+===== PAGE 3 =====
+Acknowledgments
+I would like to express my deepest gratitude to those who have played a pivotal role in
+the completion of this project. Their support, guidance, and encouragement have been
+invaluable, and I am eternally grateful.
+First and foremost, I extend my sincerest thanks to Mr.Yamen Mkaddem, my aca-
+demic advisor. Your unwavering support, insightful feedback, and expert guidance have
+been instrumental in shaping this work. Your dedication to excellence and your passion
+for knowledge have inspired me throughout this journey.
+I am profoundly grateful to Mr.Raed Bahri, my professional advisor. Your practical
+insights, profound expertise, and continuous encouragement have significantly enriched
+my learning experience. Your mentorship has been a cornerstone of my professional
+development, and your belief in my capabilities has been a source of great motivation.
+A special mention goes to Madam Feyrouz Hamdaoui, whose experience and wisdom
+have been a guiding light. Your generous sharing of knowledge, thoughtful advice, and
+unwavering support have been truly invaluable. Your contributions have significantly
+enhanced the quality of this work, and for that, I am deeply thankful.
+To all my colleagues and friends who have provided support and feedback, your con-
+tributions have been essential. Your camaraderie and encouragement have made this
+journey enjoyable and fulfilling.
+Finally, I would like to thank my family for their unwavering love and support, without
+which none of this would have been possible.
+To Mr.Yamen Mkaddem,Mr. Raed Bahri, and Madam Feyrouz Hamdaoui, your guid-
+ance and support will be remembered with deep gratitude for the rest of my life. Thank
+you for believing in me and for helping me achieve this milestone.
+iii
+
+===== PAGE 4 =====
+Contents
+General Introduction 1
+1 General presentation and study of the existing 3
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.1 Presentation of the host company . . . . . . . . . . . . . . . . . . . . . . 4
+1.2 Project context . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.2.1 Main issue . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.2.2 Analysis of the existing solutions . . . . . . . . . . . . . . . . . . 5
+1.2.3 Overview of the Suggested Solution . . . . . . . . . . . . . . . . . 7
+1.3 Adopted Methodology . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1.3.1 Methodology Choice . . . . . . . . . . . . . . . . . . . . . . . . . 8
+1.3.2 Introduction to SCRUM . . . . . . . . . . . . . . . . . . . . . . . 8
+1.3.3 SCRUM Roles . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+1.3.4 Product Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . 9
+1.3.5 The Sprint . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+2 Sprint 0: Requirements and specifications 12
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+2.1 Email marketing tool Requirements . . . . . . . . . . . . . . . . . . . . . 13
+2.1.1 Identification of the actors . . . . . . . . . . . . . . . . . . . . . . 13
+2.1.2 Functional Requirements . . . . . . . . . . . . . . . . . . . . . . . 13
+2.1.3 Non-functional requirements . . . . . . . . . . . . . . . . . . . . . 14
+2.2 Work Environment . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+2.2.1 Software Environment . . . . . . . . . . . . . . . . . . . . . . . . 15
+2.2.2 Development Environment . . . . . . . . . . . . . . . . . . . . . . 18
+2.3 Project Management with Scrum . . . . . . . . . . . . . . . . . . . . . . 21
+2.3.1 Backlog Features . . . . . . . . . . . . . . . . . . . . . . . . . . . 21
+iv
+
+===== PAGE 5 =====
+Contents
+2.3.2 Global Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . 22
+2.3.3 Sprint Planning . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+2.4 General Architecture of the Application . . . . . . . . . . . . . . . . . . . 24
+2.4.1 Physical Architecture . . . . . . . . . . . . . . . . . . . . . . . . . 24
+2.4.2 Logical Architecture . . . . . . . . . . . . . . . . . . . . . . . . . 25
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 26
+3 Study and Implementation of Sprint 1 27
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+3.1 Sprint 1 Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+3.2 Functional Specification . . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+3.2.1 Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+3.2.2 Textual Description of Use Cases . . . . . . . . . . . . . . . . . . 30
+3.3 Design . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+3.3.1 Class Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+3.3.2 Sequence Diagrams . . . . . . . . . . . . . . . . . . . . . . . . . . 33
+3.4 Implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 38
+3.4.1 Authentication Interface . . . . . . . . . . . . . . . . . . . . . . . 38
+3.4.2 Email Template Builder . . . . . . . . . . . . . . . . . . . . . . . 38
+3.4.3 Email Template Library . . . . . . . . . . . . . . . . . . . . . . . 39
+3.4.4 Campaigns Publishing and Creation . . . . . . . . . . . . . . . . . 39
+3.4.5 Campaigns List . . . . . . . . . . . . . . . . . . . . . . . . . . . . 40
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 41
+4 Study and Implementation of Sprint 2 42
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+4.1 Sprint 2 Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+4.2 Functional Specification . . . . . . . . . . . . . . . . . . . . . . . . . . . 44
+4.2.1 Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 44
+4.2.2 Textual Description of Use Cases . . . . . . . . . . . . . . . . . . 45
+4.3 Design . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 47
+4.3.1 Class Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 47
+4.3.2 Sequence Diagrams . . . . . . . . . . . . . . . . . . . . . . . . . . 48
+v
+
+===== PAGE 6 =====
+Contents
+4.4 Implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+4.4.1 Upload Media . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 54
+4.4.2 Create New Organization . . . . . . . . . . . . . . . . . . . . . . 54
+4.4.3 Invite New Members to Join Organization . . . . . . . . . . . . . 55
+4.4.4 Manage Members And Roles Within an Organization . . . . . . . 55
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 56
+5 Study and Implementation of Sprint 3 57
+Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+5.1 Sprint 3 Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+5.2 Functional Specification . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+5.2.1 Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 59
+5.2.2 Textual Description of Use Cases . . . . . . . . . . . . . . . . . . 59
+5.3 Design . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 60
+5.3.1 Class Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 60
+5.3.2 Sequence Diagrams . . . . . . . . . . . . . . . . . . . . . . . . . . 61
+5.4 Deployment . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 63
+5.4.1 Deployment Process . . . . . . . . . . . . . . . . . . . . . . . . . 63
+5.4.2 Deployment Diagram . . . . . . . . . . . . . . . . . . . . . . . . . 64
+5.4.3 CI/CD Pipeline Diagram . . . . . . . . . . . . . . . . . . . . . . . 64
+5.5 Implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 64
+5.5.1 Insights Dashboard . . . . . . . . . . . . . . . . . . . . . . . . . . 65
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 66
+General Conclusion 67
+References 68
+vi
+
+===== PAGE 7 =====
+List of Figures
+1.1 Joodlab logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 4
+1.2 HubSpot logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+1.3 Constant Contact logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+1.4 Life-cycle of the Scrum method . . . . . . . . . . . . . . . . . . . . . . . 8
+2.1 Visual Studio Code logo . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+2.2 GitLab logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+2.3 Notion logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+2.4 Postman logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16
+2.5 DBeaver logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+2.6 Docker Desktop logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+2.7 Git logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 17
+2.8 Brevo logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+2.9 Node.js logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+2.10 TypeScript logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+2.11 Vue 3 logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 18
+2.12 Tailwind CSS logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+2.13 Fastify logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+2.14 MJML logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19
+2.15 Turborepo logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+2.16 Prisma logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+2.17 Swagger logo . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20
+2.18 Global Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 22
+2.19 Sprint Planning . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 23
+2.20 Global Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 24
+2.21 Global Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 25
+3.1 Sprint 1 Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 29
+vii
+
+===== PAGE 8 =====
+List of Figures
+3.2 Sprint 1 Class Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . 32
+3.3 Log In Sequence Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 33
+3.4 Register Sequence Diagram . . . . . . . . . . . . . . . . . . . . . . . . . 34
+3.5 Create Email Template Sequence Diagram . . . . . . . . . . . . . . . . . 35
+3.6 Create And Publishing Campaigns Sequence Diagram . . . . . . . . . . . 36
+3.7 Create Audience Sequence Diagram . . . . . . . . . . . . . . . . . . . . 37
+3.8 User Interface for Authentication Interface . . . . . . . . . . . . . . . . . 38
+3.9 User Interface for Email Template Builder . . . . . . . . . . . . . . . . . 39
+3.10 Email Template Library . . . . . . . . . . . . . . . . . . . . . . . . . . . 39
+3.11 User Interface for Campaigns Publishing and Creation . . . . . . . . . . 40
+3.12 User Interface for Campaigns List . . . . . . . . . . . . . . . . . . . . . . 40
+4.1 Sprint 2 Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 44
+4.2 Sprint 2 Class Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . 47
+4.3 Media Upload Sequence Diagram . . . . . . . . . . . . . . . . . . . . . . 48
+4.4 Organization Creation Sequence Diagram . . . . . . . . . . . . . . . . . . 49
+4.5 Send Invitation Sequence Diagram . . . . . . . . . . . . . . . . . . . . . 50
+4.6 Accept Invitation Sequence Diagram . . . . . . . . . . . . . . . . . . . . 51
+4.7 Assign Roles Sequence Diagram . . . . . . . . . . . . . . . . . . . . . . . 52
+4.8 Remove Members Sequence Diagram . . . . . . . . . . . . . . . . . . . . 53
+4.9 User Interface for Upload Media . . . . . . . . . . . . . . . . . . . . . . . 54
+4.10 User Interface for Creating a New Organization . . . . . . . . . . . . . . 55
+4.11 User Interface for Inviting New Members . . . . . . . . . . . . . . . . . . 55
+4.12 User Interface for Assigning Roles And Managing Members . . . . . . . . 56
+5.1 Sprint 3 Use Case Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . 59
+5.2 Sprint 3 Class Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . 60
+5.3 Tracking Sequence Diagram . . . . . . . . . . . . . . . . . . . . . . . . . 61
+5.4 Tracking Sequence Diagram . . . . . . . . . . . . . . . . . . . . . . . . . 62
+5.5 Deployment Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 64
+5.6 CI/CD Pipeline Diagram . . . . . . . . . . . . . . . . . . . . . . . . . . . 64
+5.7 User Interface for Campaigns Dashboard . . . . . . . . . . . . . . . . . . 65
+viii
+
+===== PAGE 9 =====
+List of Tables
+1.1 Comparison of HubSpot, Constant Contact, and our Email Marketing Tool 8
+3.1 Sprint 1 Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28
+3.2 Use Case 1: Register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+3.3 Use Case 2: Authenticate . . . . . . . . . . . . . . . . . . . . . . . . . . 30
+3.4 Use Case 3: Create Email Template . . . . . . . . . . . . . . . . . . . . . 31
+3.5 Use Case 4: Create Campaign . . . . . . . . . . . . . . . . . . . . . . . . 31
+3.6 Use Case 5: Create Audience . . . . . . . . . . . . . . . . . . . . . . . . 31
+4.1 Sprint 2 Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 43
+4.2 Use Case 1: Upload Media Files . . . . . . . . . . . . . . . . . . . . . . . 45
+4.3 Use Case 2: Create Organizations . . . . . . . . . . . . . . . . . . . . . . 45
+4.4 Use Case 3: Assign Roles to Users . . . . . . . . . . . . . . . . . . . . . . 46
+4.5 Use Case 4: Send Invitation to Join Organization via Email . . . . . . . 46
+4.6 Use Case 5: Remove User from an Organization . . . . . . . . . . . . . . 47
+5.1 Sprint 3 Backlog . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 58
+5.2 Use Case 1: View Insights . . . . . . . . . . . . . . . . . . . . . . . . . . 60
+ix
+
+===== PAGE 10 =====
+Liste of acronymes
+SaaS Software as a service
+MJML Mailjet Markup Language
+JWT Json Web Token
+x
+
+===== PAGE 11 =====
+General Introduction
+In the digital age, email marketing has emerged as a crucial tool for businesses. It provides
+a platform for businesses to reach out to their customers directly, offering personalized
+content and promotions that can drive both engagement and sales. This direct line of
+communication, when coupled with the right messaging, can transform email into one of
+the most impactful marketing channels. It’s a chance for businesses to speak directly to
+their customers in their inbox, at a time that is convenient for them.
+Consider the case of Amazon, a global e-commerce giant. Amazon has effectively
+harnessed the power of email marketing, sending personalized product recommendations
+and offers to its customers. This strategy significantly enhances customer engagement
+and drives sales, demonstrating the potential of email marketing. It’s a testament to
+how understanding customer preferences and tailoring messages accordingly can lead to
+increased customer loyalty and revenue.
+However, like any other marketing strategy, email marketing comes with its own set
+of challenges. These include creating engaging content that resonates with the audience,
+ensuring email deliverability despite the presence of rigorous spam filters, maintaining
+email lists to ensure they are up-to-date and relevant, and complying with regulations
+like the General Data Protection Regulation (GDPR). These challenges can make email
+marketing seem daunting, but they are not invincible.
+To overcome these challenges, businesses are turning to solutions like email builders.
+These tools provide a seamless and intuitive platform for creating compelling email cam-
+paigns. They come equipped with features like drag-and-drop editors, pre-designed tem-
+plates, and automation tools that make the process of crafting and sending emails a
+breeze. These tools not only enhance user engagement but also increase brand visibility.
+Moreover, these solutions often come with built-in analytics tools. These tools allow
+businesses to track key metrics like open rates, click-through rates, and conversion rates.
+By analyzing these metrics, businesses can gain insights into what’s working and what’s
+1
+
+===== PAGE 12 =====
+General Introduction
+not in their email campaigns, allowing them to continuously optimize their strategies for
+better results.
+In conclusion, email marketing is a powerful tool for businesses in the digital age.
+Despite challenges, with the right strategies and tools, it can drive growth and success.
+Businesses that effectively use email marketing are more likely to succeed. Its influence
+in the marketing world is significant and will continue to be a dominant force for years
+to come.
+This report will delve into various aspects of the email marketing tool developed
+during the project. The structure of the report is as follows:
+– Chapter 1: General Presentation and Study of Existing Solutions
+This chapter provides an overview of email marketing and examines existing tools
+and solutions available in the market.
+– Chapter 2: Requirements and Specifications
+This chapter outlines the requirements and specifications for the development of the
+email marketing tool, detailing the necessary features and functionalities.
+– Chapter 3: Email Builder Feature and Campaign Publishing
+This chapter focuses on the email builder feature, explaining how users can create
+email templates and publish campaigns using the tool.
+– Chapter 4: Workspace Management and Media Cloud Feature
+This chapter discusses the workspace management feature, which allows for the cre-
+ation and organization of different workspaces. It also covers the media cloud feature
+for managing media files.
+– Chapter 5: Campaign Tracking Feature
+The final chapter describes the campaign tracking feature, which enables users to
+monitor the performance of their email campaigns through various metrics and an-
+alytics.
+The subsequent chapters will provide a detailed exploration of each of these aspects,
+demonstrating the capabilities and functionalities of the developed email marketing tool.
+2
+
+===== PAGE 13 =====
+1
+General presentation and study of the
+existing
+3
+
+===== PAGE 14 =====
+Chapter 1. General presentation and study of the existing
+Introduction
+In this chapter, we will first introduce the host company, Joodlab. Then, we will give an
+overview of the general context of our project and explain the working methodology that
+we will adopt in our project.
+1.1 Presentation of the host company
+Joodlab is a technology company that provides the simplest solutions and technical con-
+sultations for various companies in different sectors. It was established in Saudi Arabia
+by a group of experts with multiple competencies in the fields of information technology,
+artificial intelligence, and information automation.
+Figure 1.1 : Joodlab logo
+1.2 Project context
+In this part, we will present the main issue, a study of the existing solutions, our project’s
+goals as well as the different steps of the project.
+4
+
+===== PAGE 15 =====
+Chapter 1. General presentation and study of the existing
+1.2.1 Main issue
+The primary challenge in the field of email marketing is the creation and management of
+effective email campaigns. This involves several aspects:
+– Email Creation: The process of creating an email should be intuitive and efficient.
+Currently, many tools require knowledge of HTML and CSS for customization, which
+can be a barrier for non-technical users.
+– Customization: Users should be able to easily customize their emails to fit their
+brand and message. This includes the ability to change styles, add elements, and
+adjust layouts.
+– Campaign Management: Managing an email campaign involves sending out
+emails, scheduling them, and segmenting the audience. These tasks should be easy
+to perform and manage within the tool.
+– Tracking: Once an email campaign is sent out, it’s crucial to track its performance.
+This includes open rates, click-through rates, and conversions. The tool should
+provide comprehensive tracking and analytics.
+– Usability: The tool should be user-friendly, with a clean interface and clear in-
+structions. It should cater to both beginners and advanced users, offering simplicity
+without compromising on features.
+The lack of a tool that effectively addresses all these aspects is the main issue we aim
+to solve with our SaaS email marketing application.
+1.2.2 Analysis of the existing solutions
+HubSpot
+Figure 1.2 : HubSpot logo
+While HubSpot is a comprehensive platform for email marketing, it has several limi-
+tations that can affect its usability and effectiveness:
+5
+
+===== PAGE 16 =====
+Chapter 1. General presentation and study of the existing
+– Limited Free Version: The free version of HubSpot’s email marketing tool is
+limited. You can only send 2,000 emails per month. Additionally, you cannot connect
+to a custom email sending domain. This means your emails will show “via HubSpot”
+in the sender area and the footer of your email will have a HubSpot logo.
+– Sending Limits: HubSpot’s send limits vary based on each email provider’s limit.
+For instance, Gmail Free allows 350 emails per day, Google Apps, Office 365, Ex-
+change inbox, and Generic inbox allow 1000 emails per day.
+– CRM Limitations: There are major limitations for sales functionality in the free
+CRM. These include only 15 minutes of calling per user, per month, no inbound call-
+ing, HubSpot branding on emails, only one sales pipeline, and no email automation.
+Constant Contact
+Figure 1.3 : Constant Contact logo
+Constant Contact, despite its popularity, also has its drawbacks:
+– Inflexible Email Editor: The email editor is not as flexible or intuitive as users
+might prefer, which can make the process of creating emails more time-consuming
+and less efficient.
+– Limited Tracking Features: The tracking features, while useful, do not offer as
+much depth as other tools. This can limit user’s ability to fully understand and
+optimize their email campaigns.
+6
+
+===== PAGE 17 =====
+Chapter 1. General presentation and study of the existing
+In summary, both HubSpot and Constant Contact have significant limitations that
+can hinder the efficiency and effectiveness of email marketing. Our proposed solution aims
+to address these limitations by offering a more intuitive and flexible email builder, more
+customizable design options, and more accessible yet comprehensive campaign tracking.
+1.2.3 Overview of the Suggested Solution
+Our proposed solution is a Software as a Service (SaaS) application designed to revolu-
+tionize email marketing. The key features of our solution include:
+– Drag-and-Drop Email Builder: Our solution includes a user-friendly drag-and-
+drop email builder. This allows users to easily create professional and personalized
+emails without needing any technical skills. The builder includes a variety of elements
+that can be added to an email, such as text boxes, images, buttons, and more.
+– Customizable Elements: Each element in the email builder is fully customizable.
+Users can change the style, size, color, and other properties of these elements to
+fit their brand and message. This level of customization allows for the creation of
+unique and engaging emails.
+– Email Sending and Campaign Creation: Our solution makes it easy to send
+out emails and create marketing campaigns. Users can schedule emails to be sent at
+specific times, segment their audience to target specific groups, and automate their
+email marketing process.
+– Campaign Tracking: To help users measure the success of their email marketing
+efforts, our solution includes comprehensive campaign tracking features. Users can
+track open rates, click-through rates, and conversions, and use this data to optimize
+their future campaigns.
+– User-Friendly Interface: Our solution features a clean and intuitive interface,
+making it easy for users to navigate and use the various features. This ensures a
+smooth user experience, regardless of the user’s technical skills.
+In summary, our SaaS application aims to provide a more intuitive, efficient, and
+effective approach to email marketing. By addressing the limitations of existing solutions,
+7
+
+===== PAGE 18 =====
+Chapter 1. General presentation and study of the existing
+Feature HubSpot Constant Contact Our Tool
+Tracking Yes Yes Yes
+Campaign Management Yes Yes Yes
+Email Builder Limited Limited Yes
+Customization Limited Limited Yes
+T able 1.1: Comparison of HubSpot, Constant Contact, and our Email Marketing Tool
+we believe our tool can significantly improve the email marketing process for businesses
+of all sizes.
+1.3 Adopted Methodology
+In this section, we will discuss the methodology adopted for the development of our SaaS
+email marketing application.
+1.3.1 Methodology Choice
+For this project, we have chosen to adopt the SCRUM methodology [1]. This decision
+was made due to several reasons. Firstly, SCRUM is an agile development methodology
+which allows for rapid iteration and flexibility. This is particularly important for our
+project as it allows us to quickly adapt to changes and continuously improve our product
+based on user feedback. Secondly, SCRUM promotes close collaboration among team
+members which helps to ensure that everyone is on the same page and working towards
+the same goals.
+1.3.2 Introduction to SCRUM
+Figure 1.4 : Life-cycle of the Scrum method
+8
+
+===== PAGE 19 =====
+Chapter 1. General presentation and study of the existing
+SCRUM is a framework for agile development. It is designed to add energy, focus,
+clarity, and transparency to project planning and implementation. At its core, SCRUM is
+about empowering a self-managing team to deliver, and it uses iterative, incremental prac-
+tices to increase productivity and optimize predictability. In the context of our project,
+SCRUM provides a structured approach to managing the complex task of developing a
+new software product [1].
+1.3.3 SCRUM Roles
+Within the SCRUM framework, there are three key roles: the Product Owner, the Scrum
+Master, and the Development Team.
+– Product Owner: The Product Owner is responsible for maximizing the value of
+the product resulting from the work of the Development Team. They manage the
+Product Backlog and are the sole person responsible for its content, availability, and
+ordering [1].
+– Scrum Master: The Scrum Master is responsible for promoting and supporting
+SCRUM. They do this by helping everyone understand SCRUM theory, practices,
+rules, and values. The Scrum Master serves the team by removing impediments to
+the team’s progress [1].
+– Development Team: The Development Team is responsible for delivering poten-
+tially shippable increments of the product at the end of each Sprint. The team is
+self-organizing, cross-functional, and has all the skills necessary to create a product
+Increment [1].
+1.3.4 Product Backlog
+The Product Backlog is a list of features, functions, requirements, enhancements, and
+fixes that constitute the changes to be made to the product in future releases. It is the
+single source of requirements for any changes to be made to the product. The Product
+Owner is responsible for the Product Backlog, including its content, availability, and
+ordering [1].
+9
+
+===== PAGE 20 =====
+Chapter 1. General presentation and study of the existing
+– Content: The Product Backlog lists all features, functions, requirements, enhance-
+ments, and fixes that need to be made to the product. Each item in the backlog is
+expressed as a user story which provides a clear understanding of the requirement
+from an end-user perspective [1].
+– Availability: The Product Backlog is a living document that is available to all
+stakeholders. This ensures transparency and allows everyone involved in the project
+to understand the direction of the product and the work to be done [1].
+– Ordering: The items in the Product Backlog are ordered by the Product Owner
+based on their value, risk, priority, and necessity. This helps the Development Team
+to understand the work items’ relative priority [1].
+1.3.5 The Sprint
+A Sprint is a time-boxed period during which specific work has to be completed and made
+ready for review. Sprints typically last between one week to one month. Here are the key
+aspects of a Sprint [1]:
+– Sprint Planning: At the start of the Sprint, the team holds a planning meeting
+to decide what work will be accomplished during the Sprint. The Product Owner
+identifies the items in the Product Backlog that he or she wants completed (the
+Sprint Goal) and the team decides how much of this they can commit to complete
+during the next Sprint [1].
+– Daily Scrum: Each day during the Sprint, the team holds a daily scrum meeting
+to discuss progress and plan for the day. This is not a problem-solving or issue
+resolution meeting. Instead, it is a chance for the team to inspect their progress
+towards the Sprint Goal and adjust their plan as necessary [1].
+– Sprint Review: At the end of the Sprint, the team holds a Sprint Review to inspect
+the Increment and adapt the Product Backlog if needed. During the Sprint Review,
+the Scrum Team and stakeholders collaborate about what was done in the Sprint [1].
+– Sprint Retrospective: After the Sprint Review and prior to the next Sprint Plan-
+ning, the team holds a Sprint Retrospective. During this meeting, the team discusses
+10
+
+===== PAGE 21 =====
+Chapter 1. General presentation and study of the existing
+what went well, what didn’t, and how they can make improvements for the next
+Sprint [1].
+Conclusion
+In conclusion, our SaaS email marketing tool, with its user-friendly drag-and-drop email
+builder and customizable elements, aims to address the limitations of existing solutions
+such as HubSpot. By adopting the SCRUM methodology, we ensure a flexible and iter-
+ative development process, allowing for continuous product improvement based on user
+feedback.
+The SCRUM roles of Product Owner, Scrum Master, and Development Team will
+work collaboratively throughout the development process. The use of a Product Backlog
+and Sprints will effectively manage tasks and progress.
+Overall, we believe our approach will lead to the successful development of a tool
+that significantly improves the email marketing process, providing value to our users and
+setting a new industry standard.
+11
+
+===== PAGE 22 =====
+2
+Sprint 0: Requirements and specifications
+12
+
+===== PAGE 23 =====
+Chapter 2. Sprint 0: Requirements and specifications
+Introduction
+This chapter starts with a brief introduction to the project. We’ll then identify the key
+players and requirements. Next, we’ll model the functional requirements and plan the
+product backlog and sprints. Finally, we’ll discuss the development environment for the
+project.
+2.1 Email marketing tool Requirements
+This section outlines the requirements for an email marketing tool. The tool is designed
+to meet the needs of various actors. The requirements are divided into functional and
+non-functional requirements, providing a comprehensive overview of what the system is
+expected to do and the standards it should adhere to.
+2.1.1 Identification of the actors
+The system will interact with the following actors:
+– New User: A person who has not registered an account yet.
+– User: A person who has registered an account and can log in.
+– Administrator: A user who has created an organization and manages it.
+2.1.2 Functional Requirements
+New Users
+– Account Registration
+Users
+– Account Login
+– Organization Creation
+– Organization List View
+– Email Template Creation
+13
+
+===== PAGE 24 =====
+Chapter 2. Sprint 0: Requirements and specifications
+– Email Template Editing
+– Email Template List View
+– Email Template Search
+– Draft Management
+– Email Sending
+– Sent Email History
+– Campaign Creation
+– Campaign Management
+– Campaign List View
+– Campaign Insights
+– Media Cloud
+Administrators
+– User Deactivation/Removal
+– User Addition and Role Assignment
+– Role Management
+2.1.3 Non-functional requirements
+The non-functional requirements of the system are as follows:
+– Security: The system should securely store user credentials and personal informa-
+tion. It should also provide secure access control mechanisms.
+– Usability: The system should be user-friendly, allowing users to easily navigate and
+manage their organizations and email templates.
+– Performance: The system should provide fast and efficient access to the shared
+work within an organization.
+14
+
+===== PAGE 25 =====
+Chapter 2. Sprint 0: Requirements and specifications
+– Reliability: The system should reliably deliver emails and track their status and
+timestamp.
+– Scalability: The system should be able to handle a large number of users, organi-
+zations, and email templates without performance degradation.
+– Maintainability: The system should be easy to update and maintain, allowing for
+the addition of new features and updates to existing ones.
+2.2 Work Environment
+This section outlines the work environment for the project, including the hardware envi-
+ronment, development environment, and software environment.
+2.2.1 Software Environment
+In our project, we used the following tools:
+Visual Studio Code
+Figure 2.1 : Visual Studio Code logo
+The development environment for this project is a combination of the software tools
+mentioned in the Software Environment section. Each tool plays a crucial role in different
+aspects of the development process [2].
+15
+
+===== PAGE 26 =====
+Chapter 2. Sprint 0: Requirements and specifications
+GitLab
+Figure 2.2 : GitLab logo
+GitLab serves as the remote repository for code hosting and versioning. It also provides a
+platform for creating CI/CD pipelines, facilitating continuous integration and deployment
+of the project [3].
+Notion
+Figure 2.3 : Notion logo
+Notion serves as the central hub for project management. It is used for task tracking,
+documentation, and collaboration, providing a unified workspace for all project-related
+information and tasks [4].
+Postman
+Figure 2.4 : Postman logo
+Postman is used for testing and debugging APIs. It simplifies the process of building,
+testing, and modifying APIs, making it an essential tool for backend development [5].
+16
+
+===== PAGE 27 =====
+Chapter 2. Sprint 0: Requirements and specifications
+DBeaver
+Figure 2.5 : DBeaver logo
+DBeaver is used for database management and interaction. It supports a wide range of
+databases and provides a user-friendly interface for managing database schemas, running
+SQL queries, and performing other database-related tasks [6].
+Docker Desktop
+Figure 2.6 : Docker Desktop logo
+Docker Desktop is used to containerize the services. It allows for the packaging and
+distribution of applications in a manner that is independent of the host operating system,
+ensuring consistent operation across different computing environments [7].
+Git
+Figure 2.7 : Git logo
+Git is used for version control, allowing for efficient tracking and management of changes
+to the project codebase. It is an essential tool for collaborative development [8].
+17
+
+===== PAGE 28 =====
+Chapter 2. Sprint 0: Requirements and specifications
+Brevo
+Figure 2.8 : Brevo logo
+Brevo was utilized for transactional webhook and email services, providing reliable com-
+munication channels for real-time updates and notifications within the application [9].
+2.2.2 Development Environment
+Node.js
+Figure 2.9 : Node.js logo
+Node.js is a JavaScript runtime built on Chrome’s V8 JavaScript engine. It’s used for
+building scalable network applications and executing JavaScript code server-side [10].
+TypeScript
+Figure 2.10 : TypeScript logo
+TypeScript is a typed superset of JavaScript that adds static types. It helps to write
+more robust code and maintain a cleaner and more consistent codebase. It’s used in this
+project along with Vue 3 for building user interfaces [11].
+Vue 3
+Figure 2.11 : Vue 3 logo
+Vue 3 is the latest version of Vue.js, a progressive JavaScript framework for building user
+interfaces [12].
+18
+
+===== PAGE 29 =====
+Chapter 2. Sprint 0: Requirements and specifications
+Tailwind CSS
+Figure 2.12 : Tailwind CSS logo
+Tailwind CSS is a utility-first CSS framework for rapidly building custom user interfaces.
+It provides low-level utility classes that let you build completely custom designs without
+ever leaving your HTML [13].
+Fastify
+Figure 2.13 : Fastify logo
+Fastify is a web framework highly focused on providing the best developer experience with
+the least overhead and a powerful plugin architecture. It is used for building efficient and
+scalable Node.js web applications [14].
+MJML
+Figure 2.14 : MJML logo
+MJML is a markup language designed to simplify the process of coding responsive emails.
+It provides a semantic syntax and a library of standard components, making it easier to
+build custom email templates that are responsive and compatible with various email
+clients [15].
+19
+
+===== PAGE 30 =====
+Chapter 2. Sprint 0: Requirements and specifications
+Turborepo
+Figure 2.15 : Turborepo logo
+Turborepo is a high-performance build system for JavaScript and TypeScript codebases.
+It provides features like incremental builds, parallel execution, and remote caching. It’s
+designed for monorepos, improving build times and facilitating efficient project manage-
+ment [16].
+Prisma
+Figure 2.16 : Prisma logo
+Prisma is an open-source database toolkit. It replaces traditional ORMs and makes
+database access easy with an auto-generated and type-safe query builder that’s tailored
+to your database schema [17].
+Swagger
+Figure 2.17 : Swagger logo
+Swagger is an open-source software framework backed by a large ecosystem of tools that
+helps developers design, build, document, and consume RESTful web services. It’s used
+in this project for API design and documentation [18].
+20
+
+===== PAGE 31 =====
+Chapter 2. Sprint 0: Requirements and specifications
+2.3 Project Management with Scrum
+This section outlines the key aspects of project management with Scrum including the
+product backlog, use case diagram, sprint planning, and interface prototyping.
+2.3.1 Backlog Features
+ID Description Effort
+1 Register for an account with a password and email to access the system. Low
+2 Log in to the account using email and password for secure access. Low
+3 Reset the password via email in case of forgetting it. Low
+4 Create a new organization with a unique name and become its adminis-
+trator to manage users and templates.
+High
+5 View a list of all organizations to navigate and manage them. Medium
+6 Access shared work (templates, campaigns, media) within the organization
+for effective collaboration.
+High
+7 Deactivate or remove users from the organization for security and access
+control.
+Medium
+8 Add users to the organization and assign specific roles for access control. High
+9 View and manage user roles within the organization. Medium
+10 Create new email templates for sending emails. High
+11 Edit and update email templates to keep information accurate. Medium
+12 View a list of all email templates for easy management. Low
+13 Create and manage email template drafts before finalizing and sending. High
+14 Create and publish campaigns using selected templates to organize and
+track marketing efforts..
+High
+15 View a history of published campaigns for reference. Low
+16 Generate reports for campaign analysis and informed decision-making. High
+21
+
+===== PAGE 32 =====
+Chapter 2. Sprint 0: Requirements and specifications
+2.3.2 Global Use Case Diagram
+Figure 2.21 offer us a global overview by presenting a visual description of the functional
+behaviour of our tool. This diagram sums up the interactions among the actors and the
+diverse use cases within the system.
+Figure 2.18 : Global Use Case Diagram
+22
+
+===== PAGE 33 =====
+Chapter 2. Sprint 0: Requirements and specifications
+2.3.3 Sprint Planning
+Figure 2.19 outlines our project’s sprint planning. Each sprint had specific goals and
+durations. The initial phase was for learning the necessary tools. Sprint 1 focused on
+building the email builder and creating and managing campaigns and audience. Sprint
+2 worked on media and organization management. Sprint 3 focused on the deploy-
+ment process and tracking functionality. This structured approach ensured thorough
+development and implementation of each feature. As a result, all planned features were
+successfully implemented within the project timeline.
+Figure 2.19 : Sprint Planning
+23
+
+===== PAGE 34 =====
+Chapter 2. Sprint 0: Requirements and specifications
+2.4 General Architecture of the Application
+This section outlines the general architecture of the application. It includes the physical
+architecture and the operation of the architecture.
+2.4.1 Physical Architecture
+Figure 2.20 : Global Use Case Diagram
+In the physical architecture, I followed the 3-tier architecture:
+– Level 1 is the Client (Presentation Tier): This is where the user interacts with the
+system. It could be any user interface like a web page, desktop application, or mobile
+app.
+– Level 2 is the Front Server (Application Tier): This is where all the business logic
+resides. It processes client requests, manages business rules, and controls application
+functionality.
+– Level 3 is the Back Server and Database (Data Tier): This is where data is stored
+and retrieved. It includes the database management system and the servers that
+manage it.
+24
+
+===== PAGE 35 =====
+Chapter 2. Sprint 0: Requirements and specifications
+2.4.2 Logical Architecture
+Figure 2.21 : Global Use Case Diagram
+The logical architecture of our email marketing tool consists of several interconnected
+components:
+– Frontend:
+– This component represents the user-facing part of our application.
+– It is deployed on Vercel, a platform for hosting frontend applications.
+– Users interact with the frontend to create and manage email campaigns, tem-
+plates, and other settings.
+– Email Building and Sending Service :
+– Responsible for email composition, rendering, and sending logic.
+– Communicates with the frontend to receive email content and recipient lists.
+– Handles the process of sending emails to recipients.
+– It is deployed on Azure.
+– Tracking Service:
+– Tracks email campaign performance metrics.
+– Collects data on email opens, clicks, and other relevant events.
+25
+
+===== PAGE 36 =====
+Chapter 2. Sprint 0: Requirements and specifications
+– Stores tracking data for analytics and reporting purposes.
+– It is deployed on Azure.
+– Database:
+– Hosts our Campaign-related data.
+– Contains three main tables:
+– Email Campaigns Data: Stores email content, and recipient information.
+– Email Template: Stores built email templates
+– Tracking Data: Stores tracking events (e.g., opens, clicks) associated with
+email campaigns.
+Conclusion
+In this chapter, we identified the functional and non-functional requirements of our ap-
+plication. Then, we aligned scrum to our project. Finally, we chose our working environ-
+ment.
+26
+
+===== PAGE 37 =====
+3
+Study and Implementation of Sprint 1
+27
+
+===== PAGE 38 =====
+Chapter 3. Study and Implementation of Sprint 1
+Introduction
+This chapter provides an overview of the first sprint in our project. We start by defining
+the tasks in our Sprint 1 Backlog. Next, we present a detailed Functional Specification,
+which includes a Use Case Diagram and a Textual Description of Use Cases. Moving on
+to the Design aspect, we provide Detailed Sequence Diagrams and a Class Diagram. In
+the Implementation section, we discuss the creation of an Authentication Interface and an
+Interface for the Email Builder and an Interface for Creating and Publishing Campaigns
+3.1 Sprint 1 Backlog
+The table below outlines the tasks planned for Sprint 1. This sprint focuses on the
+development of key features for the email marketing tool, including the email builder,
+email sending functionalities, and user registration and authentication.
+ID Task Description
+1 Create a user registration system, including the interface and backend
+functionality for new users to sign up.
+2 Implement user authentication, enabling registered users to log in securely.
+3 Enable access to shared resources (templates, campaigns, media) within
+an organization, promoting effective collaboration.
+4 Implement the email builder feature. This involves creating the user in-
+terface and functionality for customizing email templates.
+5 Create customizable email templates for various communication needs.
+6 Enable users to edit and update email templates to keep information ac-
+curate and relevant.
+7 Allow users to create and manage email template drafts before finalizing
+and sending.
+8 Develop the email sending logic, allowing users to send emails using se-
+lected templates to specified recipients.
+9 Implement campaign creation and publishing using selected templates.
+10 Maintain a history of published campaigns for reference and analysis.
+T able 3.1: Sprint 1 Backlog
+28
+
+===== PAGE 39 =====
+Chapter 3. Study and Implementation of Sprint 1
+The structured approach outlined in this backlog ensures clarity in understanding the
+responsibilities and the goals for this sprint.
+3.2 Functional Specification
+This section provides a comprehensive overview of the system’s functionality. It includes
+a use case diagram illustrating the system’s interactions and a detailed textual description
+of each use case.
+3.2.1 Use Case Diagram
+Figure 3.1 offers us an overview by presenting a visual description of the functional
+behaviour of our tool during the first sprint. This diagram sums up the interactions
+among the actors and the diverse use cases within the system.
+Figure 3.1 : Sprint 1 Use Case Diagram
+29
+
+===== PAGE 40 =====
+Chapter 3. Study and Implementation of Sprint 1
+3.2.2 Textual Description of Use Cases
+The following tables provide a detailed description of the use cases. This includes the
+actor, the goal of the use case, the preconditions, the basic flow, the alternative flows,
+and the postconditions.
+Use Case 1: Register
+Table 3.2 presents a textual description of a use case: Register.
+Actor New User
+Goal To register a new user to the system
+Preconditions The new user has accessed the registration page
+Basic Flow 1. The new user enters their details in the registration form
+2. The system validates the entered details
+3. The system creates a new user account
+Alternative Flows If the entered details are invalid, the system shows an error
+message
+Postconditions A new user account is created and the new user can log in
+T able 3.2: Use Case 1: Register
+Use Case 2: Log In
+Table 3.3 presents a textual description of a use case: Log In.
+Actor User, Admin
+Goal To authenticate a user to the system
+Preconditions The user has a registered account and has accessed the login
+page
+Basic Flow 1. The user enters their login credentials
+2. The system validates the entered credentials
+3. The system logs the user in
+Alternative Flows If the entered credentials are invalid, the system shows an error
+message
+Postconditions The user is authenticated and logged in to the system
+T able 3.3: Use Case 2: Authenticate
+Use Case 3: Create Email Template
+Table 3.4 presents a textual description of a use case: Create Email Template.
+30
+
+===== PAGE 41 =====
+Chapter 3. Study and Implementation of Sprint 1
+Actor User, Admin
+Goal To create a new email template
+Preconditions The user is authenticated and has accessed the email builder
+Basic Flow 1. The user selects the option to create a new template
+2. The user designs the template and saves it
+Alternative Flows None
+Postconditions A new email template is created and saved in the system
+T able 3.4: Use Case 3: Create Email Template
+Use Case 4: Create Campaign
+Table 3.5 presents a textual description of a use case: Create Campaign.
+Actor User, Admin
+Goal To Create and publish a campaign
+Preconditions The user is authenticated, has selected an email template, and
+has specified the recipient, the sender
+Basic Flow 1. The user clicks the ”save and publish” button
+2. The system sends the email to the specified recipient
+3. The system saves the published campaign
+Alternative Flows If the recipients or the sender emails are not real or do not exist,
+the system should notify the user.
+Postconditions The email has been sent to the specified recipient and the cam-
+paign has been saved.
+T able 3.5: Use Case 4: Create Campaign
+Use Case 5: Create Audeience
+Table 3.6 presents a textual description of a use case: Create Audience.
+Actor User, Admin
+Goal To Create and publish a campaign
+Preconditions The user is authenticated
+Basic Flow 1. The user fills the necessairy fields
+2. The system validates the entered details and saves the Au-
+dience
+Alternative Flows If the use enters non valid audience details.
+Postconditions The Audience is created.
+T able 3.6: Use Case 5: Create Audience
+31
+
+===== PAGE 42 =====
+Chapter 3. Study and Implementation of Sprint 1
+3.3 Design
+This section provides an overview of the design aspects of our tool during the first sprint.
+It includes diagrams that illustrate the system’s structure and behavior.
+3.3.1 Class Diagram
+The class diagram (Figure 3.2) visualizes the system’s structure. It shows the classes,
+their attributes and operations, and the relationships among them.
+Figure 3.2 : Sprint 1 Class Diagram
+32
+
+===== PAGE 43 =====
+Chapter 3. Study and Implementation of Sprint 1
+3.3.2 Sequence Diagrams
+The sequence diagrams illustrate the flow of operations in the system, emphasizing the
+interaction between objects over time. Each diagram corresponds to a specific use case
+or functionality.
+Log In Sequence Diagram
+Figure 3.3 describes the scenario of the ”Log In” use case.
+Figure 3.3 : Log In Sequence Diagram
+33
+
+===== PAGE 44 =====
+Chapter 3. Study and Implementation of Sprint 1
+Register Sequence Diagram
+Figure 3.4 describes the scenario of the ”Register” use case.
+Figure 3.4 : Register Sequence Diagram
+34
+
+===== PAGE 45 =====
+Chapter 3. Study and Implementation of Sprint 1
+Create Email Template Sequence Diagram
+Figure 3.5 describes the scenario of the ”Create Email Template” use case.
+Figure 3.5 : Create Email Template Sequence Diagram
+35
+
+===== PAGE 46 =====
+Chapter 3. Study and Implementation of Sprint 1
+Create And Publishing Campaigns Sequence Diagram
+Figure 3.6 describes the scenario of the ”Create And Publishing Campaigns” use case.
+Figure 3.6 : Create And Publishing Campaigns Sequence Diagram
+36
+
+===== PAGE 47 =====
+Chapter 3. Study and Implementation of Sprint 1
+Create Audience Sequence Diagram
+Figure 3.7 describes the scenario of the ”Create Audience” use case.
+Figure 3.7 : Create Audience Sequence Diagram
+37
+
+===== PAGE 48 =====
+Chapter 3. Study and Implementation of Sprint 1
+3.4 Implementation
+This section provides a comprehensive overview of the system’s implementation. It in-
+cludes the user interface illustrating each component and feature implemented in our
+email marketing tool during the first sprint. The user interface was designed to be simple
+and user-friendly. The goal was to make the tool easy to use even for users without much
+technical expertise
+3.4.1 Authentication Interface
+For the authentication interface, I decided to use JSON Web Tokens (JWT) for authen-
+tication. This decision was made due to JWT’s ability to securely transmit information
+between parties as a JSON object. This information can be verified and trusted because
+it is digitally signed.
+Figure 3.8 : User Interface for Authentication Interface
+3.4.2 Email Template Builder
+The email template builder was one of the main features implemented in Sprint 1. I used
+a drag-and-drop interface for MJML blocks, which allows users to easily design their
+email templates. The MJML blocks are then rendered into HTML for compatibility with
+various email clients. This approach provides a balance between ease of use for the user
+38
+
+===== PAGE 49 =====
+Chapter 3. Study and Implementation of Sprint 1
+and flexibility in email design.
+Figure 3.9 : User Interface for Email Template Builder
+3.4.3 Email Template Library
+The email template library allows users to save and reuse email templates. Users can
+create new templates from scratch or save existing templates for future use. This feature
+is designed to save time and effort for users who frequently send similar emails.
+(a) User Interface for Empty Email Tem-
+plates Library
+(b) User Interface for Ready Email Tem-
+plates library
+Figure 3.10 : Email Template Library
+3.4.4 Campaigns Publishing and Creation
+The functionality for creating and publishing campaigns was also implemented in this
+sprint. Users can create a campaign, design an email using the template builder, and
+39
+
+===== PAGE 50 =====
+Chapter 3. Study and Implementation of Sprint 1
+then publish the campaign to send the email to their audience.
+(a) User Interface for Campaigns Publish-
+ing and Creation
+(b) User Interface for Campaign creation
+form
+Figure 3.11 : User Interface for Campaigns Publishing and Creation
+3.4.5 Campaigns List
+The campaigns listing interface allows users to view and manage their existing campaigns.
+Users can see a list of all active and past campaigns, along with relevant details such as
+campaign name, send date, and updating date.
+Figure 3.12 : User Interface for Campaigns List
+40
+
+===== PAGE 51 =====
+Chapter 3. Study and Implementation of Sprint 1
+Conclusion
+In this chapter, we outlined the Sprint 1 Backlog for our email marketing tool project.
+The tasks focus on developing fundamental features like user registration, authentication,
+email builder capabilities, and email sending functionalities. Prioritizing these compo-
+nents aims to establish a solid foundation for the application, enabling users to efficiently
+create, customize, and manage email campaigns. The structured approach and clear task
+delineation will facilitate effective teamwork and progress tracking, setting the stage for
+successful project execution and subsequent development phases.
+41
+
+===== PAGE 52 =====
+4
+Study and Implementation of Sprint 2
+42
+
+===== PAGE 53 =====
+Chapter 4. Study and Implementation of Sprint 2
+Introduction
+This chapter provides a comprehensive look into the last sprint of our project. We begin
+by defining the tasks in our Backlog, followed by a detailed Functional Specification which
+includes a Use Case Diagram and a Textual Description of Use Cases. We then delve
+into the Design aspect, providing Detailed Sequence Diagrams and a Class Diagram. The
+Implementation section discusses the creation of an Event Dashboard Interface.
+4.1 Sprint 2 Backlog
+The table outlines the tasks for Sprint 2 related to organization creation, workspace setup,
+backend services, user interface, and email invitations.
+ID Task Description
+1 Implement organization creation functionality, allowing users to create
+and manage different organizations. Each organization will have its own
+workspace.
+2 Set up a workspace structure where shared data, such as published cam-
+paigns, media files, and email templates, can be accessed by authorized
+users within the organization.
+3 Develop the backend services to handle organization-specific data and per-
+missions.
+4 Create an intuitive user interface for managing organization settings and
+workspace access.
+5 Enable sending invitations via email to invite users to join an organiza-
+tion’s workspace.
+T able 4.1: Sprint 2 Backlog
+The structured approach outlined in this backlog ensures clarity in understanding the
+responsibilities and goals for this sprint.
+43
+
+===== PAGE 54 =====
+Chapter 4. Study and Implementation of Sprint 2
+4.2 Functional Specification
+This section provides a comprehensive overview of the system’s functionality. It includes
+a use case diagram illustrating the system’s interactions and a detailed textual description
+of each use case.
+4.2.1 Use Case Diagram
+Figure 4.1 offers us an overview by presenting a visual description of the functional
+behaviour of our tool during the second sprint. This diagram sums up the interactions
+among the actors and the diverse use cases within the system.
+Figure 4.1 : Sprint 2 Use Case Diagram
+44
+
+===== PAGE 55 =====
+Chapter 4. Study and Implementation of Sprint 2
+4.2.2 Textual Description of Use Cases
+The following tables provide a detailed description of the use cases. This includes the
+actor, the goal of the use case, the preconditions, the basic flow, the alternative flows,
+and the postconditions.
+Use Case 1: Upload Media Files
+Table 4.2 presents a textual description of the use case: Upload Media Files.
+Actor User, admin
+Goal To upload media files (e.g., images, videos) to the system
+Preconditions The user is logged in and has access to the media upload feature
+Basic Flow 1. The user selects the media files they want to upload
+2. The system validates the file format and size
+3. The system stores the uploaded files in the appropriate loca-
+tion
+Alternative Flows If the file format or size is invalid, the system displays an error
+message
+Postconditions The media files are successfully uploaded and associated with
+the user’s account
+T able 4.2: Use Case 1: Upload Media Files
+Use Case 2: Create Organizations
+Table 4.3 presents a textual description of the use case: Create Organizations.
+Actor User, Admin
+Goal To create new organizations within the system
+Preconditions The user or admin is logged in and has the necessary permissions
+to create organizations
+Basic Flow 1. The user or admin selects the option to create a new organi-
+zation
+2. The system prompts for organization details
+3. The user or admin provides the required information
+4. The system validates the input and creates the organization
+Alternative Flows If the provided organization details are incomplete or invalid,
+the system shows an error message
+Postconditions A new organization is successfully created and added to the
+system
+T able 4.3: Use Case 2: Create Organizations
+45
+
+===== PAGE 56 =====
+Chapter 4. Study and Implementation of Sprint 2
+Use Case 3: Assign Roles to Users
+Table 4.4 presents a textual description of the use case: Assign Roles to Users.
+Actor Admin
+Goal To assign specific roles to users within an organization
+Preconditions The admin is logged in and has the necessary permissions to
+manage roles, targeted user already a member of the organiza-
+tion
+Basic Flow 1. The admin choses a user within an organization
+2. The system displays available roles (e.g., member, admin)
+3. The admin assigns a role to the chosen user
+Alternative Flows If the admin selects an invalid user or the roles are not available,
+the system shows an error message
+Postconditions The user is assigned the specified roles within the organization
+T able 4.4: Use Case 3: Assign Roles to Users
+Use Case 4: Send Invitation to Join Organization
+Table 4.5 presents a textual description of the use case: Send Invitation to Join Organi-
+zation via Email.
+Actor Admin
+Goal To invite users to join an organization by sending email invita-
+tions
+Preconditions The admin is logged in and has the necessary permissions to
+manage organization invitations, the targeted user already have
+an account
+Basic Flow 1. The admin enters users emails.
+2. The system generates invitation emails with unique links.
+3. The admin sends the invitation emails to the selected users.
+Alternative Flows If there are no eligible users to invite or if the email sending
+fails, the system shows an error message.
+Postconditions Invitation emails are successfully sent to the selected users.
+T able 4.5: Use Case 4: Send Invitation to Join Organization via Email
+Use Case 5: Remove User from an Organization
+Table 4.6 presents a textual description of the use case: Remove User from an Organiza-
+tion.
+46
+
+===== PAGE 57 =====
+Chapter 4. Study and Implementation of Sprint 2
+Actor Admin
+Goal To remove a user from an organization
+Preconditions The admin is logged in and has the necessary permissions to
+manage users within the organization. The targeted user is a
+member of the organization.
+Basic Flow 1. The admin selects a user within the organization and clicks
+on the remove icon.
+2. The system changes the status of the selected user to inactive
+and removes their association with the organization.
+Alternative Flows If the removal process fails due to a system error, the system
+notifies the admin and logs the error.
+Postconditions The user is successfully removed from the organization, and
+their status is updated to inactive.
+T able 4.6: Use Case 5: Remove User from an Organization
+4.3 Design
+This section provides an overview of the design aspects of our tool during the second
+sprint. It includes diagrams that illustrate the system’s structure and behavior.
+4.3.1 Class Diagram
+The class diagram (Figure 4.2) visualizes the system’s structure. It shows the classes,
+their attributes and operations, and the relationships among them.
+Figure 4.2 : Sprint 2 Class Diagram
+47
+
+===== PAGE 58 =====
+Chapter 4. Study and Implementation of Sprint 2
+4.3.2 Sequence Diagrams
+The sequence diagrams illustrate the flow of operations in the system, emphasizing the
+interaction between objects over time. Each diagram corresponds to a specific use case
+or functionality.
+Media Upload Sequence Diagram
+Figure 4.3 describes the scenario of the ”Media Upload” use case.
+Figure 4.3 : Media Upload Sequence Diagram
+48
+
+===== PAGE 59 =====
+Chapter 4. Study and Implementation of Sprint 2
+Organization Creation Sequence Diagram
+Figure 4.4 describes the scenario of the ”Organization Creation” use case.
+Figure 4.4 : Organization Creation Sequence Diagram
+49
+
+===== PAGE 60 =====
+Chapter 4. Study and Implementation of Sprint 2
+Send Invitation Sequence Diagram
+Figure 4.5 describes the scenario of the ”Send Invitation” use case.
+Figure 4.5 : Send Invitation Sequence Diagram
+50
+
+===== PAGE 61 =====
+Chapter 4. Study and Implementation of Sprint 2
+Accept Invitation Sequence Diagram
+Figure 4.6 describes the scenario of the ”Accept Invitation” use case.
+Figure 4.6 : Accept Invitation Sequence Diagram
+51
+
+===== PAGE 62 =====
+Chapter 4. Study and Implementation of Sprint 2
+Assign Roles Sequence Diagram
+Figure 4.7 describes the scenario of the ”Assign Roles” use case.
+Figure 4.7 : Assign Roles Sequence Diagram
+52
+
+===== PAGE 63 =====
+Chapter 4. Study and Implementation of Sprint 2
+Remove Members Sequence Diagram
+Figure 4.8 describes the scenario of the ”Remove Members” use case.
+Figure 4.8 : Remove Members Sequence Diagram
+53
+
+===== PAGE 64 =====
+Chapter 4. Study and Implementation of Sprint 2
+4.4 Implementation
+This section provides a comprehensive overview of the system’s implementation. It in-
+cludes the user interface illustrating each component and feature implemented in our
+email marketing tool during the third sprint. The user interface was designed to be sim-
+ple and user-friendly. The goal was to make the tool easy to use even for users without
+much technical expertise.
+4.4.1 Upload Media
+The Upload Media feature allows users to either drop a media file or select one to upload
+from their device. Once uploaded, these media files will be available in the email builder
+to create email templates with images. This feature ensures that users can easily access
+and use their media assets when designing their email campaigns.
+Figure 4.9 : User Interface for Upload Media
+4.4.2 Create New Organization
+The Create New Organization feature functions as a workspace where every organization
+has its own campaigns, templates library, media cloud, and audience. By default, the
+creator of the organization becomes the admin. This setup ensures that each organization
+operates independently and securely with dedicated resources.
+54
+
+===== PAGE 65 =====
+Chapter 4. Study and Implementation of Sprint 2
+(a) Create New Organization
+ (b) Selcting Organization’s Workspace
+Figure 4.10 : User Interface for Creating a New Organization
+4.4.3 Invite New Members to Join Organization
+The Invite New Members feature allows the admin of an organization to send an email
+invitation link with a unique token to targeted users to join the organization. Upon
+sending an invitation, the targeted user is saved in the database with a ”PENDING”
+status. If the user clicks on the sent link, their status changes to ”ACCEPTED”. If the
+invitation is not accepted within a day, it will be declined.
+Figure 4.11 : User Interface for Inviting New Members
+4.4.4 Manage Members And Roles Within an Organization
+Assign Roles The Assign Roles feature allows the admin to update the role of any
+member within the organization. Each role comes with specific permissions, enabling
+the admin to control the level of access and actions that different members can perform
+within the organization.
+55
+
+===== PAGE 66 =====
+Chapter 4. Study and Implementation of Sprint 2
+Remove Members The Remove Members feature enables the admin to remove a user
+from the organization by clicking on the remove icon. When a user is removed, their status
+is updated to ”INACTIVE”, ensuring that their data is not lost and can be reactivated
+if needed in the future.
+Figure 4.12 : User Interface for Assigning Roles And Managing Members
+Conclusion
+In this chapter, we detailed the Sprint 2 Backlog for our email marketing tool project,
+focusing on enhancing organizational capabilities and collaboration. Key tasks include
+organization creation, workspace setup, backend services for data and permissions, a user-
+friendly interface for settings management, and email invitations for workspace access.
+These tasks aim to support effective team collaboration and resource sharing, enhancing
+overall functionality and user experience. This structured approach ensures clear team
+responsibilities and objectives, paving the way for successful project development and
+implementation.
+56
+
+===== PAGE 67 =====
+5
+Study and Implementation of Sprint 3
+57
+
+===== PAGE 68 =====
+Chapter 5. Study and Implementation of Sprint 3
+Introduction
+This chapter provides a comprehensive look into the last sprint of our project. We begin
+by defining the tasks in our Backlog, followed by a detailed Functional Specification which
+includes a Use Case Diagram and a Textual Description of Use Cases. We then delve
+into the Design aspect, providing Detailed Sequence Diagrams and a Class Diagram. The
+Implementation section discusses the creation of an Event Dashboard Interface.
+5.1 Sprint 3 Backlog
+The table below outlines the tasks planned for Sprint 3. This sprint focuses on the devel-
+opment of key features for the tracking tool, specifically related to email and campaigns
+tracking, as well as CI/CD pipeline creation and deployment.
+ID Task Description
+1 Create a CI/CD pipeline for automated deployment of new features.
+2 Set up Docker for the backend services and database to run on the server.
+3 Deploy the front-end application on Vercel for easy access and scalability.
+4 Implement email tracking, allowing users to monitor email behavior
+(opens, clicks, etc.).
+6 Create a dashboard that provides real-time insights into email performance
+and campaign effectiveness.
+T able 5.1: Sprint 3 Backlog
+The structured approach outlined in this backlog ensures clarity in understanding the
+responsibilities and goals for this sprint.
+5.2 Functional Specification
+This section provides a comprehensive overview of the system’s functionality. It includes
+a use case diagram illustrating the system’s interactions and a detailed textual description
+of each use case.
+58
+
+===== PAGE 69 =====
+Chapter 5. Study and Implementation of Sprint 3
+5.2.1 Use Case Diagram
+Figure 5.1 offers us an overview by presenting a visual description of the functional
+behaviour of our tool during the third sprint. This diagram sums up the interactions
+among the actors and the diverse use cases within the system.
+Figure 5.1 : Sprint 3 Use Case Diagram
+5.2.2 Textual Description of Use Cases
+The following tables provide a detailed description of the use cases. This includes the
+actor, the goal of the use case, the preconditions, the basic flow, the alternative flows,
+and the postconditions.
+Use Case 1 View Insights
+Table 5.2 presents a textual description of a use case: View Insights.
+59
+
+===== PAGE 70 =====
+Chapter 5. Study and Implementation of Sprint 3
+Actor User, Admin
+Goal To view insights of a published campaign
+Preconditions A campaign has been published and tracking data is available
+Basic Flow 1. The user selects a published campaign from the list of cam-
+paigns.
+2. The system retrieves and displays the insights details for the
+selected campaign.
+Alternative Flows If no tracking data is available, the system informs the user and
+prompts them to check back later.
+Postconditions The user has viewed the insights for the selected campaign.
+T able 5.2: Use Case 1: View Insights
+5.3 Design
+This section provides an overview of the design aspects of our tool during the third sprint.
+It includes diagrams that illustrate the system’s structure and behavior.
+5.3.1 Class Diagram
+The class diagram (Figure 5.2) visualizes the system’s structure. It shows the classes,
+their attributes and operations, and the relationships among them.
+Figure 5.2 : Sprint 3 Class Diagram
+60
+
+===== PAGE 71 =====
+Chapter 5. Study and Implementation of Sprint 3
+5.3.2 Sequence Diagrams
+The sequence diagrams illustrate the flow of operations in the system, emphasizing the
+interaction between objects over time. Each diagram corresponds to a specific use case
+or functionality.
+Saving Taracking Data Sequence Diagram Figure 5.3 describes the scenario of
+how the Tracking Data is being saved.
+Figure 5.3 : Tracking Sequence Diagram
+61
+
+===== PAGE 72 =====
+Chapter 5. Study and Implementation of Sprint 3
+Taracking Insights Sequence Diagram Figure 5.4 describes the scenario of how
+the Tracking Insights is being handeled.
+Figure 5.4 : Tracking Sequence Diagram
+62
+
+===== PAGE 73 =====
+Chapter 5. Study and Implementation of Sprint 3
+5.4 Deployment
+In this section, we’ll cover the deployment process for your email marketing tool. We’ll
+discuss setting up CI/CD pipelines, deploying backend services and the front-end deploy-
+ment.
+5.4.1 Deployment Process
+1. CI/CD Pipeline Creation:
+– Set up a CI/CD pipeline using GitLab CI/CD.
+– Configure pipeline stages for building, deployment and database schema migra-
+tion.
+2. Backend Deployment:
+– Containerize backend services using Docker.
+– Create Dockerfiles for the email service.
+– Define a ‘docker-compose.yml‘ file for managing the email service and database
+containers.
+– Deploy backend containers to a Azure.
+3. Front-End Deployment:
+– Deploy the Vue.js front-end application separately.
+– Use Vercel for front-end deployment.
+– Configure Vercel project settings environment variables.
+63
+
+===== PAGE 74 =====
+Chapter 5. Study and Implementation of Sprint 3
+5.4.2 Deployment Diagram
+Figure 5.5 illustrates the deployment of our app.
+Figure 5.5 : Deployment Diagram
+5.4.3 CI/CD Pipeline Diagram
+Figure 5.6 illustrates the stages of the CI/CD pipline.
+Figure 5.6 : CI/CD Pipeline Diagram
+5.5 Implementation
+This section provides a comprehensive overview of the system’s implementation. It in-
+cludes the user interface illustrating each component and feature implemented in our
+64
+
+===== PAGE 75 =====
+Chapter 5. Study and Implementation of Sprint 3
+email marketing tool during the third sprint. The user interface was designed to be sim-
+ple and user-friendly. The goal was to make the tool easy to use even for users without
+much technical expertise.
+5.5.1 Insights Dashboard
+Tracking Mechanism: To gather data for the Insights Dashboard, we rely on a track-
+ing system. When an email campaign is sent, each email contains unique identifiers
+(Message ID). As recipients interact with the emails (e.g., open an email, click a link),
+these identifiers trigger events. Our system captures these events and records them in
+our database.
+Brevo Transactional Webhook: We’ve integrated Brevo’s transactional webhook
+into our system. When specific events occur (e.g., email opened, link clicked), Brevo
+sends HTTP requests to our server. Our Email Service processes these requests, ex-
+tracts relevant data (such as recipient email, campaign ID, event type), and updates
+our database. Real-time updates ensure that the Insights Dashboard reflects the latest
+campaign performance.
+Figure 5.7 : User Interface for Campaigns Dashboard
+65
+
+===== PAGE 76 =====
+Chapter 5. Study and Implementation of Sprint 3
+Conclusion
+In this chapter, we outlined the Sprint 3 Backlog for our email marketing tool project.
+This sprint focuses on crucial tracking features and setting up the CI/CD pipeline for au-
+tomated deployments. Key tasks include creating the CI/CD pipeline, setting up Docker
+for backend services and the database, deploying the front-end on Vercel, implementing
+email tracking, and developing a real-time performance dashboard. These tasks aim to
+enhance the application’s reliability, scalability, and user experience. This structured
+approach ensures clarity in team roles and sprint objectives, facilitating efficient progress
+and successful milestone completion.
+66
+
+===== PAGE 77 =====
+General Conclusion
+Throughout this document, we meticulously outlined the backlogs for the initial three
+sprints of our email marketing tool project, accompanied by detailed diagrams, descrip-
+tions, and screenshots. Each sprint focused on developing essential features to build a
+robust application.
+Sprint 1 established foundational features like user registration, authentication, and
+the email builder. The use case diagrams, textual descriptions, and implementation
+screenshots provided clarity on user interactions and system structure.
+Sprint 2 enhanced organizational capabilities and collaboration through organization
+creation, workspace setup, and user invitations. Detailed diagrams and descriptions
+visualized the collaborative environment, while implementation screenshots showcased
+user interface improvements.
+Sprint 3 implemented advanced tracking features and a CI/CD pipeline for automated
+deployment. Use case diagrams and descriptions clarified tracking processes, while design
+diagrams detailed technical aspects. Implementation screenshots highlighted tracking
+features and dashboard functionalities.
+The structured approach in each sprint backlog, coupled with comprehensive doc-
+umentation, ensures clarity in task responsibilities. This methodology fosters efficient
+teamwork and progress. We are poised to deliver a comprehensive email marketing tool
+meeting user needs and expectations.
+67
+
+===== PAGE 78 =====
+References
+[1] Scrum guides. https://scrumguides.org/scrum-guide.html.
+[2] Visual studio code. https://code.visualstudio.com/.
+[3] Gitlab. https://about.gitlab.com/.
+[4] Notion. https://www.notion.so/.
+[5] Postman. https://www.postman.com/.
+[6] Dbeaver. https://dbeaver.io/.
+[7] Docker desktop. https://www.docker.com/products/docker-desktop.
+[8] Git. https://git-scm.com/.
+[9] Brevo. https://developers.brevo.com/docs/transactional-webhooks.
+[10] Node.js. https://nodejs.org/.
+[11] Typescript. https://www.typescriptlang.org/.
+[12] Vue 3. https://vuejs.org/.
+[13] Tailwind css. https://tailwindcss.com/.
+[14] Fastify. https://www.fastify.io/.
+[15] Mjml. https://mjml.io/.
+[16] Turborepo. https://turbo.build/repo.
+[17] Prisma. https://www.prisma.io/.
+[18] Swagger. https://swagger.io/.
+68
+
+===== PAGE 79 =====
+Résumé:Le présent travail s’inscrit dans le cadre du projet de find’études réalisé au sein de l’entreprise JoodLaben vue de l’obtention du Diplôme National d’Ingénieur enGénie Informatique à l'école PolytechniqueSousse pour l’année universitaire 2023/2024. Ce projetconsiste à la Conception et développement d’unoutil de e-mail marketing dynamiqueMots clés --- email, fastify, vue.js, sql
+Summary: This work is part of the end-of-studies project carried outwithin the company JoodLab, aiming to obtain the NationalDiploma in Computer Engineering at the Polytechnic Schoolof Sousse for the academic year 2023/2024. This projectinvolves the design and development of a dynamic emailmarketing tool.Keywords --- email, fastify, vue.js, SQL

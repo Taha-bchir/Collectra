@@ -4,7 +4,7 @@ Modern, production-ready Next.js 16 frontend application with React 19, TypeScri
 
 ## 🎯 Overview
 
-This is the frontend application for the SaaS boilerplate, featuring:
+This is the frontend application for the Collectra, featuring:
 
 - **Next.js 16** - Latest App Router with React Server Components
 - **React 19** - Latest React features and improvements

@@ -90,6 +90,10 @@ export const importCampaignCsvSchema = createRoute({
         'multipart/form-data': {
           schema: z.object({
             campaignName: z.string().trim().min(1).max(120),
+            dueDate: z.string().trim().min(1).openapi({
+              example: '2026-04-30',
+              description: 'Campaign due date applied to all imported customers (YYYY-MM-DD)',
+            }),
             description: z.string().max(500).optional(),
             // Accept runtime File objects while preserving binary OpenAPI docs.
             file: z

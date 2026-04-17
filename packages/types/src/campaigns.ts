@@ -70,6 +70,7 @@ export type CampaignImportResult<TDate = string, TDebtStatus = string> = {
 
 export type CampaignCsvImportInput = {
   campaignName: string
+  dueDate: Date
   description?: string
   fileName?: string
   csvText: string

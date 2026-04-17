@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { AlertCircle, CheckCircle2, LayoutGrid, Loader2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { acceptInvitation, ApiError } from "@/features/team/services/team-service"
@@ -121,10 +122,17 @@ function AcceptInvitePageContent() {
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col items-center justify-center bg-background p-4 sm:p-6 relative">
-        <div className="mb-8">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <LayoutGrid className="h-8 w-8" />
-          </div>
+        <div className="mb-8 flex justify-center">
+          <Link href="/" aria-label="Go to home page">
+            <Image
+              src="/Logo%20Collectra-02.png"
+              alt="Collectra logo"
+              width={56}
+              height={56}
+              className="h-14 w-auto object-contain"
+              priority
+            />
+          </Link>
         </div>
 
         <div className="text-center mb-8 space-y-2">

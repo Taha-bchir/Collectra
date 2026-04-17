@@ -294,12 +294,23 @@ handler.openapi(
     const csvText = await file.text()
 
     const campaignNameValue = body.campaignName
+    const dueDateValue = body.dueDate
     const descriptionValue = body.description
 
     const campaignName = typeof campaignNameValue === 'string' ? campaignNameValue.trim() : ''
 
     if (!campaignName) {
       throw new HTTPException(400, { message: 'Missing required form-data field "campaignName"' })
+    }
+
+    const dueDateInput = typeof dueDateValue === 'string' ? dueDateValue.trim() : ''
+    if (!dueDateInput) {
+      throw new HTTPException(400, { message: 'Missing required form-data field "dueDate"' })
+    }
+
+    const dueDate = new Date(`${dueDateInput}T23:59:59.999Z`)
+    if (Number.isNaN(dueDate.getTime())) {
+      throw new HTTPException(400, { message: 'Invalid form-data field "dueDate". Expected YYYY-MM-DD' })
     }
 
     const description =
@@ -310,6 +321,7 @@ handler.openapi(
     const service = new CampaignsService(c.get('prisma'))
     const result = await service.importFromCsv(workspaceId, {
       campaignName,
+      dueDate,
       description,
       fileName: file.name,
       csvText,

@@ -1,4 +1,4 @@
-const REQUIRED_FIELDS = ['fullName', 'email', 'amount', 'dueDate'] as const
+const REQUIRED_FIELDS = ['fullName', 'email', 'phone', 'amount'] as const
 
 const HEADER_ALIASES: Record<string, readonly string[]> = {
   fullName: ['fullname', 'full_name', 'name', 'clientname', 'customername', 'debtorname', 'nom'],
@@ -110,9 +110,9 @@ export function previewCampaignCsv(csvText: string): CsvPreviewResult {
 
     const fullName = getCell(row, headerMap.fullName)
     const amountRaw = getCell(row, headerMap.amount)
-    const dueDateRaw = getCell(row, headerMap.dueDate)
     const statusRaw = getCell(row, headerMap.status)
     const emailRaw = getCell(row, headerMap.email)
+    const phoneRaw = getCell(row, headerMap.phone)
 
     if (!fullName) {
       issues.push({ rowNumber, reason: 'Missing full name' })
@@ -125,13 +125,13 @@ export function previewCampaignCsv(csvText: string): CsvPreviewResult {
       continue
     }
 
-    if (!parseDateValue(dueDateRaw)) {
-      issues.push({ rowNumber, reason: 'Invalid due date' })
+    if (!emailRaw) {
+      issues.push({ rowNumber, reason: 'Missing email' })
       continue
     }
 
-    if (!emailRaw) {
-      issues.push({ rowNumber, reason: 'Missing email' })
+    if (!phoneRaw) {
+      issues.push({ rowNumber, reason: 'Missing phone' })
       continue
     }
 
@@ -300,38 +300,6 @@ function parseAmount(raw: string) {
   const cleaned = raw.replace(/\s/g, '').replace(/,/g, '.')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : null
-}
-
-function parseDateValue(raw: string) {
-  const value = raw.trim()
-  if (!value) {
-    return null
-  }
-
-  const direct = new Date(value)
-  if (!Number.isNaN(direct.getTime())) {
-    return direct
-  }
-
-  const dateMatch = value.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
-  if (!dateMatch) {
-    return null
-  }
-
-  const day = Number(dateMatch[1])
-  const month = Number(dateMatch[2])
-  const year = Number(dateMatch[3])
-
-  const parsed = new Date(Date.UTC(year, month - 1, day))
-  if (
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null
-  }
-
-  return parsed
 }
 
 function mapStatus(rawStatus: string) {

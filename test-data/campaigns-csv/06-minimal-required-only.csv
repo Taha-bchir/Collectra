@@ -1,4 +1,4 @@
-name,amount,date
-Client A,150.50,2026-06-01
-Client B,300,01/06/2026
-Client C,80.75,2026/06/03
+fullName,email,phone,amount
+Client A,client.a@example.com,+212600010001,150.50
+Client B,client.b@example.com,+212600010002,300
+Client C,client.c@example.com,+212600010003,80.75

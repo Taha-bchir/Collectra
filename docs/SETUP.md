@@ -1,6 +1,6 @@
 # Setup Guide
 
-Complete guide for setting up and running the SaaS Boilerplate monorepo.
+Complete guide for setting up and running the Collectra monorepo.
 
 ## 📋 Table of Contents
 

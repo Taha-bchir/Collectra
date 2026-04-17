@@ -1,4 +1,4 @@
-import { LayoutDashboard, Megaphone, Settings, Users, ContactRound, type LucideIcon } from 'lucide-react'
+import { LayoutDashboard, Megaphone, Settings, Users, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   title: string
@@ -27,13 +27,8 @@ export const navItems: NavItem[] = [
   },
   {
     title: 'Campaigns',
-    href: '/campaigns',
+    href: '/campaigns/tables',
     icon: Megaphone,
-  },
-  {
-    title: 'Customers',
-    href: '/customers',
-    icon: ContactRound,
   },
 ]
 

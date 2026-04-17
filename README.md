@@ -1,6 +1,6 @@
-# SaaS Boilerplate - Next.js + Hono Monorepo
+# Collectra - Next.js + Hono Monorepo
 
-A production-ready, full-stack SaaS boilerplate built with Next.js, Hono, Supabase, and Prisma. This monorepo provides a complete foundation for building modern SaaS applications with authentication, authorization, database management, and more.
+A production-ready, full-stack Collectra built with Next.js, Hono, Supabase, and Prisma. This monorepo provides a complete foundation for building modern SaaS applications with authentication, authorization, database management, and more.
 
 ## 🏗️ Architecture
 

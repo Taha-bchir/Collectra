@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Calendar, CircleDollarSign, Loader2, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -151,15 +151,19 @@ function ClientDebtViewContent() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Debt Details</CardTitle>
-          <CardDescription>
-            Personal debt link. No signup or login required.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-screen bg-muted/20">
+      <div className="mx-auto w-full max-w-4xl p-4 md:p-8 space-y-4">
+        <Card className="border-border/60">
+          <CardHeader>
+            <CardTitle>Debt Details</CardTitle>
+            <CardDescription>
+              Personal debt link from Collectra. No signup or login required.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-border/60">
+          <CardContent className="pt-6">
           {loading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -171,39 +175,61 @@ function ClientDebtViewContent() {
             </div>
           ) : debt ? (
             <div className="space-y-4 text-sm">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Card className="border-border/60">
+                  <CardContent className="pt-5">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Customer</p>
+                    <p className="mt-2 font-medium flex items-center gap-2">
+                      <UserRound className="h-4 w-4 text-muted-foreground" />
+                      {debt.customer.fullName}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/60">
+                  <CardContent className="pt-5">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount</p>
+                    <p className="mt-2 font-semibold text-lg flex items-center gap-2">
+                      <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
+                      {formatAmount(debt.amount)}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/60">
+                  <CardContent className="pt-5">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Due date</p>
+                    <p className="mt-2 font-medium flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      {formatDate(debt.dueDate)}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="text-muted-foreground">Customer</p>
-                  <p className="font-medium">{debt.customer.fullName}</p>
+                <div className="rounded-md border border-border/60 bg-background p-4">
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Campaign</p>
+                  <p className="mt-2 font-medium">{debt.campaignName}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Campaign</p>
-                  <p className="font-medium">{debt.campaignName}</p>
+                <div className="rounded-md border border-border/60 bg-background p-4">
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Contact</p>
+                  <p className="mt-2 font-medium">{debt.customer.email || debt.customer.phone || 'N/A'}</p>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Amount</p>
-                  <p className="font-medium">{formatAmount(debt.amount)}</p>
+                <div className="rounded-md border border-border/60 bg-background p-4">
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Status</p>
+                  <div className="mt-2">
+                    <Badge variant={getStatusVariant(debt.status)}>{debt.status}</Badge>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Due date</p>
-                  <p className="font-medium">{formatDate(debt.dueDate)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Status</p>
-                  <Badge variant={getStatusVariant(debt.status)}>{debt.status}</Badge>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Promised date</p>
-                  <p className="font-medium">{debt.promiseDate ? formatDate(debt.promiseDate) : 'Not set'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Contact</p>
-                  <p className="font-medium">{debt.customer.email || debt.customer.phone || 'N/A'}</p>
+                <div className="rounded-md border border-border/60 bg-background p-4">
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Promised date</p>
+                  <p className="mt-2 font-medium">{debt.promiseDate ? formatDate(debt.promiseDate) : 'Not set'}</p>
                 </div>
               </div>
 
               {debt.status !== 'PAID' && (
-                <div className="space-y-2 rounded-md border bg-muted/20 p-3">
+                <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-4">
                   <p className="font-medium">Choose your payment promise date</p>
                   <p className="text-xs text-muted-foreground">
                     Select a date between today and the date limit set by the manager. Dates after that limit are blocked.
@@ -233,7 +259,7 @@ function ClientDebtViewContent() {
               )}
 
               {debt.status === 'PROMISE_TO_PAY' && (
-                <div className="space-y-2 rounded-md border bg-primary/5 p-3">
+                <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
                   <p className="font-medium">Fake payment (demo)</p>
                   <p className="text-xs text-muted-foreground">
                     Available only after a promise to pay has been submitted.
@@ -258,15 +284,16 @@ function ClientDebtViewContent() {
               )}
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
 
 function ClientDebtViewFallback() {
   return (
-    <div className="mx-auto w-full max-w-3xl p-4 md:p-8">
+    <div className="mx-auto w-full max-w-4xl p-4 md:p-8">
       <Card>
         <CardHeader>
           <CardTitle>Debt Details</CardTitle>

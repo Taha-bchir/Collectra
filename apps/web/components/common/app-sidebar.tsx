@@ -1,6 +1,7 @@
 "use client"
 
 import type * as React from "react"
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -204,13 +205,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 className={`flex items-center gap-3 ${sidebarState === "collapsed" ? "justify-center w-full" : ""}`}
                 title={sidebarState === "collapsed" ? strings.app_name : undefined}
               >
-                <div
-                  className={`flex shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ${
-                    sidebarState === "collapsed" ? "h-10 w-10" : "h-10 w-10"
-                  }`}
-                >
-                  <LayoutGrid className="h-5 w-5" />
-                </div>
+                <Image
+                  src="/Logo%20Collectra-02.png"
+                  alt="Collectra logo"
+                  width={40}
+                  height={40}
+                  className="h-10 w-10 shrink-0 object-contain"
+                  priority
+                />
                 {sidebarState !== "collapsed" && (
                   <div className="grid flex-1 min-w-0 text-left text-sm leading-tight">
                     <span className="truncate font-semibold text-sidebar-foreground">{strings.app_name}</span>

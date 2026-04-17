@@ -1,8 +1,9 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Menu, Sun, Moon, Monitor, LayoutGrid } from "lucide-react"
+import { Menu, Sun, Moon, Monitor } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -55,10 +56,17 @@ export function Navbar() {
           <div className="flex items-center gap-2">
             <Link
               href="/"
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+              className="flex h-10 w-auto shrink-0 items-center justify-center"
               aria-label={strings.app_name}
             >
-              <LayoutGrid className="h-6 w-6" />
+              <Image
+                src="/Logo%20Collectra-02.png"
+                alt="Collectra logo"
+                width={40}
+                height={40}
+                className="h-10 w-auto object-contain"
+                priority
+              />
             </Link>
           </div>
 

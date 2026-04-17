@@ -15,6 +15,25 @@ interface CampaignEmailStatsProps {
 }
 
 const AUTO_REFRESH_MS = 8000
+const REQUEST_TIMEOUT_MS = 12000
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(message))
+    }, timeoutMs)
+
+    promise
+      .then((value) => {
+        window.clearTimeout(timer)
+        resolve(value)
+      })
+      .catch((error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      })
+  })
+}
 
 export function CampaignEmailStatsCard({ campaignId }: CampaignEmailStatsProps) {
   const [stats, setStats] = useState<CampaignEmailStats | null>(null)
@@ -26,6 +45,8 @@ export function CampaignEmailStatsCard({ campaignId }: CampaignEmailStatsProps) 
   const requestSeqRef = useRef(0)
 
   useEffect(() => {
+    aliveRef.current = true
+
     return () => {
       aliveRef.current = false
     }
@@ -51,13 +72,21 @@ export function CampaignEmailStatsCard({ campaignId }: CampaignEmailStatsProps) 
       try {
         if (withSync) {
           try {
-            await syncCampaignBrevoLogs(campaignId)
+            await withTimeout(
+              syncCampaignBrevoLogs(campaignId),
+              REQUEST_TIMEOUT_MS,
+              'Sync request timed out'
+            )
           } catch {
             // If sync is unavailable, fall back to latest local stats.
           }
         }
 
-        const result = await getCampaignEmailStats(campaignId)
+        const result = await withTimeout(
+          getCampaignEmailStats(campaignId),
+          REQUEST_TIMEOUT_MS,
+          'Loading email tracking statistics timed out'
+        )
 
         if (!aliveRef.current || seq !== requestSeqRef.current) {
           return

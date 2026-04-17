@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Copy, ExternalLink, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -74,17 +74,19 @@ function DebtTrackingCard({
   isLinkBusy,
   onCopyLink,
   onOpenLink,
+  isHighlighted = false,
 }: {
   debt: CustomerDebtTracking
   isLinkBusy: boolean
   onCopyLink: (debtId: string) => Promise<void>
   onOpenLink: (debtId: string) => Promise<void>
+  isHighlighted?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const displayedEvents = expanded ? debt.events : debt.events.slice(0, 5)
 
   return (
-    <Card className="border border-border/60">
+    <Card className={`border ${isHighlighted ? 'border-primary shadow-sm' : 'border-border/60'}`}>
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -167,13 +169,16 @@ function DebtTrackingCard({
 export default function CustomerTrackingPage() {
   const SYNC_INTERVAL_MS = 8000
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const customerId = Array.isArray(params.id) ? params.id[0] : params.id
+  const preferredCampaignId = useMemo(() => searchParams.get('campaignId')?.trim() ?? '', [searchParams])
+  const preferredDebtId = useMemo(() => searchParams.get('debtId')?.trim() ?? '', [searchParams])
 
   const [customer, setCustomer] = useState<CustomerDetails | null>(null)
   const [tracking, setTracking] = useState<Awaited<ReturnType<typeof getCustomerTracking>> | null>(null)
   const [linkLoadingDebtId, setLinkLoadingDebtId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'ALL' | CustomerTrackingStatus>('ALL')
-  const [campaignFilter, setCampaignFilter] = useState<string>('NONE')
+  const [campaignFilter, setCampaignFilter] = useState<string>(preferredCampaignId || 'NONE')
   const [loading, setLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -284,12 +289,20 @@ export default function CustomerTrackingPage() {
 
     const byCampaign = sortedDebts.filter((debt) => debt.campaignId === campaignFilter)
 
-    if (statusFilter === 'ALL') {
-      return byCampaign
+    const byStatus = statusFilter === 'ALL' ? byCampaign : byCampaign.filter((debt) => debt.status === statusFilter)
+
+    if (!preferredDebtId) {
+      return byStatus
     }
 
-    return byCampaign.filter((debt) => debt.status === statusFilter)
-  }, [campaignFilter, sortedDebts, statusFilter])
+    const preferredIndex = byStatus.findIndex((debt) => debt.debtId === preferredDebtId)
+    if (preferredIndex <= 0) {
+      return byStatus
+    }
+
+    const preferredDebt = byStatus[preferredIndex]
+    return [preferredDebt, ...byStatus.filter((debt) => debt.debtId !== preferredDebtId)]
+  }, [campaignFilter, preferredDebtId, sortedDebts, statusFilter])
 
   const campaignOptions = useMemo(() => {
     const seen = new Set<string>()
@@ -307,11 +320,32 @@ export default function CustomerTrackingPage() {
     return options
   }, [sortedDebts])
 
+  useEffect(() => {
+    if (!preferredCampaignId || campaignOptions.length === 0) {
+      return
+    }
+
+    if (campaignOptions.some((campaign) => campaign.id === preferredCampaignId) && campaignFilter !== preferredCampaignId) {
+      setCampaignFilter(preferredCampaignId)
+    }
+  }, [campaignFilter, campaignOptions, preferredCampaignId])
+
+  useEffect(() => {
+    if (!preferredDebtId || campaignFilter !== 'NONE') {
+      return
+    }
+
+    const matchingDebt = sortedDebts.find((debt) => debt.debtId === preferredDebtId)
+    if (matchingDebt) {
+      setCampaignFilter(matchingDebt.campaignId)
+    }
+  }, [campaignFilter, preferredDebtId, sortedDebts])
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-auto">
       <div className="flex items-center gap-3">
         <Button asChild variant="outline" size="sm">
-          <Link href="/customers">
+          <Link href="/campaigns/tables">
             <ArrowLeft className="mr-1.5 h-4 w-4" />
             Back to customers
           </Link>
@@ -414,6 +448,7 @@ export default function CustomerTrackingPage() {
                   isLinkBusy={linkLoadingDebtId === debt.debtId}
                   onCopyLink={handleCopyPersonalLink}
                   onOpenLink={handleOpenPersonalLink}
+                  isHighlighted={preferredDebtId === debt.debtId}
                 />
               ))
             )}

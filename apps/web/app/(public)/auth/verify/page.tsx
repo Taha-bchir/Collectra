@@ -1,9 +1,10 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { CheckCircle, Loader2, XCircle, LayoutGrid } from "lucide-react"
+import { CheckCircle, Loader2, XCircle } from "lucide-react"
 import { strings } from "@/lib/strings"
 import { useRouter } from "next/navigation"
 
@@ -70,10 +71,17 @@ export default function VerifyPage() {
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 flex flex-col items-center justify-center bg-background p-4 sm:p-6 relative">
         {/* Logo */}
-      <div className="mb-8">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <LayoutGrid className="h-8 w-8" />
-        </div>
+      <div className="mb-8 flex justify-center">
+        <Link href="/" aria-label="Go to home page">
+          <Image
+            src="/Logo%20Collectra-02.png"
+            alt="Collectra logo"
+            width={56}
+            height={56}
+            className="h-14 w-auto object-contain"
+            priority
+          />
+        </Link>
       </div>
 
       {/* Title */}

@@ -44,7 +44,6 @@ const HEADER_ALIASES = {
   phone: ['phone', 'mobile', 'telephone', 'tel'],
   address: ['address', 'adresse', 'location'],
   amount: ['amount', 'montant', 'debt', 'debtamount', 'balance'],
-  dueDate: ['duedate', 'due_date', 'deadline', 'date', 'dateecheance'],
   status: ['status', 'statut', 'state'],
 } as const
 
@@ -301,7 +300,7 @@ export class CampaignsService {
       throw new HTTPException(400, { message: 'CSV file is empty' })
     }
 
-    const parsed = this.parseCsvRows(csvText)
+    const parsed = this.parseCsvRows(csvText, input.dueDate)
 
     if (!parsed.rows.length) {
       const firstReason = parsed.skippedRows[0]?.reason ?? 'No valid rows found in CSV'
@@ -661,7 +660,7 @@ export class CampaignsService {
     }
   }
 
-  private parseCsvRows(csvText: string): CampaignCsvParseResult<DebtStatus, Date> {
+  private parseCsvRows(csvText: string, dueDate: Date): CampaignCsvParseResult<DebtStatus, Date> {
     const lines = parseCsv(csvText)
     if (!lines.length) {
       return { totalRows: 0, rows: [], skippedRows: [] }
@@ -690,8 +689,8 @@ export class CampaignsService {
 
       const fullName = getCell(row, headerMap.fullName)
       const rawAmount = getCell(row, headerMap.amount)
-      const rawDueDate = getCell(row, headerMap.dueDate)
       const rawStatus = getCell(row, headerMap.status)
+      const rawPhone = getCell(row, headerMap.phone)
 
       if (!fullName) {
         skippedRows.push({ rowNumber, reason: 'Missing full name' })
@@ -704,12 +703,6 @@ export class CampaignsService {
         continue
       }
 
-      const dueDate = parseDateValue(rawDueDate)
-      if (!dueDate) {
-        skippedRows.push({ rowNumber, reason: 'Invalid due date' })
-        continue
-      }
-
       const status = mapStatus(rawStatus)
       if (!status) {
         skippedRows.push({ rowNumber, reason: `Unknown status: ${rawStatus || '(empty)'}` })
@@ -719,6 +712,11 @@ export class CampaignsService {
       const rawEmail = getCell(row, headerMap.email)
       if (!rawEmail) {
         skippedRows.push({ rowNumber, reason: 'Missing email' })
+        continue
+      }
+
+      if (!rawPhone) {
+        skippedRows.push({ rowNumber, reason: 'Missing phone' })
         continue
       }
 
@@ -769,7 +767,6 @@ export class CampaignsService {
       phone: findColumn(HEADER_ALIASES.phone),
       address: findColumn(HEADER_ALIASES.address),
       amount: findColumn(HEADER_ALIASES.amount),
-      dueDate: findColumn(HEADER_ALIASES.dueDate),
       status: findColumn(HEADER_ALIASES.status),
     }
 
@@ -785,15 +782,15 @@ export class CampaignsService {
       })
     }
 
-    if (headerMap.amount === -1) {
+    if (headerMap.phone === -1) {
       throw new HTTPException(400, {
-        message: 'CSV must include an amount column',
+        message: 'CSV must include a phone column',
       })
     }
 
-    if (headerMap.dueDate === -1) {
+    if (headerMap.amount === -1) {
       throw new HTTPException(400, {
-        message: 'CSV must include a due-date column',
+        message: 'CSV must include an amount column',
       })
     }
 
@@ -927,38 +924,6 @@ function parseAmount(raw: string) {
   const cleaned = raw.replace(/\s/g, '').replace(/,/g, '.')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : null
-}
-
-function parseDateValue(raw: string) {
-  const value = raw.trim()
-  if (!value) {
-    return null
-  }
-
-  const direct = new Date(value)
-  if (!Number.isNaN(direct.getTime())) {
-    return direct
-  }
-
-  const dateMatch = value.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
-  if (!dateMatch) {
-    return null
-  }
-
-  const day = Number(dateMatch[1])
-  const month = Number(dateMatch[2])
-  const year = Number(dateMatch[3])
-
-  const parsed = new Date(Date.UTC(year, month - 1, day))
-  if (
-    parsed.getUTCFullYear() !== year ||
-    parsed.getUTCMonth() !== month - 1 ||
-    parsed.getUTCDate() !== day
-  ) {
-    return null
-  }
-
-  return parsed
 }
 
 function normalizeEmail(raw: string): string | null | 'INVALID' {

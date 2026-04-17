@@ -4,7 +4,7 @@ Production-ready REST API built with Hono.js, Supabase Auth, and Prisma ORM.
 
 ## 🎯 Overview
 
-This API provides a complete backend solution for the SaaS boilerplate, featuring:
+This API provides a complete backend solution for the Collectra, featuring:
 
 - **Fast & Lightweight** - Built on Hono.js for optimal performance
 - **Type-Safe** - Full TypeScript with Zod validation

@@ -3,7 +3,7 @@
  */
 export const strings: Record<string, string> = {
   // App & nav
-  app_name: 'SaaS Boilerplate',
+  app_name: 'Collectra',
   nav_home: 'Home',
   nav_dashboard: 'Dashboard',
   nav_account_settings: 'Account Settings',
@@ -12,7 +12,7 @@ export const strings: Record<string, string> = {
   footer_privacy_policy: 'Privacy Policy',
 
   // Landing
-  landing_badge: 'SaaS Boilerplate',
+  landing_badge: 'Collectra',
   landing_title_main: 'Next.js + Hono',
   landing_title_highlight: 'Starter',
   landing_description:

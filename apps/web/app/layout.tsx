@@ -26,13 +26,13 @@ const sourceSerif = Source_Serif_4({
 })
 
 export const metadata: Metadata = {
-  title: 'SaaS Boilerplate',
+  title: 'Collectra',
   description: 'Next.js + Hono monorepo with authentication, authorization, and user management',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'SaaS Boilerplate',
+    title: 'Collectra',
   },
   formatDetection: {
     telephone: false,

@@ -9,6 +9,7 @@ export type { CampaignDetails, CampaignImportResult, CampaignSummary } from '@re
 export type ImportCampaignCsvPayload = {
   file: File
   campaignName: string
+  dueDate: string
   description?: string
 }
 
@@ -149,6 +150,7 @@ export async function importCampaignCsv(payload: ImportCampaignCsvPayload): Prom
 
   formData.append('file', payload.file)
   formData.append('campaignName', payload.campaignName.trim())
+  formData.append('dueDate', payload.dueDate)
 
   if (payload.description?.trim()) {
     formData.append('description', payload.description.trim())
@@ -171,7 +173,9 @@ export async function getDebtPersonalLink(debtId: string): Promise<DebtPersonalL
 
 export async function getCampaignEmailStats(id: string): Promise<CampaignEmailStats> {
   const client = getCampaignsClient()
-  const { data } = await client.get<{ data: CampaignEmailStats }>(CAMPAIGN_ROUTES.emailStats(id))
+  const { data } = await client.get<{ data: CampaignEmailStats }>(CAMPAIGN_ROUTES.emailStats(id), {
+    timeout: 10000,
+  })
   return data.data
 }
 
@@ -216,7 +220,9 @@ export async function syncCampaignBrevoLogs(campaignId: string, input: SyncCampa
       deduplicated: number
       unresolved: number
     }
-  }>(CAMPAIGN_ROUTES.syncBrevoLogs(campaignId), input)
+  }>(CAMPAIGN_ROUTES.syncBrevoLogs(campaignId), input, {
+    timeout: 10000,
+  })
 
   return data.data
 }

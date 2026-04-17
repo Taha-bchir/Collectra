@@ -13,6 +13,13 @@ export type CustomerListQuery = {
   limit?: number
 }
 
+export type UpdateCustomerInput = {
+  fullName?: string
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+}
+
 export type CustomerListItem = {
   customer: {
     id: string
@@ -215,6 +222,12 @@ export async function getCustomerTracking(id: string): Promise<CustomerCommunica
 export async function getDebtPersonalLink(debtId: string): Promise<DebtPersonalLinkResult> {
   const client = getCustomersClient()
   const { data } = await client.get<{ data: DebtPersonalLinkResult }>(CUSTOMER_ROUTES.debtPersonalLink(debtId))
+  return data.data
+}
+
+export async function updateCustomer(id: string, payload: UpdateCustomerInput): Promise<CustomerDetails> {
+  const client = getCustomersClient()
+  const { data } = await client.patch<{ data: CustomerDetails }>(CUSTOMER_ROUTES.byId(id), payload)
   return data.data
 }
 
