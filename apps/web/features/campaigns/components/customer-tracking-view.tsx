@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Search, Eye, MoreVertical, FileText, PencilIcon } from 'lucide-react'
 
@@ -106,6 +106,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
     address: '',
   })
   const [savingEdit, setSavingEdit] = useState(false)
+  const loadRequestIdRef = useRef(0)
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -115,6 +116,9 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
   })
 
   const load = useCallback(async () => {
+    const requestId = loadRequestIdRef.current + 1
+    loadRequestIdRef.current = requestId
+
     setLoading(true)
     setError(null)
 
@@ -122,17 +126,28 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
       const result = await listCustomers({
         page,
         limit: PAGE_SIZE,
+        pageSize: PAGE_SIZE,
         search: search || undefined,
         status: status === 'ALL' ? undefined : status,
         campaignId: campaignId === 'ALL' ? undefined : campaignId,
       })
 
+      if (loadRequestIdRef.current !== requestId) {
+        return
+      }
+
       setRows(result.data)
       setPagination(result.pagination)
     } catch (nextError) {
+      if (loadRequestIdRef.current !== requestId) {
+        return
+      }
+
       setError(getErrorMessage(nextError, 'Failed to load customers'))
     } finally {
-      setLoading(false)
+      if (loadRequestIdRef.current === requestId) {
+        setLoading(false)
+      }
     }
   }, [campaignId, page, search, status])
 

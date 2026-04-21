@@ -27,7 +27,7 @@ export const navItems: NavItem[] = [
   },
   {
     title: 'Campaigns',
-    href: '/campaigns/tables',
+    href: '/campaigns',
     icon: Megaphone,
   },
 ]

@@ -11,6 +11,7 @@ export type CustomerListQuery = {
   campaignId?: string
   page?: number
   limit?: number
+  pageSize?: number
 }
 
 export type UpdateCustomerInput = {
