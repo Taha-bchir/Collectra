@@ -1,7 +1,7 @@
 'use client'
 
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, CalendarDays, CheckCircle2, Layers3, Loader2, Sparkles, Trash2, Upload } from 'lucide-react'
+import { ArrowRight, CalendarDays, Layers3, Loader2, PlusCircle, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
@@ -22,7 +22,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -31,8 +30,6 @@ import {
   type CampaignSummary,
   importCampaignCsv,
   listCampaigns,
-  updateCampaignStatus,
-  deleteCampaign,
 } from '@/features/campaigns/services/campaign-service'
 import { previewCampaignCsv, type CsvPreviewResult } from '@/features/campaigns/utils/csv-preview'
 import { CustomerTrackingView } from './customer-tracking-view'
@@ -47,10 +44,6 @@ function getErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString()
 }
 
 function formatDateOnly(value: string) {
@@ -72,27 +65,13 @@ function toDateInputValue(value: Date) {
 
 
 
-function getStatusVariant(status: CampaignSummary['status']) {
-  if (status === 'ACTIVE') return 'default'
-  if (status === 'ARCHIVED') return 'outline'
-  if (status === 'COMPLETED') return 'secondary'
-  return 'secondary'
-}
-
-const CAMPAIGNS_PAGE_SIZE = 4
-type CampaignCompletionFilter = 'ALL' | 'DONE' | 'NOT_DONE'
-
 export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' }) {
   const showCreateSection = mode === 'create'
   const router = useRouter()
   const searchParams = useSearchParams()
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
-  const [campaignsLoading, setCampaignsLoading] = useState(true)
 
-  const [campaignSearch, setCampaignSearch] = useState('')
-  const [campaignCompletionFilter, setCampaignCompletionFilter] = useState<CampaignCompletionFilter>('ALL')
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('ALL')
-  const [campaignsPage, setCampaignsPage] = useState(1)
 
   const [campaignName, setCampaignName] = useState('')
   const [description, setDescription] = useState('')
@@ -105,9 +84,6 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
   const [confirmImportOpen, setConfirmImportOpen] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [lastImportResult, setLastImportResult] = useState<CampaignImportResult | null>(null)
-  const [campaignStatusUpdatingId, setCampaignStatusUpdatingId] = useState<string | null>(null)
-  const [campaignDeletingId, setCampaignDeletingId] = useState<string | null>(null)
-  const [campaignToDelete, setCampaignToDelete] = useState<CampaignSummary | null>(null)
   const [fileInputKey, setFileInputKey] = useState(0)
   const [dueDatePickerOpen, setDueDatePickerOpen] = useState(false)
   const previewRequestIdRef = useRef(0)
@@ -140,8 +116,6 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
         await refreshCampaigns()
       } catch (error) {
         toast.error(getErrorMessage(error, 'Failed to load campaigns'))
-      } finally {
-        setCampaignsLoading(false)
       }
     }
 
@@ -296,186 +270,69 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
     }
   }, [handleImport])
 
-  const renderedCampaigns = useMemo(() => {
-    if (!lastImportResult) {
-      return campaigns
-    }
-
-    if (campaigns.some((campaign) => campaign.id === lastImportResult.campaign.id)) {
-      return campaigns
-    }
-
-    const fallbackCampaign: CampaignSummary = {
-      id: lastImportResult.campaign.id,
-      name: lastImportResult.campaign.name,
-      description: lastImportResult.campaign.description,
-      status: lastImportResult.campaign.status,
-      createdAt: lastImportResult.campaign.createdAt,
-      updatedAt: lastImportResult.campaign.createdAt,
-      debtsCount: lastImportResult.stats.importedRows,
-    }
-
-    return [fallbackCampaign, ...campaigns]
-  }, [campaigns, lastImportResult])
-
-  const filteredCampaigns = useMemo(() => {
-    const query = campaignSearch.trim().toLowerCase()
-    return renderedCampaigns
-      .filter((campaign) => {
-        if (campaignCompletionFilter === 'DONE') {
-          return campaign.status === 'COMPLETED'
-        }
-
-        if (campaignCompletionFilter === 'NOT_DONE') {
-          return campaign.status !== 'COMPLETED'
-        }
-
-        return true
-      })
-      .filter((campaign) => (query ? campaign.name.toLowerCase().includes(query) : true))
-  }, [campaignCompletionFilter, campaignSearch, renderedCampaigns])
-
-  const campaignCounters = useMemo(() => {
-    const total = renderedCampaigns.length
-    const done = renderedCampaigns.filter((campaign) => campaign.status === 'COMPLETED').length
-    return {
-      total,
-      done,
-      notDone: total - done,
-    }
-  }, [renderedCampaigns])
-
-  const totalCampaignPages = Math.max(1, Math.ceil(filteredCampaigns.length / CAMPAIGNS_PAGE_SIZE))
-  const preferredCampaignPage = useMemo(() => {
-    if (showCreateSection || !preferredCampaignId) {
-      return null
-    }
-
-    const preferredIndex = filteredCampaigns.findIndex((campaign) => campaign.id === preferredCampaignId)
-    if (preferredIndex === -1) {
-      return null
-    }
-
-    return Math.floor(preferredIndex / CAMPAIGNS_PAGE_SIZE) + 1
-  }, [filteredCampaigns, preferredCampaignId, showCreateSection])
-
   useEffect(() => {
-    if (showCreateSection || !preferredCampaignId || campaigns.length === 0) {
+    if (showCreateSection || campaigns.length === 0) {
       return
     }
 
-    if (campaigns.some((campaign) => campaign.id === preferredCampaignId)) {
-      setSelectedCampaignId(preferredCampaignId)
-    }
-  }, [campaigns, preferredCampaignId, showCreateSection])
+    const visibleCampaigns = campaigns.filter((campaign) => campaign.status !== 'ARCHIVED')
+    const campaignPool = visibleCampaigns.length > 0 ? visibleCampaigns : campaigns
 
-  useEffect(() => {
-    if (preferredCampaignPage === null) {
+    if (preferredCampaignId) {
+      if (campaignPool.some((campaign) => campaign.id === preferredCampaignId)) {
+        setSelectedCampaignId(preferredCampaignId)
+        return
+      }
+    }
+
+    if (campaignPool.some((campaign) => campaign.id === selectedCampaignId)) {
       return
     }
 
-    setCampaignsPage(preferredCampaignPage)
-  }, [preferredCampaignPage])
-
-  useEffect(() => {
-    setCampaignsPage(1)
-  }, [campaignSearch, campaignCompletionFilter])
-
-  useEffect(() => {
-    setCampaignsPage((current) => Math.min(current, totalCampaignPages))
-  }, [totalCampaignPages])
-
-  const pagedCampaigns = useMemo(() => {
-    const startIndex = (campaignsPage - 1) * CAMPAIGNS_PAGE_SIZE
-    return filteredCampaigns.slice(startIndex, startIndex + CAMPAIGNS_PAGE_SIZE)
-  }, [campaignsPage, filteredCampaigns])
-
-  const hasCampaignFilters = campaignSearch.trim().length > 0 || campaignCompletionFilter !== 'ALL'
-
-
-  const handleToggleCampaignDone = useCallback(async (campaign: CampaignSummary) => {
-    const nextStatus = campaign.status === 'COMPLETED' ? 'ACTIVE' : 'COMPLETED'
-    setCampaignStatusUpdatingId(campaign.id)
-
-    try {
-      const updated = await updateCampaignStatus(campaign.id, { status: nextStatus })
-
-      setCampaigns((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
-
-      toast.success(nextStatus === 'COMPLETED' ? 'Campaign marked as done' : 'Campaign marked as not done')
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update campaign status'))
-    } finally {
-      setCampaignStatusUpdatingId(null)
-    }
-  }, [])
-
-  const handleConfirmDeleteCampaign = useCallback(async () => {
-    if (!campaignToDelete) return
-
-    setCampaignDeletingId(campaignToDelete.id)
-
-    try {
-      await deleteCampaign(campaignToDelete.id)
-
-      setCampaigns((prev) => prev.filter((item) => item.id !== campaignToDelete.id))
-      setSelectedCampaignId((prev) => (prev === campaignToDelete.id ? 'ALL' : prev))
-
-      toast.success('Campaign deleted')
-      setCampaignToDelete(null)
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to delete campaign'))
-    } finally {
-      setCampaignDeletingId(null)
-    }
-  }, [campaignToDelete])
+    setSelectedCampaignId(campaignPool[0]!.id)
+  }, [campaigns, preferredCampaignId, selectedCampaignId, showCreateSection])
 
   return (
     <div className="flex flex-1 flex-col gap-6 overflow-auto p-4 md:gap-8 md:p-8">
-      <div className="relative overflow-hidden rounded-3xl border bg-linear-to-br from-background via-background to-muted/40 p-6 shadow-sm">
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-2xl space-y-3">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-muted-foreground">
-              <Sparkles className="h-4 w-4" />
-              Campaign workspace
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Campaigns</h1>
-              <p className="mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
-                {showCreateSection
-                  ? 'Import CSV files, preview data before sending, and create a campaign with confidence.'
-                  : 'Track all campaigns you created, manage their status, and inspect customer records in one place.'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link href={showCreateSection ? '/campaigns/tables' : '/create'}>
-                {showCreateSection ? 'Open Tables' : 'Create Campaign'}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        <div className="relative z-10 mt-6 grid gap-3 text-xs md:grid-cols-3">
-          <div className="rounded-2xl border bg-background/80 p-4 backdrop-blur">
-            <p className="font-medium">Structured imports</p>
-            <p className="mt-1 text-muted-foreground">Validate rows before the campaign is created.</p>
-          </div>
-          <div className="rounded-2xl border bg-background/80 p-4 backdrop-blur">
-            <p className="font-medium">Clean campaign tracking</p>
-            <p className="mt-1 text-muted-foreground">Monitor completion, edits, and deletion from tables.</p>
-          </div>
-          <div className="rounded-2xl border bg-background/80 p-4 backdrop-blur">
-            <p className="font-medium">Fast workspace navigation</p>
-            <p className="mt-1 text-muted-foreground">Jump between creation and review without friction.</p>
-          </div>
-        </div>
-      </div>
-
       {showCreateSection ? (
+        <>
+          <div className="relative overflow-hidden rounded-3xl border bg-linear-to-br from-background via-background to-muted/40 p-6 shadow-sm">
+            <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
+              <div className="max-w-2xl space-y-3">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight md:text-4xl">Campaigns</h1>
+                  <p className="mt-2 max-w-xl text-sm text-muted-foreground md:text-base">
+                    Import CSV files, preview data before sending, and create a campaign with confidence.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline">
+                  <Link href="/campaigns/tables">
+                    Open Tables
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative z-10 mt-6 grid gap-3 text-xs md:grid-cols-3">
+              <div className="rounded-2xl border bg-background/80 p-4 backdrop-blur">
+                <p className="font-medium">Structured imports</p>
+                <p className="mt-1 text-muted-foreground">Validate rows before the campaign is created.</p>
+              </div>
+              <div className="rounded-2xl border bg-background/80 p-4 backdrop-blur">
+                <p className="font-medium">Clean campaign tracking</p>
+                <p className="mt-1 text-muted-foreground">Monitor completion, edits, and deletion from tables.</p>
+              </div>
+              <div className="rounded-2xl border bg-background/80 p-4 backdrop-blur">
+                <p className="font-medium">Fast workspace navigation</p>
+                <p className="mt-1 text-muted-foreground">Jump between creation and review without friction.</p>
+              </div>
+            </div>
+          </div>
+
         <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
           <Card className="border-dashed bg-muted/20">
             <CardHeader>
@@ -736,234 +593,22 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
             </CardContent>
           </Card>
         </div>
+        </>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="space-y-1 pb-3">
-                <CardDescription>Total campaigns</CardDescription>
-                <CardTitle className="text-3xl">{campaignCounters.total}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="space-y-1 pb-3">
-                <CardDescription>Done campaigns</CardDescription>
-                <CardTitle className="text-3xl">{campaignCounters.done}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="space-y-1 pb-3">
-                <CardDescription>In progress</CardDescription>
-                <CardTitle className="text-3xl">{campaignCounters.notDone}</CardTitle>
-              </CardHeader>
-            </Card>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Campaign Tables</h1>
+              <p className="text-sm text-muted-foreground">Explore customer tracking and campaign debt records.</p>
+            </div>
+
+            <Button asChild>
+              <Link href="/create">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create Campaign
+              </Link>
+            </Button>
           </div>
-
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <CardTitle>Imported Campaigns</CardTitle>
-                  <CardDescription>Search, filter, and manage the campaigns already imported in your workspace.</CardDescription>
-                </div>
-                <Button asChild variant="outline">
-                  <Link href="/create">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Create new campaign
-                  </Link>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-wrap gap-2 text-xs">
-                <Badge variant="outline">Total: {campaignCounters.total}</Badge>
-                <Badge variant="secondary">Done: {campaignCounters.done}</Badge>
-                <Badge variant="outline">Not done: {campaignCounters.notDone}</Badge>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-[1fr_220px]">
-                <Input
-                  value={campaignSearch}
-                  onChange={(event) => setCampaignSearch(event.target.value)}
-                  placeholder="Search by campaign name"
-                />
-
-                <Select
-                  value={campaignCompletionFilter}
-                  onValueChange={(value) => setCampaignCompletionFilter(value as CampaignCompletionFilter)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter completion" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All campaigns</SelectItem>
-                    <SelectItem value="DONE">Done only</SelectItem>
-                    <SelectItem value="NOT_DONE">Not done only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {campaignsLoading ? (
-                <div className="rounded-2xl border p-6 text-center text-sm text-muted-foreground">
-                  Loading campaigns...
-                </div>
-              ) : filteredCampaigns.length === 0 ? (
-                <div className="rounded-2xl border border-dashed p-8 text-center">
-                  <p className="font-medium">
-                    {campaigns.length === 0 ? 'No campaigns have been created yet.' : 'No campaigns match the current filters.'}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {campaigns.length === 0
-                      ? 'Create your first campaign to start managing imported debt rows.'
-                      : 'Clear the search or filter to see more results.'}
-                  </p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <Button asChild>
-                      <Link href="/create">Create Campaign</Link>
-                    </Button>
-                    {hasCampaignFilters && (
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setCampaignSearch('')
-                          setCampaignCompletionFilter('ALL')
-                        }}
-                      >
-                        Clear filters
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-3">
-                    {pagedCampaigns.map((campaign) => {
-                      const isDone = campaign.status === 'COMPLETED'
-                      const isUpdatingStatus = campaignStatusUpdatingId === campaign.id
-                      const isDeleting = campaignDeletingId === campaign.id
-                      const isSelected = selectedCampaignId === campaign.id
-
-                      return (
-                        <div
-                          key={campaign.id}
-                          className={`cursor-pointer rounded-2xl border p-4 transition-colors hover:bg-muted/30 ${isSelected ? 'border-primary bg-primary/5' : 'bg-background'}`}
-                          onClick={() => {
-                            setSelectedCampaignId((prev) => (prev === campaign.id ? 'ALL' : campaign.id))
-                          }}
-                        >
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="space-y-1.5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-semibold leading-none">{campaign.name}</p>
-                                {isSelected && <Badge variant="outline">Selected</Badge>}
-                              </div>
-                              {campaign.description ? (
-                                <p className="line-clamp-2 text-xs text-muted-foreground">{campaign.description}</p>
-                              ) : null}
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <Badge variant={isDone ? 'secondary' : getStatusVariant(campaign.status)}>
-                                  {isDone ? 'Done' : 'In progress'}
-                                </Badge>
-                                <Badge variant="outline">Debts: {campaign.debtsCount}</Badge>
-                                <span>Updated: {formatDateTime(campaign.updatedAt)}</span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Button
-                                variant={isDone ? 'outline' : 'secondary'}
-                                size="sm"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  void handleToggleCampaignDone(campaign)
-                                }}
-                                disabled={isUpdatingStatus || isDeleting}
-                              >
-                                {isUpdatingStatus ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                                    {isDone ? 'Mark not done' : 'Mark done'}
-                                  </>
-                                )}
-                              </Button>
-
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  setCampaignToDelete(campaign)
-                                }}
-                                disabled={isUpdatingStatus || isDeleting}
-                              >
-                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-muted-foreground">
-                      Showing {pagedCampaigns.length} of {filteredCampaigns.length} campaign(s)
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCampaignsPage((current) => Math.max(1, current - 1))}
-                        disabled={campaignsPage <= 1}
-                      >
-                        Previous
-                      </Button>
-                      <span className="text-xs text-muted-foreground">
-                        Page {campaignsPage} / {totalCampaignPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCampaignsPage((current) => Math.min(totalCampaignPages, current + 1))}
-                        disabled={campaignsPage >= totalCampaignPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <AlertDialog open={Boolean(campaignToDelete)} onOpenChange={(open) => (!open ? setCampaignToDelete(null) : null)}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete campaign?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {campaignToDelete
-                        ? `This will permanently delete "${campaignToDelete.name}" and its campaign debts.`
-                        : 'This action cannot be undone.'}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-
-                  <AlertDialogFooter>
-                    <AlertDialogCancel disabled={campaignDeletingId !== null}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={(event) => {
-                        event.preventDefault()
-                        void handleConfirmDeleteCampaign()
-                      }}
-                      disabled={campaignDeletingId !== null}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      {campaignDeletingId !== null ? 'Deleting...' : 'Delete campaign'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardContent>
-          </Card>
 
           <CustomerTrackingView campaigns={campaigns} selectedCampaignId={selectedCampaignId} />
         </>

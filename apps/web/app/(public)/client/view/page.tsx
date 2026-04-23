@@ -25,6 +25,13 @@ function formatAmount(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function toLocalDateInputValue(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function getStatusVariant(status: PublicDebtView['status']) {
   if (status === 'PAID') return 'secondary'
   if (status === 'OVERDUE_AFTER_PROMISE') return 'destructive'
@@ -80,7 +87,7 @@ function ClientDebtViewContent() {
   const minPromiseDate = useMemo(() => {
     const now = new Date()
     now.setHours(0, 0, 0, 0)
-    return now.toISOString().slice(0, 10)
+    return toLocalDateInputValue(now)
   }, [])
 
   const maxPromiseDate = useMemo(() => {
@@ -88,7 +95,7 @@ function ClientDebtViewContent() {
       return undefined
     }
 
-    return new Date(debt.dueDate).toISOString().slice(0, 10)
+    return toLocalDateInputValue(new Date(debt.dueDate))
   }, [debt])
 
   const handleSubmitPromiseDate = async () => {

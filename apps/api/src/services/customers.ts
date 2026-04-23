@@ -10,6 +10,7 @@ export type CustomerListOptions = {
 
 export type CustomerDebtListOptions = {
   status?: DebtStatus
+  clicked?: boolean
   search?: string
   campaignId?: string
   page?: number
@@ -182,67 +183,38 @@ export class CustomersService {
     const search = normalizeSearch(options.search)
     const page = Math.max(Math.floor(options.page ?? 1), 1)
 
-    const debtFilter: Prisma.DebtRecordWhereInput = {
+    const debtWhere: Prisma.DebtRecordWhereInput = {
       campaign: { workspaceId },
       ...(options.status ? { status: options.status } : {}),
+      ...(options.clicked ? { actionHistory: { some: { actionType: 'LINK_CLICKED' } } } : {}),
       ...(options.campaignId ? { campaignId: options.campaignId } : {}),
-    }
-
-    const customerWhere: Prisma.ClientWhereInput = {
-      workspaceId,
       ...(search
         ? {
-            OR: [
-              { fullName: { contains: search, mode: 'insensitive' } },
-              { email: { contains: search, mode: 'insensitive' } },
-            ],
+            client: {
+              workspaceId,
+              OR: [
+                { fullName: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+              ],
+            },
           }
-        : {}),
-      debts: {
-        some: debtFilter,
-      },
+        : {
+            client: {
+              workspaceId,
+            },
+          }),
     }
 
-    const total = await this.prisma.client.count({ where: customerWhere })
+    const total = await this.prisma.debtRecord.count({ where: debtWhere })
     const totalPages = Math.max(1, Math.ceil(total / limit))
     const safePage = Math.min(page, totalPages)
     const skip = (safePage - 1) * limit
 
-    const customers = await this.prisma.client.findMany({
-      where: customerWhere,
-      orderBy: { fullName: 'asc' },
+    const debts = await this.prisma.debtRecord.findMany({
+      where: debtWhere,
+      orderBy: [{ createdAt: 'desc' }],
       take: limit,
       skip,
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        phone: true,
-        address: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    })
-
-    if (!customers.length) {
-      return {
-        data: [],
-        pagination: {
-          page: safePage,
-          limit,
-          total,
-          totalPages,
-        },
-      }
-    }
-
-    const customerIds = customers.map((customer) => customer.id)
-    const debts = await this.prisma.debtRecord.findMany({
-      where: {
-        clientId: { in: customerIds },
-        ...debtFilter,
-      },
-      orderBy: [{ clientId: 'asc' }, { createdAt: 'desc' }],
       select: {
         id: true,
         clientId: true,
@@ -253,6 +225,17 @@ export class CustomersService {
         status: true,
         createdAt: true,
         updatedAt: true,
+        client: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true,
+            address: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
         campaign: {
           select: {
             name: true,
@@ -272,43 +255,31 @@ export class CustomersService {
       },
     })
 
-    const debtByCustomerId = new Map<string, CustomerDebtSummary>()
-
-    for (const debt of debts) {
-      if (debtByCustomerId.has(debt.clientId)) {
-        continue
-      }
-
-      debtByCustomerId.set(debt.clientId, {
-        id: debt.id,
-        campaignId: debt.campaignId,
-        campaignName: debt.campaign.name,
-        amount: debt.amount.toNumber(),
-        dueDate: debt.dueDate,
-        promiseDate: debt.promiseDate,
-        status: debt.status,
-        linkOpenCount: debt.actionHistory.length,
-        linkOpenTimes: debt.actionHistory.map((entry) => entry.timestamp),
-        createdAt: debt.createdAt,
-        updatedAt: debt.updatedAt,
-      })
-    }
-
     return {
-      data: customers
-        .map((customer) => {
-          const debt = debtByCustomerId.get(customer.id)
-
-          if (!debt) {
-            return null
-          }
-
-          return {
-            customer,
-            debt,
-          }
-        })
-        .filter((item): item is CustomerWithDebtSummary => item !== null),
+      data: debts.map((debt) => ({
+        customer: {
+          id: debt.client.id,
+          fullName: debt.client.fullName,
+          email: debt.client.email,
+          phone: debt.client.phone,
+          address: debt.client.address,
+          createdAt: debt.client.createdAt,
+          updatedAt: debt.client.updatedAt,
+        },
+        debt: {
+          id: debt.id,
+          campaignId: debt.campaignId,
+          campaignName: debt.campaign.name,
+          amount: debt.amount.toNumber(),
+          dueDate: debt.dueDate,
+          promiseDate: debt.promiseDate,
+          status: debt.status,
+          linkOpenCount: debt.actionHistory.length,
+          linkOpenTimes: debt.actionHistory.map((entry) => entry.timestamp),
+          createdAt: debt.createdAt,
+          updatedAt: debt.updatedAt,
+        },
+      })),
       pagination: {
         page: safePage,
         limit,
@@ -316,6 +287,7 @@ export class CustomersService {
         totalPages,
       },
     }
+
   }
 
   async list(workspaceId: string, options: CustomerListOptions = {}) {
@@ -530,14 +502,18 @@ export class CustomersService {
         debtTracking.deliveredCount += 1
       }
 
-      if (isOpenEvent(eventName)) {
+      const matchesOpenEvent = isOpenEvent(eventName)
+      const matchesClickEvent = isClickEvent(action.actionType, eventName)
+
+      // A click is a stronger engagement signal and should count toward opens for reporting.
+      if (matchesOpenEvent || matchesClickEvent) {
         debtTracking.openedCount += 1
         if (!debtTracking.lastSeenAt || action.timestamp > debtTracking.lastSeenAt) {
           debtTracking.lastSeenAt = action.timestamp
         }
       }
 
-      if (isClickEvent(action.actionType, eventName)) {
+      if (matchesClickEvent) {
         debtTracking.clickedCount += 1
         if (!debtTracking.lastSeenAt || action.timestamp > debtTracking.lastSeenAt) {
           debtTracking.lastSeenAt = action.timestamp

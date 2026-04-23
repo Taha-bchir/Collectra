@@ -6,7 +6,7 @@ import { Loader2, Search, Eye, MoreVertical, FileText, PencilIcon } from 'lucide
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -37,8 +37,18 @@ import {
 } from '@/components/ui/dialog'
 
 const PAGE_SIZE = 12
+const SEARCH_DEBOUNCE_MS = 350
+const LIVE_REFRESH_MS = 15000
 
-type FilterStatus = 'ALL' | DebtStatus
+type FilterStatus = 'ALL' | 'NOT_CONTACTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'CLICKED' | 'PAID' | 'OVERDUE'
+type TrackingDisplayStatus =
+  | 'NOT_CONTACTED'
+  | 'UNPAID'
+  | 'NOTIFIED'
+  | 'PROMISE_TO_PAY'
+  | 'CLICKED'
+  | 'PAID'
+  | 'OVERDUE'
 
 function formatDate(value: string | null) {
   if (!value) return '-'
@@ -54,20 +64,33 @@ function formatAmount(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function getDebtBadgeVariant(status: DebtStatus) {
-  if (status === 'PAID') return 'default'
-  if (status === 'OVERDUE_AFTER_PROMISE') return 'destructive'
+function getDebtBadgeVariant(status: TrackingDisplayStatus) {
+  if (status === 'PAID' || status === 'CLICKED') return 'default'
+  if (status === 'OVERDUE') return 'destructive'
   if (status === 'PROMISE_TO_PAY') return 'secondary'
   return 'outline'
 }
 
-function formatDebtStatus(status: DebtStatus) {
+function formatDebtStatus(status: TrackingDisplayStatus) {
   if (status === 'PROMISE_TO_PAY') return 'Promise to pay'
-  if (status === 'OVERDUE_AFTER_PROMISE') return 'Overdue'
+  if (status === 'OVERDUE') return 'Overdue'
   if (status === 'UNPAID') return 'Unpaid'
   if (status === 'NOTIFIED') return 'Notified'
-  if (status === 'IMPORTED') return 'Imported'
+  if (status === 'CLICKED') return 'Clicked'
+  if (status === 'NOT_CONTACTED') return 'Not contacted'
   return 'Paid'
+}
+
+function getTrackingDisplayStatus(row: CustomerListItem): TrackingDisplayStatus {
+  if (row.debt.status === 'PAID') return 'PAID'
+  if (row.debt.status === 'OVERDUE_AFTER_PROMISE') return 'OVERDUE'
+  if (row.debt.status === 'PROMISE_TO_PAY') return 'PROMISE_TO_PAY'
+
+  if (row.debt.linkOpenCount > 0) return 'CLICKED'
+  if (row.debt.status === 'NOTIFIED') return 'NOTIFIED'
+  if (row.debt.status === 'UNPAID') return 'UNPAID'
+
+  return 'NOT_CONTACTED'
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -96,6 +119,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<FilterStatus>('ALL')
   const [campaignId, setCampaignId] = useState<string>(selectedCampaignId)
+  const [includeArchivedCampaigns, setIncludeArchivedCampaigns] = useState(false)
   const [page, setPage] = useState(1)
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItem['customer'] | null>(null)
   const [openingDebtId, setOpeningDebtId] = useState<string | null>(null)
@@ -106,6 +130,11 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
     address: '',
   })
   const [savingEdit, setSavingEdit] = useState(false)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
+  const [openHistoryDialog, setOpenHistoryDialog] = useState<{
+    customerName: string
+    times: string[]
+  } | null>(null)
   const loadRequestIdRef = useRef(0)
 
   const [pagination, setPagination] = useState({
@@ -115,12 +144,25 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
     totalPages: 1,
   })
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     const requestId = loadRequestIdRef.current + 1
     loadRequestIdRef.current = requestId
 
-    setLoading(true)
+    if (!silent) {
+      setLoading(true)
+    }
     setError(null)
+
+    const apiStatus: DebtStatus | undefined =
+      status === 'ALL' || status === 'CLICKED'
+        ? undefined
+        : status === 'NOT_CONTACTED'
+          ? 'IMPORTED'
+          : status === 'OVERDUE'
+            ? 'OVERDUE_AFTER_PROMISE'
+            : status
+
+    const clicked = status === 'CLICKED' ? true : undefined
 
     try {
       const result = await listCustomers({
@@ -128,7 +170,8 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
         limit: PAGE_SIZE,
         pageSize: PAGE_SIZE,
         search: search || undefined,
-        status: status === 'ALL' ? undefined : status,
+        status: apiStatus,
+        clicked,
         campaignId: campaignId === 'ALL' ? undefined : campaignId,
       })
 
@@ -138,6 +181,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
 
       setRows(result.data)
       setPagination(result.pagination)
+      setLastSyncedAt(new Date())
     } catch (nextError) {
       if (loadRequestIdRef.current !== requestId) {
         return
@@ -152,13 +196,57 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
   }, [campaignId, page, search, status])
 
   useEffect(() => {
-    load()
+    void load()
   }, [load])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearch(searchInput.trim())
+      setPage(1)
+    }, SEARCH_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [searchInput])
+
+  useEffect(() => {
+    if (editingCustomer) {
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      void load({ silent: true })
+    }, LIVE_REFRESH_MS)
+
+    return () => {
+      window.clearInterval(interval)
+    }
+  }, [editingCustomer, load])
 
   useEffect(() => {
     setCampaignId(selectedCampaignId)
     setPage(1)
   }, [selectedCampaignId])
+
+  const visibleCampaigns = useMemo(() => {
+    if (includeArchivedCampaigns) {
+      return campaigns
+    }
+
+    return campaigns.filter((campaign) => campaign.status !== 'ARCHIVED')
+  }, [campaigns, includeArchivedCampaigns])
+
+  useEffect(() => {
+    if (campaignId === 'ALL') {
+      return
+    }
+
+    const stillVisible = visibleCampaigns.some((campaign) => campaign.id === campaignId)
+    if (!stillVisible) {
+      setCampaignId('ALL')
+    }
+  }, [campaignId, visibleCampaigns])
 
   const openEditDialog = useCallback((customer: CustomerListItem['customer']) => {
     setEditingCustomer(customer)
@@ -240,17 +328,41 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
 
   const totalLabel = useMemo(() => {
     if (loading) return 'Loading customers...'
-    return `${pagination.total} customer row(s)`
-  }, [loading, pagination.total])
+    if (status === 'CLICKED') return `${pagination.total} clicked row(s)`
+    return `${pagination.total} debt row(s)`
+  }, [loading, pagination.total, status])
+
+  const hasActiveFilters = useMemo(() => {
+    return search.length > 0 || status !== 'ALL'
+  }, [search, status])
+
+  const emptyStateMessage = useMemo(() => {
+    if (campaigns.length === 0) {
+      return 'No campaign data available yet. Import a CSV campaign to see customer rows here.'
+    }
+
+    if (visibleCampaigns.length === 0 && !includeArchivedCampaigns) {
+      return 'Only archived campaigns exist. Enable "Include archived" to browse their rows.'
+    }
+
+    if (hasActiveFilters) {
+      return 'No rows match your current filters.'
+    }
+
+    return 'No customer rows found yet for the selected campaign scope.'
+  }, [campaigns.length, hasActiveFilters, includeArchivedCampaigns, visibleCampaigns.length])
+
+  const handleResetFilters = useCallback(() => {
+    setSearchInput('')
+    setSearch('')
+    setStatus('ALL')
+    setPage(1)
+  }, [])
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Customers Tracking</CardTitle>
-        <CardDescription>Explore customer debts and open detailed communication tracking per customer.</CardDescription>
-      </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_220px_260px_auto]">
+        <div className="grid gap-3 md:grid-cols-[1fr_220px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -273,50 +385,55 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ALL">All statuses</SelectItem>
+              <SelectItem value="NOT_CONTACTED">Not contacted</SelectItem>
               <SelectItem value="UNPAID">Unpaid</SelectItem>
               <SelectItem value="NOTIFIED">Notified</SelectItem>
               <SelectItem value="PROMISE_TO_PAY">Promise to pay</SelectItem>
+              <SelectItem value="CLICKED">Clicked</SelectItem>
               <SelectItem value="PAID">Paid</SelectItem>
-              <SelectItem value="OVERDUE_AFTER_PROMISE">Overdue</SelectItem>
-              <SelectItem value="IMPORTED">Imported</SelectItem>
+              <SelectItem value="OVERDUE">Overdue</SelectItem>
             </SelectContent>
           </Select>
-
-          <Select
-            value={campaignId}
-            onValueChange={(value) => {
-              setCampaignId(value)
-              setPage(1)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter campaign" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All campaigns</SelectItem>
-              {campaigns.map((campaign) => (
-                <SelectItem key={campaign.id} value={campaign.id}>
-                  {campaign.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button
-            onClick={() => {
-              setSearch(searchInput.trim())
-              setPage(1)
-            }}
-          >
-            Apply
-          </Button>
         </div>
 
-        <p className="text-sm text-muted-foreground">{totalLabel}</p>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant={includeArchivedCampaigns ? 'secondary' : 'outline'}>
+            {includeArchivedCampaigns ? 'Showing archived campaigns' : 'Archived campaigns hidden'}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIncludeArchivedCampaigns((prev) => !prev)
+              setPage(1)
+            }}
+          >
+            {includeArchivedCampaigns ? 'Hide archived' : 'Include archived'}
+          </Button>
+          {hasActiveFilters ? (
+            <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+              Reset filters
+            </Button>
+          ) : null}
+        </div>
+
+        <p className="text-sm text-muted-foreground">
+          {totalLabel}
+          {lastSyncedAt ? ` • Last synced ${formatDateTime(lastSyncedAt.toISOString())}` : ''}
+        </p>
 
         {error ? (
-          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-            {error}
+          <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+            <p>{error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void load()
+              }}
+            >
+              Retry
+            </Button>
           </div>
         ) : loading ? (
           <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
@@ -324,99 +441,118 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
             Loading customers...
           </div>
         ) : rows.length === 0 ? (
-          <div className="rounded-md border p-6 text-sm text-muted-foreground">
-            No customers found for the selected filters.
+          <div className="rounded-md border p-6 text-sm text-muted-foreground space-y-3">
+            <p>{emptyStateMessage}</p>
+            {hasActiveFilters ? (
+              <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                Clear filters
+              </Button>
+            ) : null}
           </div>
         ) : (
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Campaign</TableHead>
+                  <TableHead className="hidden lg:table-cell">Campaign</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Contact</TableHead>
+                  <TableHead className="hidden md:table-cell">Contact</TableHead>
                   <TableHead>Debt amount</TableHead>
-                  <TableHead>Due date</TableHead>
-                  <TableHead>Link opens</TableHead>
+                  <TableHead className="hidden md:table-cell">Due date</TableHead>
+                  <TableHead className="hidden sm:table-cell">Link opens</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={`${row.customer.id}:${row.debt.id}`}>
-                    <TableCell className="font-medium text-sm">{row.debt.campaignName}</TableCell>
-                    <TableCell className="font-medium">{row.customer.fullName}</TableCell>
-                    <TableCell>
-                      <div className="text-xs">
-                        <p>{row.customer.email || '-'}</p>
-                        <p className="text-muted-foreground">{row.customer.phone || '-'}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatAmount(row.debt.amount)}</TableCell>
-                    <TableCell>{formatDate(row.debt.dueDate)}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {row.debt.linkOpenCount > 0 ? (
+                {rows.map((row) => {
+                  const displayStatus = getTrackingDisplayStatus(row)
+                  return (
+                    <TableRow key={`${row.customer.id}:${row.debt.id}`}>
+                      <TableCell className="hidden font-medium text-sm lg:table-cell">{row.debt.campaignName}</TableCell>
+                      <TableCell className="font-medium">{row.customer.fullName}</TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="text-xs">
-                          <p className="font-medium">{row.debt.linkOpenCount}</p>
-                          <p className="text-muted-foreground">
-                            Last: {formatDateTime(row.debt.linkOpenTimes[0] ?? null)}
-                          </p>
-                          {row.debt.linkOpenTimes.length > 1 ? (
-                            <p
-                              className="text-muted-foreground"
-                              title={row.debt.linkOpenTimes.map((time) => formatDateTime(time)).join('\n')}
-                            >
-                              View all times
-                            </p>
-                          ) : null}
+                          <p>{row.customer.email || '-'}</p>
+                          <p className="text-muted-foreground">{row.customer.phone || '-'}</p>
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getDebtBadgeVariant(row.debt.status)}>
-                        {formatDebtStatus(row.debt.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/customers/${row.customer.id}`} className="cursor-pointer">
-                              <Eye className="mr-2 h-4 w-4" />
-                              <span>Open tracking</span>
+                      </TableCell>
+                      <TableCell>{formatAmount(row.debt.amount)}</TableCell>
+                      <TableCell className="hidden md:table-cell">{formatDate(row.debt.dueDate)}</TableCell>
+                      <TableCell className="hidden whitespace-nowrap sm:table-cell">
+                        {row.debt.linkOpenCount > 0 ? (
+                          <div className="text-xs">
+                            <p className="font-medium">{row.debt.linkOpenCount}</p>
+                            <p className="text-muted-foreground">
+                              Last: {formatDateTime(row.debt.linkOpenTimes[0] ?? null)}
+                            </p>
+                            {row.debt.linkOpenTimes.length > 1 ? (
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="h-auto p-0 text-xs text-muted-foreground"
+                                onClick={() =>
+                                  setOpenHistoryDialog({
+                                    customerName: row.customer.fullName,
+                                    times: row.debt.linkOpenTimes,
+                                  })
+                                }
+                              >
+                                View all times
+                              </Button>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getDebtBadgeVariant(displayStatus)}>{formatDebtStatus(displayStatus)}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button asChild variant="ghost" size="sm">
+                            <Link
+                              href={`/customers/${row.customer.id}?campaignId=${encodeURIComponent(row.debt.campaignId)}&debtId=${encodeURIComponent(row.debt.id)}`}
+                            >
+                              <Eye className="mr-1.5 h-4 w-4" />
+                              Tracking
                             </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             disabled={openingDebtId === row.debt.id}
-                            onSelect={() => {
+                            onClick={() => {
                               void handleOpenDebtDetails(row.debt.id)
                             }}
                           >
                             {openingDebtId === row.debt.id ? (
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                             ) : (
-                              <FileText className="mr-2 h-4 w-4" />
+                              <FileText className="mr-1.5 h-4 w-4" />
                             )}
-                            <span>View debt details</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => openEditDialog(row.customer)}>
-                            <PencilIcon className="mr-2 h-4 w-4" />
-                            <span>Edit customer</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            Debt
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onSelect={() => openEditDialog(row.customer)}>
+                                <PencilIcon className="mr-2 h-4 w-4" />
+                                <span>Edit customer</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
@@ -507,6 +643,26 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
                 )}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={Boolean(openHistoryDialog)} onOpenChange={(open) => (!open ? setOpenHistoryDialog(null) : null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Link open history</DialogTitle>
+              <DialogDescription>
+                {openHistoryDialog
+                  ? `${openHistoryDialog.customerName} opened the debt link ${openHistoryDialog.times.length} time(s).`
+                  : 'Link open activity'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border p-3">
+              {openHistoryDialog?.times.map((time) => (
+                <p key={time} className="text-sm text-muted-foreground">
+                  {formatDateTime(time)}
+                </p>
+              ))}
+            </div>
           </DialogContent>
         </Dialog>
       </CardContent>

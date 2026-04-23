@@ -6,6 +6,12 @@ import { ApiError, getDashboardStats } from '@/features/overview/services/overvi
 import type { DashboardDebtStatusCounts, DashboardStats } from '@/features/overview/types'
 import { listCampaigns, type CampaignSummary } from '@/features/campaigns/services/campaign-service'
 import { strings } from '@/lib/strings'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -15,31 +21,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertTriangle,
-  Bell,
-  CheckCircle2,
-  CircleDollarSign,
-  Folder,
-  FolderOpen,
-  Loader2,
-  ShieldAlert,
-} from 'lucide-react'
+import { Loader2 } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
 
 const ALL_CAMPAIGNS_VALUE = 'all'
 
 const STATUS_CONFIG: Array<{
   key: keyof DashboardDebtStatusCounts
   label: string
-  icon: typeof Bell
-  tone: string
 }> = [
-  { key: 'IMPORTED', label: 'Imported', icon: Folder, tone: 'text-slate-400' },
-  { key: 'UNPAID', label: 'Unpaid', icon: Folder, tone: 'text-amber-300' },
-  { key: 'NOTIFIED', label: 'Notified', icon: Bell, tone: 'text-blue-400' },
-  { key: 'PROMISE_TO_PAY', label: 'Promised', icon: CheckCircle2, tone: 'text-cyan-400' },
-  { key: 'PAID', label: 'Paid', icon: CircleDollarSign, tone: 'text-emerald-400' },
-  { key: 'OVERDUE_AFTER_PROMISE', label: 'Overdue', icon: ShieldAlert, tone: 'text-red-400' },
+  { key: 'IMPORTED', label: 'Imported' },
+  { key: 'UNPAID', label: 'Unpaid' },
+  { key: 'NOTIFIED', label: 'Notified' },
+  { key: 'PROMISE_TO_PAY', label: 'Promised' },
+  { key: 'PAID', label: 'Paid' },
+  { key: 'OVERDUE_AFTER_PROMISE', label: 'Overdue' },
 ]
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -68,6 +64,27 @@ function formatMoney(value: number) {
 function percent(value: number) {
   return `${Math.round(value)}%`
 }
+
+const debtStatusChartConfig = {
+  IMPORTED: { label: 'Imported', theme: { light: '#64748b', dark: '#94a3b8' } },
+  UNPAID: { label: 'Unpaid', theme: { light: '#f59e0b', dark: '#fbbf24' } },
+  NOTIFIED: { label: 'Notified', theme: { light: '#3b82f6', dark: '#60a5fa' } },
+  PROMISE_TO_PAY: { label: 'Promised', theme: { light: '#06b6d4', dark: '#22d3ee' } },
+  PAID: { label: 'Paid', theme: { light: '#22c55e', dark: '#4ade80' } },
+  OVERDUE_AFTER_PROMISE: { label: 'Overdue', theme: { light: '#ef4444', dark: '#f87171' } },
+} satisfies ChartConfig
+
+const campaignHealthChartConfig = {
+  Active: { label: 'Active', theme: { light: '#3b82f6', dark: '#60a5fa' } },
+  Completed: { label: 'Completed', theme: { light: '#22c55e', dark: '#4ade80' } },
+  Archived: { label: 'Archived', theme: { light: '#f59e0b', dark: '#fbbf24' } },
+} satisfies ChartConfig
+
+const recentCampaignChartConfig = {
+  debtsCount: { label: 'Debts', theme: { light: '#3b82f6', dark: '#60a5fa' } },
+  promisedCount: { label: 'Promised', theme: { light: '#06b6d4', dark: '#22d3ee' } },
+  paidCount: { label: 'Paid', theme: { light: '#22c55e', dark: '#4ade80' } },
+} satisfies ChartConfig
 
 export default function OverviewPage() {
   const { profile } = useAuth()
@@ -199,6 +216,38 @@ export default function OverviewPage() {
     return (stats.statuses.OVERDUE_AFTER_PROMISE / stats.totalDebts) * 100
   }, [stats])
 
+  const debtStatusChartData = useMemo(() => {
+    if (!stats) return []
+
+    return STATUS_CONFIG.map((item) => ({
+      key: item.key,
+      status: item.label,
+      value: stats.statuses[item.key],
+    }))
+  }, [stats])
+
+  const campaignHealthChartData = useMemo(
+    () => [
+      { name: 'Active', count: campaignsHealth.active },
+      { name: 'Completed', count: campaignsHealth.completed },
+      { name: 'Archived', count: campaignsHealth.archived },
+    ],
+    [campaignsHealth.active, campaignsHealth.archived, campaignsHealth.completed],
+  )
+
+  const recentCampaignChartData = useMemo(() => {
+    if (!stats?.recentCampaigns) return []
+
+    return [...stats.recentCampaigns]
+      .reverse()
+      .map((campaign) => ({
+        name: campaign.name.length > 14 ? `${campaign.name.slice(0, 14)}...` : campaign.name,
+        debtsCount: campaign.debtsCount,
+        promisedCount: campaign.promisedCount,
+        paidCount: campaign.paidCount,
+      }))
+  }, [stats?.recentCampaigns])
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-auto">
       <div>
@@ -257,129 +306,65 @@ export default function OverviewPage() {
         </Card>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 xl:grid-cols-2">
             <Card className="border border-border/60">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total campaigns</CardTitle>
-                <Folder className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalCampaigns.toLocaleString()}</div>
-                <CardDescription className="text-xs">
+              <CardHeader>
+                <CardTitle>Campaign health</CardTitle>
+                <CardDescription>
                   {selectedCampaign
-                    ? `Within ${selectedCampaign.name}`
-                    : 'Across your current workspace'}
+                    ? `Campaign status for ${selectedCampaign.name}`
+                    : `Status distribution across ${totalCampaigns.toLocaleString()} campaign(s)`}
                 </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border/60">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active campaigns</CardTitle>
-                <FolderOpen className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{campaignsHealth.active.toLocaleString()}</div>
-                <CardDescription className="text-xs">
-                  Campaigns currently running
-                </CardDescription>
+                <ChartContainer config={campaignHealthChartConfig} className="h-[280px] w-full">
+                  <PieChart>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Pie
+                      data={campaignHealthChartData}
+                      dataKey="count"
+                      nameKey="name"
+                      outerRadius={90}
+                      label
+                    >
+                      {campaignHealthChartData.map((entry, index) => (
+                        <Cell
+                          key={`campaign-health-${entry.name}`}
+                          fill={`var(--color-${entry.name})`}
+                        />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
               </CardContent>
             </Card>
 
-            <Card className="border border-border/60">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed campaigns</CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{campaignsHealth.completed.toLocaleString()}</div>
-                <CardDescription className="text-xs">
-                  Campaigns marked as completed
-                </CardDescription>
-              </CardContent>
-            </Card>
-
-            <Card className="border border-border/60">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Archived campaigns</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{campaignsHealth.archived.toLocaleString()}</div>
-                <CardDescription className="text-xs">
-                  Campaigns stored for history
-                </CardDescription>
-              </CardContent>
-            </Card>
-          </div>
-
-          {stats && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <Card className="border border-border/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total debts</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{stats.totalDebts.toLocaleString()}</div>
-                    <CardDescription className="text-xs">In selected scope</CardDescription>
-                  </CardContent>
-                </Card>
-
-                <Card className="border border-border/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Recovery rate</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-emerald-400">{percent(recoveryRate)}</div>
-                    <CardDescription className="text-xs">Paid debts over total debts</CardDescription>
-                  </CardContent>
-                </Card>
-
-                <Card className="border border-border/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Risk rate</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-red-400">{percent(riskRate)}</div>
-                    <CardDescription className="text-xs">Overdue after promise over total debts</CardDescription>
-                  </CardContent>
-                </Card>
-
-                <Card className="border border-border/60">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Overdue value</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-amber-300">{formatMoney(stats.totalOverdueAmount)}</div>
-                    <CardDescription className="text-xs">Amount at risk in overdue promises</CardDescription>
-                  </CardContent>
-                </Card>
-              </div>
-
+            {stats && (
               <Card className="border border-border/60">
                 <CardHeader>
                   <CardTitle>Debt status distribution</CardTitle>
-                  <CardDescription>Operational snapshot for the selected scope.</CardDescription>
+                  <CardDescription>
+                    Total debts: {stats.totalDebts.toLocaleString()} • Recovery: {percent(recoveryRate)} • Risk: {percent(riskRate)} • Overdue value: {formatMoney(stats.totalOverdueAmount)}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                  {STATUS_CONFIG.map((item) => {
-                    const Icon = item.icon
-                    const value = stats.statuses[item.key]
-
-                    return (
-                      <div key={item.key} className="rounded-md border border-border/60 p-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">{item.label}</p>
-                          <Icon className={`h-4 w-4 ${item.tone}`} />
-                        </div>
-                        <p className="mt-2 text-xl font-semibold">{value.toLocaleString()}</p>
-                      </div>
-                    )
-                  })}
+                <CardContent>
+                  <ChartContainer config={debtStatusChartConfig} className="h-[280px] w-full">
+                    <BarChart data={debtStatusChartData}>
+                      <CartesianGrid vertical={false} />
+                      <XAxis dataKey="status" tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="value" radius={6}>
+                      {debtStatusChartData.map((entry) => (
+                        <Cell key={`debt-status-${entry.status}`} fill={`var(--color-${entry.key})`} />
+                      ))}
+                    </Bar>
+                    </BarChart>
+                  </ChartContainer>
                 </CardContent>
               </Card>
-            </>
-          )}
+            )}
+          </div>
 
           {selectedCampaignId === ALL_CAMPAIGNS_VALUE && stats?.recentCampaigns && stats.recentCampaigns.length > 0 && (
             <Card className="border border-border/60">
@@ -390,42 +375,28 @@ export default function OverviewPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <ChartContainer config={recentCampaignChartConfig} className="h-[320px] w-full">
+                  <BarChart data={recentCampaignChartData}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="debtsCount" fill="var(--color-debtsCount)" radius={4} />
+                    <Bar dataKey="promisedCount" fill="var(--color-promisedCount)" radius={4} />
+                    <Bar dataKey="paidCount" fill="var(--color-paidCount)" radius={4} />
+                  </BarChart>
+                </ChartContainer>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
                   {stats.recentCampaigns.map((campaign) => (
-                    <div
-                      key={campaign.id}
-                      className="rounded-md border border-border/60 p-3 text-sm"
-                    >
-                      <div className="font-medium">{campaign.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Created on {formatDate(campaign.createdAt)}
-                      </div>
-                      <div className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
-                        <Badge variant="outline">Debts: {campaign.debtsCount}</Badge>
-                        <Badge variant="secondary">Promised: {campaign.promisedCount}</Badge>
-                        <Badge variant="default">Paid: {campaign.paidCount}</Badge>
-                      </div>
-                    </div>
+                    <Badge key={campaign.id} variant="outline">
+                      {campaign.name} • {formatDate(campaign.createdAt)}
+                    </Badge>
                   ))}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {stats && stats.statuses.OVERDUE_AFTER_PROMISE > 0 && (
-            <Card className="border-amber-500/30 bg-amber-500/5">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-amber-200">
-                  <AlertTriangle className="h-4 w-4" />
-                  Attention required
-                </CardTitle>
-                <CardDescription>
-                  {stats.statuses.OVERDUE_AFTER_PROMISE.toLocaleString()} debt(s) are overdue after promise.
-                  Prioritize follow-up on these accounts.
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
         </>
       )}
     </div>

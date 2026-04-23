@@ -578,6 +578,20 @@ export class CampaignsService {
             })),
           })
 
+          // Keep debt lifecycle aligned with communication reality:
+          // if a debt was just emailed and still in IMPORTED state, mark it as NOTIFIED.
+          await this.prisma.debtRecord.updateMany({
+            where: {
+              id: {
+                in: emailResult.sentDebtIds,
+              },
+              status: DebtStatus.IMPORTED,
+            },
+            data: {
+              status: DebtStatus.NOTIFIED,
+            },
+          })
+
           const logResults = await Promise.allSettled(
             sentNotifications.map((notification) =>
               logBrevoEvent(this.prisma, {

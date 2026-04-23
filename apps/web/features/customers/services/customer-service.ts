@@ -8,6 +8,7 @@ export type DebtStatus = 'IMPORTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' |
 export type CustomerListQuery = {
   search?: string
   status?: DebtStatus
+  clicked?: boolean
   campaignId?: string
   page?: number
   limit?: number
@@ -156,8 +157,8 @@ export type DebtPersonalLinkResult = {
 }
 
 export const CUSTOMER_ROUTES = {
-  list: '/api/v1/customers',
-  listWithSlash: '/api/v1/customers/',
+  list: '/api/v1/customers/',
+  listWithSlash: '/api/v1/customers',
   byId: (id: string) => `/api/v1/customers/${id}`,
   tracking: (id: string) => `/api/v1/customers/${id}/tracking`,
   debtPersonalLink: (debtId: string) => `/api/v1/debts/${debtId}/personal-link`,
@@ -197,7 +198,11 @@ export async function listCustomers(query: CustomerListQuery = {}): Promise<Cust
     })
     return data
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
+    const isNotFound =
+      (error instanceof ApiError && error.status === 404) ||
+      (axios.isAxiosError(error) && error.response?.status === 404)
+
+    if (isNotFound) {
       const { data } = await client.get<CustomerListResponse>(CUSTOMER_ROUTES.listWithSlash, {
         params: query,
       })

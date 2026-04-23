@@ -102,11 +102,11 @@ function DebtTrackingCard({
             <p className="font-semibold">{debt.sentCount}</p>
           </div>
           <div className="rounded-md bg-muted/40 p-2">
-            <p className="text-[11px] text-muted-foreground uppercase">Clicked</p>
-            <p className="font-semibold">{debt.clickedCount}</p>
+            <p className="text-[11px] text-muted-foreground uppercase">Opened</p>
+            <p className="font-semibold">{debt.openedCount}</p>
           </div>
           <div className="rounded-md bg-muted/40 p-2">
-            <p className="text-[11px] text-muted-foreground uppercase">Visits</p>
+            <p className="text-[11px] text-muted-foreground uppercase">Landing visits</p>
             <p className="font-semibold">{debt.publicLinkVisitCount}</p>
           </div>
         </div>
@@ -178,9 +178,9 @@ export default function CustomerTrackingPage() {
   const [tracking, setTracking] = useState<Awaited<ReturnType<typeof getCustomerTracking>> | null>(null)
   const [linkLoadingDebtId, setLinkLoadingDebtId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'ALL' | CustomerTrackingStatus>('ALL')
-  const [campaignFilter, setCampaignFilter] = useState<string>(preferredCampaignId || 'NONE')
   const [loading, setLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
   const syncingRef = useRef(false)
 
@@ -235,6 +235,7 @@ export default function CustomerTrackingPage() {
         setCustomer(customerData)
         setTracking(trackingData)
         setError(null)
+        setLastSyncedAt(new Date())
       } catch (nextError) {
         if (initialLoad) {
           setError(getErrorMessage(nextError, 'Failed to load customer tracking'))
@@ -282,12 +283,31 @@ export default function CustomerTrackingPage() {
     })
   }, [tracking])
 
+  const activeCampaignId = useMemo(() => {
+    if (sortedDebts.length === 0) {
+      return 'NONE'
+    }
+
+    if (preferredCampaignId && sortedDebts.some((debt) => debt.campaignId === preferredCampaignId)) {
+      return preferredCampaignId
+    }
+
+    if (preferredDebtId) {
+      const preferredDebt = sortedDebts.find((debt) => debt.debtId === preferredDebtId)
+      if (preferredDebt) {
+        return preferredDebt.campaignId
+      }
+    }
+
+    return sortedDebts[0]?.campaignId ?? 'NONE'
+  }, [preferredCampaignId, preferredDebtId, sortedDebts])
+
   const filteredDebts = useMemo(() => {
-    if (campaignFilter === 'NONE') {
+    if (activeCampaignId === 'NONE') {
       return []
     }
 
-    const byCampaign = sortedDebts.filter((debt) => debt.campaignId === campaignFilter)
+    const byCampaign = sortedDebts.filter((debt) => debt.campaignId === activeCampaignId)
 
     const byStatus = statusFilter === 'ALL' ? byCampaign : byCampaign.filter((debt) => debt.status === statusFilter)
 
@@ -302,44 +322,7 @@ export default function CustomerTrackingPage() {
 
     const preferredDebt = byStatus[preferredIndex]
     return [preferredDebt, ...byStatus.filter((debt) => debt.debtId !== preferredDebtId)]
-  }, [campaignFilter, preferredDebtId, sortedDebts, statusFilter])
-
-  const campaignOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const options: Array<{ id: string; name: string }> = []
-
-    for (const debt of sortedDebts) {
-      if (seen.has(debt.campaignId)) {
-        continue
-      }
-
-      seen.add(debt.campaignId)
-      options.push({ id: debt.campaignId, name: debt.campaignName })
-    }
-
-    return options
-  }, [sortedDebts])
-
-  useEffect(() => {
-    if (!preferredCampaignId || campaignOptions.length === 0) {
-      return
-    }
-
-    if (campaignOptions.some((campaign) => campaign.id === preferredCampaignId) && campaignFilter !== preferredCampaignId) {
-      setCampaignFilter(preferredCampaignId)
-    }
-  }, [campaignFilter, campaignOptions, preferredCampaignId])
-
-  useEffect(() => {
-    if (!preferredDebtId || campaignFilter !== 'NONE') {
-      return
-    }
-
-    const matchingDebt = sortedDebts.find((debt) => debt.debtId === preferredDebtId)
-    if (matchingDebt) {
-      setCampaignFilter(matchingDebt.campaignId)
-    }
-  }, [campaignFilter, preferredDebtId, sortedDebts])
+  }, [activeCampaignId, preferredDebtId, sortedDebts, statusFilter])
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-auto">
@@ -367,6 +350,16 @@ export default function CustomerTrackingPage() {
             <CardTitle>Unable to load tracking</CardTitle>
             <CardDescription className="text-destructive">{error}</CardDescription>
           </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onClick={() => {
+                void syncData(true)
+              }}
+            >
+              Retry
+            </Button>
+          </CardContent>
         </Card>
       ) : customer && tracking ? (
         <>
@@ -377,7 +370,10 @@ export default function CustomerTrackingPage() {
                 {customer.email || '-'} {customer.phone ? `| ${customer.phone}` : ''}
               </CardDescription>
               <CardDescription>
-                {isSyncing ? 'Syncing latest activity...' : 'Live sync enabled (auto refresh every 8s)'}
+                {isSyncing
+                  ? 'Syncing latest activity...'
+                  : 'Live sync enabled (auto refresh every 8s)'}
+                {lastSyncedAt ? ` • Last synced ${formatDateTime(lastSyncedAt.toISOString())}` : ''}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -385,7 +381,7 @@ export default function CustomerTrackingPage() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <SummaryCard title="Total Debts" value={tracking.summary.totalDebts} />
             <SummaryCard title="In Progress" value={tracking.summary.sentDebts} hint="Non-paid debts" />
-            <SummaryCard title="Clicked" value={tracking.summary.clickedCount} />
+            <SummaryCard title="Opened Emails" value={tracking.summary.openedCount} />
             <SummaryCard title="Last Activity" value={formatDateTime(tracking.summary.lastEventAt)} />
           </div>
 
@@ -394,23 +390,12 @@ export default function CustomerTrackingPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium">Debt tracking timeline</p>
-                  <p className="text-xs text-muted-foreground">Select a campaign first, then filter by tracking status.</p>
+                  <p className="text-xs text-muted-foreground">Showing tracking for one campaign at a time. Use status to refine results.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Email opens are tracked from email events, while landing visits are visits to the public debt page link.
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Select value={campaignFilter} onValueChange={setCampaignFilter}>
-                    <SelectTrigger className="w-56">
-                      <SelectValue placeholder="Select campaign" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">Select campaign</SelectItem>
-                      {campaignOptions.map((campaign) => (
-                        <SelectItem key={campaign.id} value={campaign.id}>
-                          {campaign.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
                   <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | CustomerTrackingStatus)}>
                     <SelectTrigger className="w-44">
                       <SelectValue placeholder="Filter status" />
@@ -428,10 +413,10 @@ export default function CustomerTrackingPage() {
           </Card>
 
           <div className="space-y-4">
-            {campaignFilter === 'NONE' ? (
+            {activeCampaignId === 'NONE' ? (
               <Card className="border border-border/60">
                 <CardContent className="py-6 text-sm text-muted-foreground">
-                  Choose a campaign to view tracking records.
+                  No tracking records found for this customer.
                 </CardContent>
               </Card>
             ) : filteredDebts.length === 0 ? (

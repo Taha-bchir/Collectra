@@ -147,6 +147,7 @@ export const listCustomersSchema = createRoute({
   request: {
     query: z.object({
       status: z.nativeEnum(DebtStatus).optional(),
+      clicked: z.coerce.boolean().optional().describe('When true, only rows with at least one LINK_CLICKED event are returned'),
       search: z.string().trim().min(1).optional().describe('Search by customer name or email'),
       campaignId: z.string().uuid().optional(),
       page: z.coerce.number().int().min(1).optional(),
