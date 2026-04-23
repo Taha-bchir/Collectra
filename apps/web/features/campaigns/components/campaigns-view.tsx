@@ -34,6 +34,8 @@ import {
 import { previewCampaignCsv, type CsvPreviewResult } from '@/features/campaigns/utils/csv-preview'
 import { CustomerTrackingView } from './customer-tracking-view'
 
+const CREATE_CAMPAIGN_DRAFT_STORAGE_KEY = 'collectra:create-campaign-draft'
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
     return error.message
@@ -121,6 +123,47 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
 
     load()
   }, [refreshCampaigns])
+
+  useEffect(() => {
+    if (!showCreateSection || typeof window === 'undefined') {
+      return
+    }
+
+    const raw = window.localStorage.getItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)
+    if (!raw) {
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as { campaignName?: string; description?: string; importDueDate?: string }
+      setCampaignName(parsed.campaignName ?? '')
+      setDescription(parsed.description ?? '')
+      setImportDueDate(parsed.importDueDate ?? '')
+    } catch {
+      window.localStorage.removeItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)
+    }
+  }, [showCreateSection])
+
+  useEffect(() => {
+    if (!showCreateSection || typeof window === 'undefined') {
+      return
+    }
+
+    const hasDraft = Boolean(campaignName.trim() || description.trim() || importDueDate)
+    if (!hasDraft) {
+      window.localStorage.removeItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)
+      return
+    }
+
+    window.localStorage.setItem(
+      CREATE_CAMPAIGN_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        campaignName,
+        description,
+        importDueDate,
+      }),
+    )
+  }, [campaignName, description, importDueDate, showCreateSection])
 
   const handleFileChange = useCallback(async (nextFile: File | null) => {
     const requestId = previewRequestIdRef.current + 1
@@ -249,6 +292,9 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
       setPreview(null)
       setPreviewError(null)
       setImportError(null)
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)
+      }
       router.push(`/campaigns/tables?campaignId=${encodeURIComponent(result.campaign.id)}`)
       return true
     } catch (error) {

@@ -168,6 +168,7 @@ function DebtTrackingCard({
 
 export default function CustomerTrackingPage() {
   const SYNC_INTERVAL_MS = 8000
+  const [trendRange, setTrendRange] = useState<'7d' | '30d'>('7d')
   const params = useParams<{ id: string }>()
   const searchParams = useSearchParams()
   const customerId = Array.isArray(params.id) ? params.id[0] : params.id
@@ -324,6 +325,35 @@ export default function CustomerTrackingPage() {
     return [preferredDebt, ...byStatus.filter((debt) => debt.debtId !== preferredDebtId)]
   }, [activeCampaignId, preferredDebtId, sortedDebts, statusFilter])
 
+  const activitySummary = useMemo(() => {
+    const days = trendRange === '7d' ? 7 : 30
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+
+    let interactions = 0
+    let emailOpenEvents = 0
+    let publicPageVisits = 0
+
+    for (const debt of filteredDebts) {
+      for (const event of debt.events) {
+        const timestamp = new Date(event.timestamp).getTime()
+        if (Number.isNaN(timestamp) || timestamp < cutoff) {
+          continue
+        }
+
+        interactions += 1
+        const normalized = event.actionType.toUpperCase()
+        if (normalized.includes('OPEN')) {
+          emailOpenEvents += 1
+        }
+        if (normalized.includes('CLICK') || normalized.includes('VISIT')) {
+          publicPageVisits += 1
+        }
+      }
+    }
+
+    return { interactions, emailOpenEvents, publicPageVisits }
+  }, [filteredDebts, trendRange])
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-auto">
       <div className="flex items-center gap-3">
@@ -381,7 +411,7 @@ export default function CustomerTrackingPage() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <SummaryCard title="Total Debts" value={tracking.summary.totalDebts} />
             <SummaryCard title="In Progress" value={tracking.summary.sentDebts} hint="Non-paid debts" />
-            <SummaryCard title="Opened Emails" value={tracking.summary.openedCount} />
+            <SummaryCard title="Email Open Events" value={tracking.summary.openedCount} hint="Engagement tracked from email events" />
             <SummaryCard title="Last Activity" value={formatDateTime(tracking.summary.lastEventAt)} />
           </div>
 
@@ -390,12 +420,21 @@ export default function CustomerTrackingPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium">Debt tracking timeline</p>
-                  <p className="text-xs text-muted-foreground">Showing tracking for one campaign at a time. Use status to refine results.</p>
+                  <p className="text-xs text-muted-foreground">Showing activity for one campaign at a time. Use status to refine results.</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Email opens are tracked from email events, while landing visits are visits to the public debt page link.
+                    Email open events are tracked from provider events, while public page visits track visits to your secure debt link.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <Select value={trendRange} onValueChange={(value) => setTrendRange(value as '7d' | '30d')}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Activity range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | CustomerTrackingStatus)}>
                     <SelectTrigger className="w-44">
                       <SelectValue placeholder="Filter status" />
@@ -411,6 +450,12 @@ export default function CustomerTrackingPage() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SummaryCard title="Recent Interactions" value={activitySummary.interactions} hint={`Last ${trendRange === '7d' ? '7' : '30'} days`} />
+            <SummaryCard title="Recent Email Opens" value={activitySummary.emailOpenEvents} hint="Open-related provider events" />
+            <SummaryCard title="Recent Public Visits" value={activitySummary.publicPageVisits} hint="Public debt page visits/clicks" />
+          </div>
 
           <div className="space-y-4">
             {activeCampaignId === 'NONE' ? (

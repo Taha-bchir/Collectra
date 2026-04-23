@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/features/auth/hooks/use-auth'
 import { ApiError, getDashboardStats } from '@/features/overview/services/overview-stats-service'
 import type { DashboardDebtStatusCounts, DashboardStats } from '@/features/overview/types'
@@ -25,6 +26,7 @@ import { Loader2 } from 'lucide-react'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts'
 
 const ALL_CAMPAIGNS_VALUE = 'all'
+type TrendRange = '7d' | '30d'
 
 const STATUS_CONFIG: Array<{
   key: keyof DashboardDebtStatusCounts
@@ -87,14 +89,17 @@ const recentCampaignChartConfig = {
 } satisfies ChartConfig
 
 export default function OverviewPage() {
+  const router = useRouter()
   const { profile } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(true)
   const [statsError, setStatsError] = useState<string | null>(null)
+  const [statsReloadKey, setStatsReloadKey] = useState(0)
 
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
   const [isCampaignsLoading, setIsCampaignsLoading] = useState(true)
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>(ALL_CAMPAIGNS_VALUE)
+  const [trendRange, setTrendRange] = useState<TrendRange>('7d')
 
   useEffect(() => {
     let cancelled = false
@@ -167,7 +172,7 @@ export default function OverviewPage() {
     return () => {
       cancelled = true
     }
-  }, [selectedCampaignId])
+  }, [selectedCampaignId, statsReloadKey])
 
   const totalCampaigns = useMemo(() => {
     if (selectedCampaignId === ALL_CAMPAIGNS_VALUE) {
@@ -248,6 +253,50 @@ export default function OverviewPage() {
       }))
   }, [stats?.recentCampaigns])
 
+  const trendSummary = useMemo(() => {
+    if (!stats?.recentCampaigns?.length) {
+      return { campaigns: 0, debts: 0, promised: 0, paid: 0 }
+    }
+
+    const now = Date.now()
+    const days = trendRange === '7d' ? 7 : 30
+    const cutoff = now - days * 24 * 60 * 60 * 1000
+    const inRange = stats.recentCampaigns.filter((campaign) => new Date(campaign.createdAt).getTime() >= cutoff)
+
+    return inRange.reduce(
+      (acc, campaign) => {
+        acc.campaigns += 1
+        acc.debts += campaign.debtsCount
+        acc.promised += campaign.promisedCount
+        acc.paid += campaign.paidCount
+        return acc
+      },
+      { campaigns: 0, debts: 0, promised: 0, paid: 0 },
+    )
+  }, [stats?.recentCampaigns, trendRange])
+
+  const openTables = (status?: keyof DashboardDebtStatusCounts) => {
+    const params = new URLSearchParams()
+    if (selectedCampaignId !== ALL_CAMPAIGNS_VALUE) {
+      params.set('campaignId', selectedCampaignId)
+    }
+
+    if (status) {
+      const statusMap: Record<keyof DashboardDebtStatusCounts, string> = {
+        IMPORTED: 'NOT_CONTACTED',
+        UNPAID: 'UNPAID',
+        NOTIFIED: 'NOTIFIED',
+        PROMISE_TO_PAY: 'PROMISE_TO_PAY',
+        PAID: 'PAID',
+        OVERDUE_AFTER_PROMISE: 'OVERDUE',
+      }
+      params.set('status', statusMap[status])
+    }
+
+    const query = params.toString()
+    router.push(query ? `/campaigns/tables?${query}` : '/campaigns/tables')
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:gap-8 md:p-8 overflow-auto">
       <div>
@@ -303,6 +352,15 @@ export default function OverviewPage() {
             <CardTitle>Unable to load stats</CardTitle>
             <CardDescription className="text-destructive">{statsError}</CardDescription>
           </CardHeader>
+          <CardContent>
+            <button
+              type="button"
+              onClick={() => setStatsReloadKey((prev) => prev + 1)}
+              className="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-background/60"
+            >
+              Retry
+            </button>
+          </CardContent>
         </Card>
       ) : (
         <>
@@ -326,6 +384,8 @@ export default function OverviewPage() {
                       nameKey="name"
                       outerRadius={90}
                       label
+                      onClick={() => openTables()}
+                      className="cursor-pointer"
                     >
                       {campaignHealthChartData.map((entry, index) => (
                         <Cell
@@ -354,9 +414,13 @@ export default function OverviewPage() {
                       <XAxis dataKey="status" tickLine={false} axisLine={false} />
                       <YAxis allowDecimals={false} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="value" radius={6}>
+                    <Bar dataKey="value" radius={6} className="cursor-pointer">
                       {debtStatusChartData.map((entry) => (
-                        <Cell key={`debt-status-${entry.status}`} fill={`var(--color-${entry.key})`} />
+                        <Cell
+                          key={`debt-status-${entry.status}`}
+                          fill={`var(--color-${entry.key})`}
+                          onClick={() => openTables(entry.key)}
+                        />
                       ))}
                     </Bar>
                     </BarChart>
@@ -369,12 +433,29 @@ export default function OverviewPage() {
           {selectedCampaignId === ALL_CAMPAIGNS_VALUE && stats?.recentCampaigns && stats.recentCampaigns.length > 0 && (
             <Card className="border border-border/60">
               <CardHeader>
-                <CardTitle>Recent campaigns</CardTitle>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <CardTitle>Recent campaigns</CardTitle>
+                  <Select value={trendRange} onValueChange={(value) => setTrendRange(value as TrendRange)}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <CardDescription>
                   Quick performance view from latest imported campaigns.
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <Badge variant="outline">Campaigns: {trendSummary.campaigns}</Badge>
+                  <Badge variant="outline">Debt records: {trendSummary.debts}</Badge>
+                  <Badge variant="outline">Promises: {trendSummary.promised}</Badge>
+                  <Badge variant="outline">Paid: {trendSummary.paid}</Badge>
+                </div>
                 <ChartContainer config={recentCampaignChartConfig} className="h-[320px] w-full">
                   <BarChart data={recentCampaignChartData}>
                     <CartesianGrid vertical={false} />

@@ -6,7 +6,9 @@
   "scripts": {
     "build": "node ./scripts/build.mjs",
     "dev": "next dev --port 3001",
-    "start": "next start"
+    "start": "next start",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.88",
@@ -77,5 +79,9 @@
     "vaul": "^0.9.9",
     "zod": "3.25.76",
     "zustand": "latest"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.0",
+    "@playwright/test": "^1.56.1"
   }
 }

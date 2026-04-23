@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, Search, Eye, MoreVertical, FileText, PencilIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -110,17 +111,33 @@ interface CustomerTrackingViewProps {
   selectedCampaignId?: string
 }
 
+function toFilterStatus(value: string | null): FilterStatus | null {
+  if (!value) return null
+
+  const normalized = value.trim().toUpperCase()
+  const allowed: FilterStatus[] = ['ALL', 'NOT_CONTACTED', 'UNPAID', 'NOTIFIED', 'PROMISE_TO_PAY', 'CLICKED', 'PAID', 'OVERDUE']
+  return allowed.includes(normalized as FilterStatus) ? (normalized as FilterStatus) : null
+}
+
 export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: CustomerTrackingViewProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const preferredStatus = useMemo(() => toFilterStatus(searchParams.get('status')), [searchParams])
+  const preferredSearch = useMemo(() => searchParams.get('search')?.trim() ?? '', [searchParams])
+  const preferredPage = useMemo(() => {
+    const parsed = Number(searchParams.get('page') ?? '1')
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+  }, [searchParams])
   const [rows, setRows] = useState<CustomerListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState<FilterStatus>('ALL')
+  const [searchInput, setSearchInput] = useState(preferredSearch)
+  const [search, setSearch] = useState(preferredSearch)
+  const [status, setStatus] = useState<FilterStatus>(preferredStatus ?? 'ALL')
   const [campaignId, setCampaignId] = useState<string>(selectedCampaignId)
-  const [includeArchivedCampaigns, setIncludeArchivedCampaigns] = useState(false)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(preferredPage)
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItem['customer'] | null>(null)
   const [openingDebtId, setOpeningDebtId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
@@ -135,6 +152,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
     customerName: string
     times: string[]
   } | null>(null)
+  const [mobileDetailsRow, setMobileDetailsRow] = useState<CustomerListItem | null>(null)
   const loadRequestIdRef = useRef(0)
 
   const [pagination, setPagination] = useState({
@@ -229,13 +247,35 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
     setPage(1)
   }, [selectedCampaignId])
 
-  const visibleCampaigns = useMemo(() => {
-    if (includeArchivedCampaigns) {
-      return campaigns
+  useEffect(() => {
+    if (preferredStatus) {
+      setStatus(preferredStatus)
+      setPage(1)
+    }
+  }, [preferredStatus])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (campaignId !== 'ALL') {
+      params.set('campaignId', campaignId)
+    }
+    if (status !== 'ALL') {
+      params.set('status', status)
+    }
+    if (search.trim()) {
+      params.set('search', search.trim())
+    }
+    if (page > 1) {
+      params.set('page', String(page))
     }
 
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [campaignId, page, pathname, router, search, status])
+
+  const visibleCampaigns = useMemo(() => {
     return campaigns.filter((campaign) => campaign.status !== 'ARCHIVED')
-  }, [campaigns, includeArchivedCampaigns])
+  }, [campaigns])
 
   useEffect(() => {
     if (campaignId === 'ALL') {
@@ -328,8 +368,8 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
 
   const totalLabel = useMemo(() => {
     if (loading) return 'Loading customers...'
-    if (status === 'CLICKED') return `${pagination.total} clicked row(s)`
-    return `${pagination.total} debt row(s)`
+    if (status === 'CLICKED') return `${pagination.total} clicked record(s)`
+    return `${pagination.total} debt record(s)`
   }, [loading, pagination.total, status])
 
   const hasActiveFilters = useMemo(() => {
@@ -338,19 +378,19 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
 
   const emptyStateMessage = useMemo(() => {
     if (campaigns.length === 0) {
-      return 'No campaign data available yet. Import a CSV campaign to see customer rows here.'
+      return 'No campaign data available yet. Import a CSV campaign to see customer records here.'
     }
 
-    if (visibleCampaigns.length === 0 && !includeArchivedCampaigns) {
-      return 'Only archived campaigns exist. Enable "Include archived" to browse their rows.'
+    if (visibleCampaigns.length === 0) {
+      return 'No active campaign data available yet.'
     }
 
     if (hasActiveFilters) {
-      return 'No rows match your current filters.'
+      return 'No records match your current filters.'
     }
 
-    return 'No customer rows found yet for the selected campaign scope.'
-  }, [campaigns.length, hasActiveFilters, includeArchivedCampaigns, visibleCampaigns.length])
+    return 'No customer records found yet for the selected campaign scope.'
+  }, [campaigns.length, hasActiveFilters, visibleCampaigns.length])
 
   const handleResetFilters = useCallback(() => {
     setSearchInput('')
@@ -397,19 +437,6 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Badge variant={includeArchivedCampaigns ? 'secondary' : 'outline'}>
-            {includeArchivedCampaigns ? 'Showing archived campaigns' : 'Archived campaigns hidden'}
-          </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setIncludeArchivedCampaigns((prev) => !prev)
-              setPage(1)
-            }}
-          >
-            {includeArchivedCampaigns ? 'Hide archived' : 'Include archived'}
-          </Button>
           {hasActiveFilters ? (
             <Button variant="ghost" size="sm" onClick={handleResetFilters}>
               Reset filters
@@ -511,6 +538,14 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="md:hidden"
+                            onClick={() => setMobileDetailsRow(row)}
+                          >
+                            Details
+                          </Button>
                           <Button asChild variant="ghost" size="sm">
                             <Link
                               href={`/customers/${row.customer.id}?campaignId=${encodeURIComponent(row.debt.campaignId)}&debtId=${encodeURIComponent(row.debt.id)}`}
@@ -585,14 +620,15 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
         <Dialog open={Boolean(editingCustomer)} onOpenChange={(open) => (!open ? setEditingCustomer(null) : null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit customer</DialogTitle>
-              <DialogDescription>Update customer contact fields for the selected row.</DialogDescription>
+                  <DialogTitle>Edit customer</DialogTitle>
+                  <DialogDescription>Update customer contact fields for the selected record.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Full name</label>
+                <label htmlFor="edit-customer-full-name" className="text-sm font-medium">Full name</label>
                 <Input
+                  id="edit-customer-full-name"
                   value={editForm.fullName}
                   onChange={(event) => setEditForm((prev) => ({ ...prev, fullName: event.target.value }))}
                   placeholder="Customer full name"
@@ -600,8 +636,9 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Email</label>
+                <label htmlFor="edit-customer-email" className="text-sm font-medium">Email</label>
                 <Input
+                  id="edit-customer-email"
                   type="email"
                   value={editForm.email}
                   onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
@@ -610,8 +647,9 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Phone</label>
+                <label htmlFor="edit-customer-phone" className="text-sm font-medium">Phone</label>
                 <Input
+                  id="edit-customer-phone"
                   value={editForm.phone}
                   onChange={(event) => setEditForm((prev) => ({ ...prev, phone: event.target.value }))}
                   placeholder="+212..."
@@ -619,8 +657,9 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-medium">Address</label>
+                <label htmlFor="edit-customer-address" className="text-sm font-medium">Address</label>
                 <Input
+                  id="edit-customer-address"
                   value={editForm.address}
                   onChange={(event) => setEditForm((prev) => ({ ...prev, address: event.target.value }))}
                   placeholder="Street, city"
@@ -663,6 +702,27 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
                 </p>
               ))}
             </div>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={Boolean(mobileDetailsRow)} onOpenChange={(open) => (!open ? setMobileDetailsRow(null) : null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Debt record details</DialogTitle>
+              <DialogDescription>
+                {mobileDetailsRow
+                  ? `Campaign: ${mobileDetailsRow.debt.campaignName}`
+                  : 'Customer debt details'}
+              </DialogDescription>
+            </DialogHeader>
+            {mobileDetailsRow ? (
+              <div className="space-y-2 text-sm">
+                <p><span className="font-medium">Customer:</span> {mobileDetailsRow.customer.fullName}</p>
+                <p><span className="font-medium">Email:</span> {mobileDetailsRow.customer.email || '-'}</p>
+                <p><span className="font-medium">Phone:</span> {mobileDetailsRow.customer.phone || '-'}</p>
+                <p><span className="font-medium">Due date:</span> {formatDate(mobileDetailsRow.debt.dueDate)}</p>
+                <p><span className="font-medium">Link opens:</span> {mobileDetailsRow.debt.linkOpenCount}</p>
+              </div>
+            ) : null}
           </DialogContent>
         </Dialog>
       </CardContent>

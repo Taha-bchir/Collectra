@@ -121,10 +121,12 @@ function LoginPageContent() {
                     onChange={handleEmailChange}
                     onBlur={handleEmailBlur}
                     dir="ltr"
+                    aria-invalid={Boolean(emailError && touched.email)}
+                    aria-describedby={emailError && touched.email ? 'login-email-error' : undefined}
                     className={`bg-muted/50 ${emailError && touched.email ? 'border-destructive' : ''}`}
                   />
                   {emailError && touched.email && (
-                    <p className="text-sm text-destructive">{emailError}</p>
+                    <p id="login-email-error" className="text-sm text-destructive">{emailError}</p>
                   )}
                 </div>
 
@@ -144,6 +146,8 @@ function LoginPageContent() {
                       onChange={handlePasswordChange}
                       onBlur={handlePasswordBlur}
                       placeholder={strings.auth_password_placeholder}
+                      aria-invalid={Boolean(passwordError && touched.password)}
+                      aria-describedby={passwordError && touched.password ? 'login-password-error' : undefined}
                       className={`bg-muted/50 ${passwordError && touched.password ? 'border-destructive' : ''} pr-10`}
                     />
                     <button
@@ -156,12 +160,12 @@ function LoginPageContent() {
                     </button>
                   </div>
                   {passwordError && touched.password && (
-                    <p className="text-sm text-destructive">{passwordError}</p>
+                    <p id="login-password-error" className="text-sm text-destructive">{passwordError}</p>
                   )}
                 </div>
 
                 {error && (
-                  <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>
+                  <div role="alert" aria-live="polite" className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>
                 )}
 
                 <Button

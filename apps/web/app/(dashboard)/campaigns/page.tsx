@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Archive, ArrowRight, CheckCircle2, FolderKanban, Loader2, MoreVertical, PlusCircle, RefreshCcw, Search, Sparkles, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 
 import {
@@ -52,12 +53,22 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function CampaignsPage() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'ALL' | CampaignSummary['status']>('ALL')
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'debts-desc' | 'debts-asc'>('newest')
+  const initialSearch = searchParams.get('search')?.trim() ?? ''
+  const initialStatusFilter = (searchParams.get('status')?.trim().toUpperCase() ?? 'ALL') as 'ALL' | CampaignSummary['status']
+  const initialSortBy = (searchParams.get('sort')?.trim() ?? 'newest') as 'newest' | 'oldest' | 'debts-desc' | 'debts-asc'
+  const [search, setSearch] = useState(initialSearch)
+  const [statusFilter, setStatusFilter] = useState<'ALL' | CampaignSummary['status']>(
+    ['ALL', 'ACTIVE', 'COMPLETED', 'ARCHIVED'].includes(initialStatusFilter) ? initialStatusFilter : 'ALL',
+  )
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'debts-desc' | 'debts-asc'>(
+    ['newest', 'oldest', 'debts-desc', 'debts-asc'].includes(initialSortBy) ? initialSortBy : 'newest',
+  )
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null)
   const [campaignDeletingId, setCampaignDeletingId] = useState<string | null>(null)
   const [campaignToDelete, setCampaignToDelete] = useState<CampaignSummary | null>(null)
@@ -80,6 +91,22 @@ export default function CampaignsPage() {
   useEffect(() => {
     void loadCampaigns()
   }, [loadCampaigns])
+
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (search.trim()) {
+      params.set('search', search.trim())
+    }
+    if (statusFilter !== 'ALL') {
+      params.set('status', statusFilter)
+    }
+    if (sortBy !== 'newest') {
+      params.set('sort', sortBy)
+    }
+
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [pathname, router, search, sortBy, statusFilter])
 
   const campaignCounts = useMemo(() => {
     return campaigns.reduce(
@@ -384,7 +411,7 @@ export default function CampaignsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="text-xs text-muted-foreground">
-                    <p>Debts: {campaign.debtsCount}</p>
+                    <p>Debt records: {campaign.debtsCount}</p>
                     <p>Created: {formatDate(campaign.createdAt)}</p>
                   </div>
 

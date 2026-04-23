@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState, Suspense } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { ApiError } from "@/features/auth/services/auth-service"
 import { strings } from "@/lib/strings"
 import { useAuth } from "@/features/auth/hooks/use-auth"
@@ -55,6 +55,8 @@ const validateWebsite = (website: string): string | null => {
 const isUuid = (value: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 
+const SIGNUP_DRAFT_STORAGE_KEY = "collectra:signup-draft"
+
 function SignUpForm() {
   const [step, setStep] = useState(1)
   const [email, setEmail] = useState("")
@@ -96,6 +98,56 @@ function SignUpForm() {
     ? "/overview"
     : (redirectParam || "/overview")
   const finalStep = hasInviteToken ? 2 : 3
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const raw = window.localStorage.getItem(SIGNUP_DRAFT_STORAGE_KEY)
+    if (!raw) return
+
+    try {
+      const parsed = JSON.parse(raw) as Partial<{
+        step: number
+        email: string
+        fullName: string
+        phone: string
+        workspaceName: string
+        website: string
+      }>
+
+      if (parsed.step && parsed.step >= 1 && parsed.step <= finalStep) {
+        setStep(parsed.step)
+      }
+      setEmail(parsed.email ?? "")
+      setFullName(parsed.fullName ?? "")
+      setPhone(parsed.phone ?? "")
+      setWorkspaceName(parsed.workspaceName ?? "")
+      setWebsite(parsed.website ?? "")
+    } catch {
+      window.localStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY)
+    }
+  }, [finalStep])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const hasDraft = Boolean(email || fullName || phone || workspaceName || website)
+    if (!hasDraft) {
+      window.localStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY)
+      return
+    }
+
+    window.localStorage.setItem(
+      SIGNUP_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        step,
+        email,
+        fullName,
+        phone,
+        workspaceName,
+        website,
+      }),
+    )
+  }, [email, fullName, phone, step, website, workspaceName])
 
   const updateFieldError = (field: keyof FieldErrors, error: string | null) => {
     setFieldErrors((prev) => ({ ...prev, [field]: error }))
@@ -253,6 +305,9 @@ function SignUpForm() {
         inviteToken: hasInviteToken ? inviteToken : undefined,
       } as Parameters<typeof signUp>[0]
       const result = await signUp(payload)
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY)
+      }
       if (result.requiresEmailVerification) {
         router.push("/auth/sign-up-success")
       } else {
@@ -350,11 +405,13 @@ function SignUpForm() {
                         setFieldTouched("fullName")
                         updateFieldError("fullName", validateFullName(fullName))
                       }}
+                      aria-invalid={Boolean(fieldErrors.fullName && touched.fullName)}
+                      aria-describedby={fieldErrors.fullName && touched.fullName ? "signup-fullname-error" : undefined}
                       className={`bg-muted/50 ${fieldErrors.fullName && touched.fullName ? "border-destructive" : ""}`}
                       maxLength={120}
                     />
                     {fieldErrors.fullName && touched.fullName && (
-                      <p className="text-sm text-destructive">{fieldErrors.fullName}</p>
+                      <p id="signup-fullname-error" className="text-sm text-destructive">{fieldErrors.fullName}</p>
                     )}
                   </div>
 
@@ -372,10 +429,12 @@ function SignUpForm() {
                         updateFieldError("email", validateEmail(email))
                       }}
                       dir="ltr"
+                      aria-invalid={Boolean(fieldErrors.email && touched.email)}
+                      aria-describedby={fieldErrors.email && touched.email ? "signup-email-error" : undefined}
                       className={`bg-muted/50 text-left ${fieldErrors.email && touched.email ? "border-destructive" : ""}`}
                     />
                     {fieldErrors.email && touched.email && (
-                      <p className="text-sm text-destructive">{fieldErrors.email}</p>
+                      <p id="signup-email-error" className="text-sm text-destructive">{fieldErrors.email}</p>
                     )}
                   </div>
 
@@ -392,11 +451,13 @@ function SignUpForm() {
                         updateFieldError("phone", validatePhone(phone))
                       }}
                       dir="ltr"
+                      aria-invalid={Boolean(fieldErrors.phone && touched.phone)}
+                      aria-describedby={fieldErrors.phone && touched.phone ? "signup-phone-error" : undefined}
                       className={`bg-muted/50 text-left ${fieldErrors.phone && touched.phone ? "border-destructive" : ""}`}
                       maxLength={32}
                     />
                     {fieldErrors.phone && touched.phone && (
-                      <p className="text-sm text-destructive">{fieldErrors.phone}</p>
+                      <p id="signup-phone-error" className="text-sm text-destructive">{fieldErrors.phone}</p>
                     )}
                   </div>
 
@@ -425,11 +486,13 @@ function SignUpForm() {
                         updateFieldError("password", validatePassword(password))
                       }}
                       placeholder={strings.auth_password_placeholder}
+                      aria-invalid={Boolean(fieldErrors.password && touched.password)}
+                      aria-describedby={fieldErrors.password && touched.password ? "signup-password-error" : undefined}
                       className={`bg-muted/50 ${fieldErrors.password && touched.password ? "border-destructive" : ""}`}
                       maxLength={72}
                     />
                     {fieldErrors.password && touched.password && (
-                      <p className="text-sm text-destructive">{fieldErrors.password}</p>
+                      <p id="signup-password-error" className="text-sm text-destructive">{fieldErrors.password}</p>
                     )}
                   </div>
 
@@ -445,11 +508,13 @@ function SignUpForm() {
                         setFieldTouched("confirmPassword")
                         updateFieldError("confirmPassword", validatePasswordConfirmation(password, repeatPassword))
                       }}
+                      aria-invalid={Boolean(fieldErrors.confirmPassword && touched.confirmPassword)}
+                      aria-describedby={fieldErrors.confirmPassword && touched.confirmPassword ? "signup-confirm-password-error" : undefined}
                       className={`bg-muted/50 ${fieldErrors.confirmPassword && touched.confirmPassword ? "border-destructive" : ""}`}
                       maxLength={72}
                     />
                     {fieldErrors.confirmPassword && touched.confirmPassword && (
-                      <p className="text-sm text-destructive">{fieldErrors.confirmPassword}</p>
+                      <p id="signup-confirm-password-error" className="text-sm text-destructive">{fieldErrors.confirmPassword}</p>
                     )}
                   </div>
                   <div className="flex gap-3">
@@ -496,12 +561,14 @@ function SignUpForm() {
                         setFieldTouched("workspaceName")
                         updateFieldError("workspaceName", validateWorkspaceName(workspaceName))
                       }}
+                      aria-invalid={Boolean(fieldErrors.workspaceName && touched.workspaceName)}
+                      aria-describedby={fieldErrors.workspaceName && touched.workspaceName ? "signup-workspace-error" : undefined}
                       placeholder={strings.auth_workspace_name_placeholder}
                       className={`bg-muted/50 ${fieldErrors.workspaceName && touched.workspaceName ? "border-destructive" : ""}`}
                       maxLength={120}
                     />
                     {fieldErrors.workspaceName && touched.workspaceName && (
-                      <p className="text-sm text-destructive">{fieldErrors.workspaceName}</p>
+                      <p id="signup-workspace-error" className="text-sm text-destructive">{fieldErrors.workspaceName}</p>
                     )}
                   </div>
 
@@ -516,12 +583,14 @@ function SignUpForm() {
                         setFieldTouched("website")
                         updateFieldError("website", validateWebsite(website))
                       }}
+                      aria-invalid={Boolean(fieldErrors.website && touched.website)}
+                      aria-describedby={fieldErrors.website && touched.website ? "signup-website-error" : undefined}
                       placeholder={strings.auth_workspace_website_placeholder}
                       className={`bg-muted/50 ${fieldErrors.website && touched.website ? "border-destructive" : ""}`}
                       maxLength={255}
                     />
                     {fieldErrors.website && touched.website && (
-                      <p className="text-sm text-destructive">{fieldErrors.website}</p>
+                      <p id="signup-website-error" className="text-sm text-destructive">{fieldErrors.website}</p>
                     )}
                   </div>
 
@@ -550,7 +619,7 @@ function SignUpForm() {
               )}
 
               {error && (
-                <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>
+                <div role="alert" aria-live="polite" className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">{error}</div>
               )}
 
               {step === 1 && (

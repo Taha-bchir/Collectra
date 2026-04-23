@@ -17,6 +17,8 @@ import {
   type PublicDebtView,
 } from '@/features/public-debts/services/public-debts-service'
 
+const ENABLE_DEMO_PAYMENT = process.env.NEXT_PUBLIC_ENABLE_DEMO_PAYMENT === 'true'
+
 function formatDate(value: string) {
   return new Date(value).toLocaleString()
 }
@@ -50,38 +52,41 @@ function ClientDebtViewContent() {
   const [promiseDate, setPromiseDate] = useState('')
   const [submittingPromise, setSubmittingPromise] = useState(false)
   const [submittingFakePayment, setSubmittingFakePayment] = useState(false)
+  const [inlineFeedback, setInlineFeedback] = useState<string | null>(null)
 
-  useEffect(() => {
-    const load = async () => {
-      if (!token) {
-        setError('Missing debt link token.')
-        setLoading(false)
-        return
-      }
-
-      setLoading(true)
-      setError(null)
-
-      try {
-        const details = await getPublicDebtByToken(token)
-        setDebt(details)
-        if (details.promiseDate) {
-          setPromiseDate(details.promiseDate.slice(0, 10))
-        }
-      } catch (err) {
-        if (err instanceof ApiError) {
-          setError(err.message)
-        } else if (err instanceof Error) {
-          setError(err.message)
-        } else {
-          setError('Unable to load debt details')
-        }
-      } finally {
-        setLoading(false)
-      }
+  const loadDebt = async () => {
+    if (!token) {
+      setError('Secure-link token is missing. Please use the full link from your email.')
+      setLoading(false)
+      return
     }
 
-    load()
+    setLoading(true)
+    setError(null)
+
+    try {
+      const details = await getPublicDebtByToken(token)
+      setDebt(details)
+      if (details.promiseDate) {
+        setPromiseDate(details.promiseDate.slice(0, 10))
+      }
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setError('This secure link has expired. Please request a new link from your collector.')
+      } else if (err instanceof ApiError) {
+        setError(err.message)
+      } else if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError('Unable to load debt details')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadDebt()
   }, [token])
 
   const minPromiseDate = useMemo(() => {
@@ -104,6 +109,7 @@ function ClientDebtViewContent() {
     }
 
     setSubmittingPromise(true)
+    setInlineFeedback(null)
 
     try {
       const promisedDate = new Date(`${promiseDate}T00:00:00.000Z`).toISOString()
@@ -120,6 +126,7 @@ function ClientDebtViewContent() {
       )
 
       toast.success('Promise date submitted successfully')
+      setInlineFeedback('Promise date saved. Your collector has been notified.')
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message)
@@ -139,11 +146,13 @@ function ClientDebtViewContent() {
     }
 
     setSubmittingFakePayment(true)
+    setInlineFeedback(null)
 
     try {
       const result = await createPublicFakePaymentByToken(token)
       setDebt((prev) => (prev ? { ...prev, status: result.status } : prev))
       toast.success('Payment recorded successfully')
+      setInlineFeedback('Demo payment action completed.')
     } catch (err) {
       if (err instanceof ApiError) {
         toast.error(err.message)
@@ -177,8 +186,11 @@ function ClientDebtViewContent() {
               Loading debt details...
             </div>
           ) : error ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
-              {error}
+            <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+              <p>{error}</p>
+              <Button variant="outline" size="sm" onClick={() => void loadDebt()}>
+                Retry
+              </Button>
             </div>
           ) : debt ? (
             <div className="space-y-4 text-sm">
@@ -265,7 +277,7 @@ function ClientDebtViewContent() {
                 </div>
               )}
 
-              {debt.status === 'PROMISE_TO_PAY' && (
+              {ENABLE_DEMO_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (
                 <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
                   <p className="font-medium">Fake payment (demo)</p>
                   <p className="text-xs text-muted-foreground">
@@ -283,6 +295,12 @@ function ClientDebtViewContent() {
                   </Button>
                 </div>
               )}
+
+              {inlineFeedback ? (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm text-primary">
+                  {inlineFeedback}
+                </div>
+              ) : null}
 
               {debt.tokenExpiresAt && (
                 <p className="text-xs text-muted-foreground">
