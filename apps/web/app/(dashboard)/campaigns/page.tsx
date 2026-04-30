@@ -416,7 +416,7 @@ export default function CampaignsPage() {
                   </div>
 
                   <Button asChild variant="outline" className="w-full">
-                    <Link href={`/campaigns/tables?campaignId=${encodeURIComponent(campaign.id)}`}>
+                    <Link href={`/campaigns/tables/${encodeURIComponent(campaign.id)}`}>
                       View In Tables
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>

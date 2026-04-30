@@ -3,7 +3,7 @@
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, CalendarDays, Layers3, Loader2, PlusCircle, Upload } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -67,13 +67,18 @@ function toDateInputValue(value: Date) {
 
 
 
-export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' }) {
+export function CampaignsView({
+  mode = 'create',
+  preferredCampaignId = '',
+}: {
+  mode?: 'create' | 'tables'
+  preferredCampaignId?: string
+}) {
   const showCreateSection = mode === 'create'
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
 
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('ALL')
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(preferredCampaignId || 'ALL')
 
   const [campaignName, setCampaignName] = useState('')
   const [description, setDescription] = useState('')
@@ -90,7 +95,6 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
   const [dueDatePickerOpen, setDueDatePickerOpen] = useState(false)
   const previewRequestIdRef = useRef(0)
 
-  const preferredCampaignId = useMemo(() => searchParams.get('campaignId')?.trim() ?? '', [searchParams])
   const todayDate = useMemo(() => getTodayAtMidnight(), [])
   const minDueDate = useMemo(() => toDateInputValue(todayDate), [todayDate])
   const selectedImportDueDate = useMemo(() => {
@@ -295,7 +299,7 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)
       }
-      router.push(`/campaigns/tables?campaignId=${encodeURIComponent(result.campaign.id)}`)
+      router.push(`/campaigns/tables/${encodeURIComponent(result.campaign.id)}`)
       return true
     } catch (error) {
       const message = getErrorMessage(error, 'Failed to import campaign CSV')
@@ -656,7 +660,7 @@ export function CampaignsView({ mode = 'create' }: { mode?: 'create' | 'tables' 
             </Button>
           </div>
 
-          <CustomerTrackingView campaigns={campaigns} selectedCampaignId={selectedCampaignId} />
+          <CustomerTrackingView campaigns={campaigns} campaignId={selectedCampaignId} />
         </>
       )}
     </div>

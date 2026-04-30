@@ -3,6 +3,7 @@ import { env } from '../../../config/env.js'
 
 import {
   createPublicFakePaymentByTokenSchema,
+  createPublicStripeCheckoutSessionByTokenSchema,
   createPublicTrackClickByTokenSchema,
   createPublicTrackOpenByTokenSchema,
   createPublicPromiseByTokenSchema,
@@ -133,6 +134,26 @@ handler.openapi(
           debtId: updatedDebt.id,
           status: updatedDebt.status,
           promiseDate: updatedDebt.promiseDate?.toISOString() ?? payload.promisedDate,
+        },
+      },
+      201,
+    )
+  })
+)
+
+handler.openapi(
+  createPublicStripeCheckoutSessionByTokenSchema,
+  withRouteTryCatch('publicDebts.createStripeCheckoutSessionByToken', async (c) => {
+    const { token } = c.req.valid('param')
+
+    const service = new DebtsService(c.get('prisma'))
+    const session = await service.createStripeCheckoutSessionByCustomerToken(token)
+
+    return c.json(
+      {
+        data: {
+          sessionId: session.sessionId,
+          checkoutUrl: session.checkoutUrl,
         },
       },
       201,

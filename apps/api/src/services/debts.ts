@@ -5,6 +5,17 @@ import { env } from '../config/env.js'
 import { logBrevoEvent } from './brevo-event-logs.js'
 import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
+import { getStripeClient, getStripeCurrency } from '../lib/stripe.js'
+
+type ConfirmStripePaymentInput = {
+  stripeEventId: string
+  stripeEventType: string
+  stripeSessionId: string
+  stripePaymentIntentId: string | null
+  amountTotal: number | null
+  currency: string | null
+  livemode: boolean
+}
 
 /**
  * SECURITY & LINK FORMAT – CUSTOMER PERSONAL LINKS
@@ -201,19 +212,32 @@ export class DebtsService {
   async createPromiseByCustomerToken(token: string, promisedDate: Date) {
     const { debt } = await this.getByCustomerToken(token)
 
-    const normalizedPromisedDate = new Date(promisedDate)
-    if (Number.isNaN(normalizedPromisedDate.getTime())) {
+    const parsedPromisedDate = new Date(promisedDate)
+    if (Number.isNaN(parsedPromisedDate.getTime())) {
       throw new HTTPException(400, { message: 'Invalid promise date' })
     }
 
-    const now = new Date()
-    const dueDate = debt.dueDate
+    // The UI submits a date-only value; compare using UTC day boundaries so
+    // selecting "today" is always valid regardless of timezone offset.
+    const normalizedPromisedDate = new Date(
+      Date.UTC(
+        parsedPromisedDate.getUTCFullYear(),
+        parsedPromisedDate.getUTCMonth(),
+        parsedPromisedDate.getUTCDate(),
+      ),
+    )
 
-    if (normalizedPromisedDate < now) {
+    const todayStart = new Date()
+    todayStart.setUTCHours(0, 0, 0, 0)
+
+    const dueDateEnd = new Date(debt.dueDate)
+    dueDateEnd.setUTCHours(23, 59, 59, 999)
+
+    if (normalizedPromisedDate < todayStart) {
       throw new HTTPException(400, { message: 'Promise date cannot be in the past' })
     }
 
-    if (normalizedPromisedDate > dueDate) {
+    if (normalizedPromisedDate > dueDateEnd) {
       throw new HTTPException(400, { message: 'Promise date must be on or before due date' })
     }
 
@@ -285,6 +309,139 @@ export class DebtsService {
           metadata: {
             channel: 'public_link',
             fakePayment: true,
+          },
+        },
+      })
+
+      return paidDebt
+    })
+
+    return updatedDebt
+  }
+
+  async createStripeCheckoutSessionByCustomerToken(token: string) {
+    const { debt } = await this.getByCustomerToken(token)
+
+    if (debt.status !== 'PROMISE_TO_PAY') {
+      throw new HTTPException(400, {
+        message: 'Stripe payment is only available for debts in PROMISE_TO_PAY status',
+      })
+    }
+
+    const amount = debt.amount.toNumber()
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new HTTPException(400, {
+        message: 'Debt amount is invalid for Stripe payment',
+      })
+    }
+
+    const stripe = getStripeClient()
+    const currency = getStripeCurrency()
+    const unitAmount = Math.round(amount * 100)
+
+    const successUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=success`
+    const cancelUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=cancelled`
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      customer_email: debt.client.email ?? undefined,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency,
+            unit_amount: unitAmount,
+            product_data: {
+              name: `Debt Payment - ${debt.campaign.name}`,
+              description: `Debt ID: ${debt.id}`,
+            },
+          },
+        },
+      ],
+      metadata: {
+        debtId: debt.id,
+        customerId: debt.clientId,
+        source: 'public_link',
+      },
+      payment_intent_data: {
+        metadata: {
+          debtId: debt.id,
+          customerId: debt.clientId,
+          source: 'public_link',
+        },
+      },
+    })
+
+    if (!session.url) {
+      throw new HTTPException(500, { message: 'Stripe checkout URL was not returned' })
+    }
+
+    return {
+      sessionId: session.id,
+      checkoutUrl: session.url,
+    }
+  }
+
+  async confirmStripePaymentByDebtId(debtId: string, input: ConfirmStripePaymentInput) {
+    const updatedDebt = await this.prisma.$transaction(async (tx) => {
+      const debt = await tx.debtRecord.findUnique({
+        where: { id: debtId },
+        include: {
+          campaign: true,
+        },
+      })
+
+      if (!debt) {
+        logger.warn(
+          {
+            debtId,
+            stripeEventId: input.stripeEventId,
+            scope: 'debts.confirmStripePaymentByDebtId',
+          },
+          'Skipping Stripe payment confirmation because debt was not found',
+        )
+        return null
+      }
+
+      if (debt.status === 'PAID') {
+        return debt
+      }
+
+      const paidDebt = await tx.debtRecord.update({
+        where: { id: debt.id },
+        data: {
+          status: 'PAID',
+        },
+      })
+
+      await tx.paymentPromise.updateMany({
+        where: {
+          debtId: debt.id,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'KEPT',
+        },
+      })
+
+      await tx.customerActionHistory.create({
+        data: {
+          debtId: debt.id,
+          customerId: debt.clientId,
+          actionType: 'PAYMENT_CONFIRMED',
+          metadata: {
+            channel: 'stripe',
+            stripe: {
+              eventId: input.stripeEventId,
+              eventType: input.stripeEventType,
+              sessionId: input.stripeSessionId,
+              paymentIntentId: input.stripePaymentIntentId,
+              amountTotal: input.amountTotal,
+              currency: input.currency,
+              livemode: input.livemode,
+            },
           },
         },
       })

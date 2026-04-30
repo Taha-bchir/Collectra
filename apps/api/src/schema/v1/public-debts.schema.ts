@@ -142,6 +142,47 @@ export const createPublicFakePaymentByTokenSchema = createRoute({
   },
 })
 
+export const createPublicStripeCheckoutSessionByTokenSchema = createRoute({
+  method: 'post',
+  path: '/{token}/stripe/checkout-session',
+  tags: ['public-debts'],
+  summary: 'Create Stripe Checkout session by secure customer token',
+  description:
+    'Public endpoint used by debtor links to open Stripe Checkout for debts currently in PROMISE_TO_PAY status.',
+  request: {
+    params: z.object({
+      token: z.string().min(1),
+    }),
+  },
+  responses: {
+    201: {
+      description: 'Stripe checkout session created',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              sessionId: z.string(),
+              checkoutUrl: z.string().url(),
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Debt is not eligible for Stripe payment',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'Token not found or expired',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    503: {
+      description: 'Stripe integration is not configured',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
 export const createPublicTrackOpenByTokenSchema = createRoute({
   method: 'post',
   path: '/{token}/track-open',

@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api-client'
 import {
+  createPublicStripeCheckoutSessionByToken,
   createPublicFakePaymentByToken,
   createPublicPromiseByToken,
   getPublicDebtByToken,
@@ -18,6 +19,7 @@ import {
 } from '@/features/public-debts/services/public-debts-service'
 
 const ENABLE_DEMO_PAYMENT = process.env.NEXT_PUBLIC_ENABLE_DEMO_PAYMENT === 'true'
+const ENABLE_STRIPE_PAYMENT = process.env.NEXT_PUBLIC_ENABLE_STRIPE_PAYMENT !== 'false'
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString()
@@ -51,8 +53,10 @@ function ClientDebtViewContent() {
   const [debt, setDebt] = useState<PublicDebtView | null>(null)
   const [promiseDate, setPromiseDate] = useState('')
   const [submittingPromise, setSubmittingPromise] = useState(false)
+  const [submittingStripePayment, setSubmittingStripePayment] = useState(false)
   const [submittingFakePayment, setSubmittingFakePayment] = useState(false)
   const [inlineFeedback, setInlineFeedback] = useState<string | null>(null)
+  const paymentStatus = useMemo(() => searchParams.get('payment')?.trim() ?? '', [searchParams])
 
   const loadDebt = async () => {
     if (!token) {
@@ -88,6 +92,17 @@ function ClientDebtViewContent() {
   useEffect(() => {
     void loadDebt()
   }, [token])
+
+  useEffect(() => {
+    if (paymentStatus === 'success') {
+      setInlineFeedback('Payment submitted successfully. We are confirming it now.')
+      return
+    }
+
+    if (paymentStatus === 'cancelled') {
+      setInlineFeedback('Payment was cancelled. You can try again when ready.')
+    }
+  }, [paymentStatus])
 
   const minPromiseDate = useMemo(() => {
     const now = new Date()
@@ -137,6 +152,33 @@ function ClientDebtViewContent() {
       }
     } finally {
       setSubmittingPromise(false)
+    }
+  }
+
+  const handleStripePayment = async () => {
+    if (!token || !debt || debt.status !== 'PROMISE_TO_PAY') {
+      return
+    }
+
+    setSubmittingStripePayment(true)
+    setInlineFeedback('Opening Stripe Checkout...')
+
+    try {
+      const session = await createPublicStripeCheckoutSessionByToken(token)
+      window.location.assign(session.checkoutUrl)
+    } catch (err) {
+      const fallbackMessage = 'Unable to start secure payment. Please try again.'
+      if (err instanceof ApiError) {
+        toast.error(err.message)
+        setInlineFeedback(err.message)
+      } else if (err instanceof Error) {
+        toast.error(err.message)
+        setInlineFeedback(err.message)
+      } else {
+        toast.error(fallbackMessage)
+        setInlineFeedback(fallbackMessage)
+      }
+      setSubmittingStripePayment(false)
     }
   }
 
@@ -274,6 +316,25 @@ function ClientDebtViewContent() {
                       )}
                     </Button>
                   </div>
+                </div>
+              )}
+
+              {ENABLE_STRIPE_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (
+                <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
+                  <p className="font-medium">Secure payment with Stripe</p>
+                  <p className="text-xs text-muted-foreground">
+                    Available only after a promise to pay has been submitted.
+                  </p>
+                  <Button onClick={handleStripePayment} disabled={submittingStripePayment}>
+                    {submittingStripePayment ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Redirecting...
+                      </>
+                    ) : (
+                      'Pay now securely'
+                    )}
+                  </Button>
                 </div>
               )}
 

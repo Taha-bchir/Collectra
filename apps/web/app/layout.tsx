@@ -8,6 +8,7 @@ import {
 import './globals.css'
 import { Analytics } from '@vercel/analytics/next'
 import { ThemeProvider } from "@/components/common/theme-provider"
+import { Toaster } from '@/components/ui/sonner'
 
 const geist = Geist({
   subsets: ['latin'],
@@ -69,6 +70,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           {children}
+          <Toaster />
         </ThemeProvider>
         <Analytics />
       </body>

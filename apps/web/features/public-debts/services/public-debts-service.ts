@@ -92,6 +92,35 @@ export async function createPublicFakePaymentByToken(token: string) {
   }
 }
 
+export async function createPublicStripeCheckoutSessionByToken(token: string) {
+  try {
+    const { data } = await client.post<{
+      data: { sessionId: string; checkoutUrl: string }
+    }>(`/api/v1/public/debts/${token}/stripe/checkout-session`)
+
+    return data.data
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0
+      const payload = error.response?.data as
+        | { error?: { message?: string }; message?: string }
+        | undefined
+
+      const message =
+        payload?.error?.message ||
+        payload?.message ||
+        error.message ||
+        'Failed to create Stripe checkout session'
+      throw new ApiError(message, status, payload)
+    }
+
+    throw new ApiError(
+      error instanceof Error ? error.message : 'Failed to create Stripe checkout session',
+      0,
+    )
+  }
+}
+
 export async function trackPublicDebtClickByToken(token: string) {
   try {
     const { data } = await client.post<{

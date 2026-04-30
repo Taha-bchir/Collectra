@@ -76,6 +76,13 @@ export default function DashboardLayout({
 
     // Generate dynamic breadcrumbs based on current pathname
     const breadcrumbs = useMemo(() => {
+        // Helper function to check if a segment is a UUID or dynamic parameter
+        const isDynamicSegment = (segment: string): boolean => {
+            // UUID v4 pattern
+            const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+            return uuidPattern.test(segment)
+        }
+
         const generateBreadcrumbs = () => {
             const items: Array<{ title: string; href: string; isLast: boolean }> = []
             
@@ -99,6 +106,11 @@ export default function DashboardLayout({
             let currentPath = ''
             
             for (let i = 0; i < segments.length; i++) {
+                // Skip dynamic segments (like UUIDs for campaign IDs)
+                if (isDynamicSegment(segments[i])) {
+                    continue
+                }
+
                 currentPath += `/${segments[i]}`
 
                 // Try to find a matching nav item

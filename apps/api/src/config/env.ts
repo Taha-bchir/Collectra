@@ -53,6 +53,11 @@ const envSchema = z.object({
   BREVO_WEBHOOK_TOKEN: optionalString,
   BREVO_WEBHOOK_SECRET: optionalString,
 
+  // Stripe payments
+  STRIPE_SECRET_KEY: optionalString,
+  STRIPE_WEBHOOK_SECRET: optionalString,
+  STRIPE_CURRENCY: optionalString,
+
   // Security
   JWT_SECRET: optionalString,
   COOKIE_SECRET: optionalString,

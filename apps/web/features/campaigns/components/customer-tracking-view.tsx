@@ -108,7 +108,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 interface CustomerTrackingViewProps {
   campaigns: CampaignSummary[]
-  selectedCampaignId?: string
+  campaignId?: string
 }
 
 function toFilterStatus(value: string | null): FilterStatus | null {
@@ -119,7 +119,7 @@ function toFilterStatus(value: string | null): FilterStatus | null {
   return allowed.includes(normalized as FilterStatus) ? (normalized as FilterStatus) : null
 }
 
-export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: CustomerTrackingViewProps) {
+export function CustomerTrackingView({ campaigns, campaignId: routeCampaignId = 'ALL' }: CustomerTrackingViewProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -136,7 +136,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
   const [searchInput, setSearchInput] = useState(preferredSearch)
   const [search, setSearch] = useState(preferredSearch)
   const [status, setStatus] = useState<FilterStatus>(preferredStatus ?? 'ALL')
-  const [campaignId, setCampaignId] = useState<string>(selectedCampaignId)
+  const [campaignId, setCampaignId] = useState<string>(routeCampaignId || 'ALL')
   const [page, setPage] = useState(preferredPage)
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItem['customer'] | null>(null)
   const [openingDebtId, setOpeningDebtId] = useState<string | null>(null)
@@ -161,6 +161,8 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
     total: 0,
     totalPages: 1,
   })
+
+  const effectiveCampaignId = campaignId !== 'ALL' ? campaignId : routeCampaignId || 'ALL'
 
   const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     const requestId = loadRequestIdRef.current + 1
@@ -190,7 +192,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
         search: search || undefined,
         status: apiStatus,
         clicked,
-        campaignId: campaignId === 'ALL' ? undefined : campaignId,
+        campaignId: effectiveCampaignId === 'ALL' ? undefined : effectiveCampaignId,
       })
 
       if (loadRequestIdRef.current !== requestId) {
@@ -211,7 +213,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
         setLoading(false)
       }
     }
-  }, [campaignId, page, search, status])
+  }, [effectiveCampaignId, page, search, status])
 
   useEffect(() => {
     void load()
@@ -243,9 +245,10 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
   }, [editingCustomer, load])
 
   useEffect(() => {
-    setCampaignId(selectedCampaignId)
+    const nextCampaignId = routeCampaignId || 'ALL'
+    setCampaignId(nextCampaignId)
     setPage(1)
-  }, [selectedCampaignId])
+  }, [routeCampaignId])
 
   useEffect(() => {
     if (preferredStatus) {
@@ -256,9 +259,6 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
 
   useEffect(() => {
     const params = new URLSearchParams()
-    if (campaignId !== 'ALL') {
-      params.set('campaignId', campaignId)
-    }
     if (status !== 'ALL') {
       params.set('status', status)
     }
@@ -271,22 +271,26 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
 
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
-  }, [campaignId, page, pathname, router, search, status])
+  }, [effectiveCampaignId, page, pathname, router, search, status])
 
   const visibleCampaigns = useMemo(() => {
     return campaigns.filter((campaign) => campaign.status !== 'ARCHIVED')
   }, [campaigns])
 
   useEffect(() => {
-    if (campaignId === 'ALL') {
+    if (routeCampaignId !== 'ALL') {
       return
     }
 
-    const stillVisible = visibleCampaigns.some((campaign) => campaign.id === campaignId)
+    if (effectiveCampaignId === 'ALL') {
+      return
+    }
+
+    const stillVisible = visibleCampaigns.some((campaign) => campaign.id === effectiveCampaignId)
     if (!stillVisible) {
       setCampaignId('ALL')
     }
-  }, [campaignId, visibleCampaigns])
+  }, [effectiveCampaignId, routeCampaignId, visibleCampaigns])
 
   const openEditDialog = useCallback((customer: CustomerListItem['customer']) => {
     setEditingCustomer(customer)
@@ -373,8 +377,8 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
   }, [loading, pagination.total, status])
 
   const hasActiveFilters = useMemo(() => {
-    return search.length > 0 || status !== 'ALL'
-  }, [search, status])
+    return search.length > 0 || status !== 'ALL' || campaignId !== 'ALL'
+  }, [search, status, campaignId])
 
   const emptyStateMessage = useMemo(() => {
     if (campaigns.length === 0) {
@@ -396,13 +400,14 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
     setSearchInput('')
     setSearch('')
     setStatus('ALL')
+    setCampaignId('ALL')
     setPage(1)
   }, [])
 
   return (
     <Card>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_220px]">
+        <div className="grid gap-3 md:grid-cols-[1fr_200px_200px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -412,6 +417,26 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
               className="pl-9"
             />
           </div>
+
+          <Select
+            value={campaignId}
+            onValueChange={(value) => {
+              setCampaignId(value)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All campaigns</SelectItem>
+              {visibleCampaigns.map((campaign) => (
+                <SelectItem key={campaign.id} value={campaign.id}>
+                  {campaign.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <Select
             value={status}
@@ -481,7 +506,6 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="hidden lg:table-cell">Campaign</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead className="hidden md:table-cell">Contact</TableHead>
                   <TableHead>Debt amount</TableHead>
@@ -496,7 +520,6 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
                   const displayStatus = getTrackingDisplayStatus(row)
                   return (
                     <TableRow key={`${row.customer.id}:${row.debt.id}`}>
-                      <TableCell className="hidden font-medium text-sm lg:table-cell">{row.debt.campaignName}</TableCell>
                       <TableCell className="font-medium">{row.customer.fullName}</TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="text-xs">
@@ -710,7 +733,7 @@ export function CustomerTrackingView({ campaigns, selectedCampaignId = 'ALL' }: 
               <DialogTitle>Debt record details</DialogTitle>
               <DialogDescription>
                 {mobileDetailsRow
-                  ? `Campaign: ${mobileDetailsRow.debt.campaignName}`
+                  ? `Details for ${mobileDetailsRow.customer.fullName}`
                   : 'Customer debt details'}
               </DialogDescription>
             </DialogHeader>

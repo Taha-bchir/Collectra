@@ -331,10 +331,6 @@ export class CampaignsService {
         const emails = Array.from(
           new Set(parsed.rows.map((row) => row.email).filter((value): value is string => !!value))
         )
-        const phones = Array.from(
-          new Set(parsed.rows.map((row) => row.phone).filter((value): value is string => !!value))
-        )
-
         const identityFilters: Prisma.ClientWhereInput[] = [
           ...emails.map((email) => ({
             email: {
@@ -342,7 +338,6 @@ export class CampaignsService {
               mode: 'insensitive' as const,
             },
           })),
-          ...phones.map((phone) => ({ phone })),
         ]
 
         const existingClients =
@@ -365,7 +360,6 @@ export class CampaignsService {
             : []
 
         const existingClientByEmail = new Map<string, string>()
-        const existingClientByPhone = new Map<string, string>()
 
         for (const client of existingClients) {
           if (client.email) {
@@ -375,9 +369,6 @@ export class CampaignsService {
             }
           }
 
-          if (client.phone && !existingClientByPhone.has(client.phone)) {
-            existingClientByPhone.set(client.phone, client.id)
-          }
         }
 
         const pendingClients: Array<{
@@ -389,8 +380,6 @@ export class CampaignsService {
         }> = []
 
         const pendingClientByEmail = new Map<string, number>()
-        const pendingClientByPhone = new Map<string, number>()
-
         const debtRows: Prisma.DebtRecordCreateManyInput[] = []
         const debtEmailNotifications: Array<{
           toEmail: string
@@ -405,16 +394,10 @@ export class CampaignsService {
 
         for (const row of parsed.rows) {
           const emailKey = row.email?.toLowerCase() ?? null
-          const phoneKey = row.phone
-
           let clientId: string | null = null
 
           if (emailKey) {
             clientId = existingClientByEmail.get(emailKey) ?? null
-          }
-
-          if (!clientId && phoneKey) {
-            clientId = existingClientByPhone.get(phoneKey) ?? null
           }
 
           if (!clientId) {
@@ -422,10 +405,6 @@ export class CampaignsService {
 
             if (emailKey) {
               pendingIndex = pendingClientByEmail.get(emailKey)
-            }
-
-            if (pendingIndex === undefined && phoneKey) {
-              pendingIndex = pendingClientByPhone.get(phoneKey)
             }
 
             if (pendingIndex === undefined) {
@@ -462,10 +441,6 @@ export class CampaignsService {
 
             if (emailKey) {
               pendingClientByEmail.set(emailKey, pendingIndex)
-            }
-
-            if (phoneKey) {
-              pendingClientByPhone.set(phoneKey, pendingIndex)
             }
 
             const pendingClient = pendingClients[pendingIndex]
