@@ -1,6 +1,5 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { HTTPException } from 'hono/http-exception'
-import type Stripe from 'stripe'
 import { env } from '../../../config/env.js'
 
 import {
@@ -319,14 +318,14 @@ handler.openapi(
       try {
         const stripe = getStripeClient()
         // Expand payment_intent to inspect status and id
-        const session = (await stripe.checkout.sessions.retrieve(sessionId, {
+        const session = await stripe.checkout.sessions.retrieve(sessionId, {
           expand: ['payment_intent'],
-        })) as Stripe.Checkout.Session & {
-          payment_intent: Stripe.PaymentIntent | null
-          livemode: boolean
-        }
+        })
 
-        const paymentIntent = session.payment_intent
+        const paymentIntent =
+          session.payment_intent && typeof session.payment_intent !== 'string'
+            ? session.payment_intent
+            : null
         const paidByStripe =
           session.payment_status === 'paid' || paymentIntent?.status === 'succeeded'
 
