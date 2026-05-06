@@ -27,7 +27,9 @@ const client = axios.create({
 
 export async function getPublicDebtByToken(token: string): Promise<PublicDebtView> {
   try {
+    console.log('[API] Fetching debt for token:', token.substring(0, 10) + '...')
     const { data } = await client.get<{ data: PublicDebtView }>(`/api/v1/public/debts/${token}`)
+    console.log('[API] Debt fetched successfully. Status:', data.data.status)
     return data.data
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -39,6 +41,7 @@ export async function getPublicDebtByToken(token: string): Promise<PublicDebtVie
       const message =
         payload?.error?.message || payload?.message || error.message || 'Failed to load debt details'
 
+      console.error('[API] Error fetching debt:', message)
       throw new ApiError(message, status, payload)
     }
 
@@ -141,5 +144,35 @@ export async function trackPublicDebtClickByToken(token: string) {
 
     throw new ApiError(error instanceof Error ? error.message : 'Failed to track link click', 0)
   }
+}
+
+export async function verifyStripePaymentByToken(token: string, sessionId?: string | null) {
+  try {
+    const url = `/api/v1/public/debts/${token}/verify-payment${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''}`
+    const { data } = await client.get<{
+      data: { debtId: string; debtStatus: PublicDebtView['status']; isPaid: boolean }
+    }>(url)
+
+    return data.data
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0
+      const payload = error.response?.data as
+        | { error?: { message?: string }; message?: string }
+        | undefined
+
+      const message = payload?.error?.message || payload?.message || error.message || 'Failed to verify payment status'
+      throw new ApiError(message, status, payload)
+    }
+
+    throw new ApiError(
+      error instanceof Error ? error.message : 'Failed to verify payment status',
+      0,
+    )
+  }
+}
+
+export function getPublicDebtInvoiceUrl(token: string) {
+  return `${baseURL}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
 }
 

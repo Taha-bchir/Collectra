@@ -15,6 +15,8 @@ import {
   createPublicFakePaymentByToken,
   createPublicPromiseByToken,
   getPublicDebtByToken,
+  getPublicDebtInvoiceUrl,
+  verifyStripePaymentByToken,
   type PublicDebtView,
 } from '@/features/public-debts/services/public-debts-service'
 
@@ -57,6 +59,9 @@ function ClientDebtViewContent() {
   const [submittingFakePayment, setSubmittingFakePayment] = useState(false)
   const [inlineFeedback, setInlineFeedback] = useState<string | null>(null)
   const paymentStatus = useMemo(() => searchParams.get('payment')?.trim() ?? '', [searchParams])
+  const sessionId = useMemo(() => searchParams.get('session_id')?.trim() ?? searchParams.get('sessionId')?.trim() ?? null, [searchParams])
+  const isConfirmingPayment = paymentStatus === 'success' && debt?.status !== 'PAID'
+  const invoiceUrl = useMemo(() => (token ? getPublicDebtInvoiceUrl(token) : null), [token])
 
   const loadDebt = async () => {
     if (!token) {
@@ -94,15 +99,113 @@ function ClientDebtViewContent() {
   }, [token])
 
   useEffect(() => {
+    if (!paymentStatus) return
+
+    console.log('[Payment Status] Current payment status:', paymentStatus)
+
     if (paymentStatus === 'success') {
+      console.log('[Payment Verification] Starting payment verification flow...')
       setInlineFeedback('Payment submitted successfully. We are confirming it now.')
-      return
+
+      let pollInterval: NodeJS.Timeout | null = null
+
+      // Reload debt immediately to check if payment was processed
+      const verifyPayment = async () => {
+        try {
+          console.log('[Payment Verification] Reloading debt after payment success...')
+          const updated = await verifyStripePaymentByToken(token, sessionId)
+          console.log('[Payment Verification] Debt reloaded. Status:', updated.debtStatus)
+          const currentDebt = await getPublicDebtByToken(token)
+          setDebt(currentDebt)
+
+          // If already paid, we're done
+          if (updated.isPaid || updated.debtStatus === 'PAID') {
+            console.log('[Payment Verification] Payment already confirmed as PAID!')
+            setInlineFeedback('✓ Payment confirmed successfully!')
+            // Remove payment query param so UI stops showing "Confirming payment..."
+            try {
+              const url = new URL(window.location.href)
+              url.searchParams.delete('payment')
+              window.history.replaceState({}, '', url.toString())
+            } catch (e) {
+              /* ignore */
+            }
+            return
+          }
+
+          console.log('[Payment Verification] Status still:', updated.debtStatus, '- Starting polling...')
+          // Otherwise, poll for webhook confirmation (can take a few seconds)
+          let pollCount = 0
+          const maxPolls = 10 // Poll for ~30 seconds (10 × 3 seconds)
+
+          pollInterval = setInterval(async () => {
+            pollCount++
+            console.log(`[Payment Verification] Poll attempt ${pollCount}/${maxPolls}`)
+
+              try {
+              const polled = await verifyStripePaymentByToken(token, sessionId)
+              console.log(`[Payment Verification] Poll ${pollCount} result - Status:`, polled.debtStatus)
+
+              if (polled.isPaid || polled.debtStatus === 'PAID') {
+                console.log('[Payment Verification] SUCCESS! Debt status is now PAID')
+                const refreshedDebt = await getPublicDebtByToken(token)
+                setDebt(refreshedDebt)
+                setInlineFeedback('✓ Payment confirmed successfully!')
+                // Remove payment query so UI unblocks
+                try {
+                  const url = new URL(window.location.href)
+                  url.searchParams.delete('payment')
+                  window.history.replaceState({}, '', url.toString())
+                } catch (e) {
+                  /* ignore */
+                }
+                if (pollInterval) {
+                  clearInterval(pollInterval)
+                }
+                return
+              }
+            } catch (error) {
+              console.warn('[Payment Verification] Polling error:', error)
+            }
+
+            if (pollCount >= maxPolls) {
+              console.warn('[Payment Verification] Polling timeout - payment may still be processing')
+              if (pollInterval) {
+                clearInterval(pollInterval)
+              }
+              setInlineFeedback('Payment is being processed. Please refresh to confirm.')
+              // Clear payment query param so button is no longer stuck in confirming state
+              try {
+                const url = new URL(window.location.href)
+                url.searchParams.delete('payment')
+                window.history.replaceState({}, '', url.toString())
+              } catch (e) {
+                /* ignore */
+              }
+            }
+          }, 3000) // Poll every 3 seconds
+        } catch (error) {
+          console.error('[Payment Verification] Failed to reload debt after payment', error)
+          setInlineFeedback('Unable to verify payment status. Please refresh the page.')
+        }
+      }
+
+      void verifyPayment()
+
+      // Return proper cleanup function to clear interval on unmount
+      return () => {
+        if (pollInterval) {
+          clearInterval(pollInterval)
+          console.log('[Payment Verification] Polling interval cleared on effect cleanup')
+        }
+      }
     }
 
     if (paymentStatus === 'cancelled') {
+      console.log('[Payment Status] Payment was cancelled by user')
       setInlineFeedback('Payment was cancelled. You can try again when ready.')
     }
-  }, [paymentStatus])
+  }, [paymentStatus, token])
 
   const minPromiseDate = useMemo(() => {
     const now = new Date()
@@ -319,47 +422,92 @@ function ClientDebtViewContent() {
                 </div>
               )}
 
-              {ENABLE_STRIPE_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (
-                <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
-                  <p className="font-medium">Secure payment with Stripe</p>
-                  <p className="text-xs text-muted-foreground">
-                    Available only after a promise to pay has been submitted.
-                  </p>
-                  <Button onClick={handleStripePayment} disabled={submittingStripePayment}>
-                    {submittingStripePayment ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Redirecting...
-                      </>
-                    ) : (
-                      'Pay now securely'
-                    )}
-                  </Button>
-                </div>
-              )}
+              {ENABLE_STRIPE_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (() => {
+                const canPayNow = !debt.promiseDate || new Date(debt.promiseDate) <= new Date()
+                return (
+                  <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
+                    <p className="font-medium">Secure payment with Stripe</p>
+                    <p className="text-xs text-muted-foreground">
+                      {canPayNow
+                        ? 'Pay securely via Stripe'
+                        : `Payment available from ${new Date(debt.promiseDate!).toLocaleDateString()}`}
+                    </p>
+                    <Button onClick={handleStripePayment} disabled={submittingStripePayment || isConfirmingPayment || !canPayNow}>
+                      {submittingStripePayment ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Redirecting...
+                        </>
+                      ) : isConfirmingPayment ? (
+                        'Confirming payment...'
+                      ) : !canPayNow ? (
+                        'Payment not yet available'
+                      ) : (
+                        'Pay now securely'
+                      )}
+                    </Button>
+                  </div>
+                )
+              })()}
 
-              {ENABLE_DEMO_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (
-                <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
-                  <p className="font-medium">Fake payment (demo)</p>
-                  <p className="text-xs text-muted-foreground">
-                    Available only after a promise to pay has been submitted.
-                  </p>
-                  <Button onClick={handleFakePayment} disabled={submittingFakePayment}>
-                    {submittingFakePayment ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      'Pay now (fake)'
-                    )}
-                  </Button>
-                </div>
-              )}
+              {ENABLE_DEMO_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (() => {
+                const canPayNow = !debt.promiseDate || new Date(debt.promiseDate) <= new Date()
+                return (
+                  <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
+                    <p className="font-medium">Fake payment (demo)</p>
+                    <p className="text-xs text-muted-foreground">
+                      {canPayNow
+                        ? 'Process a demo payment'
+                        : `Payment available from ${new Date(debt.promiseDate!).toLocaleDateString()}`}
+                    </p>
+                    <Button onClick={handleFakePayment} disabled={submittingFakePayment || !canPayNow}>
+                      {submittingFakePayment ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : !canPayNow ? (
+                        'Payment not yet available'
+                      ) : (
+                        'Pay now (fake)'
+                      )}
+                    </Button>
+                  </div>
+                )
+              })()}
 
               {inlineFeedback ? (
                 <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm text-primary">
-                  {inlineFeedback}
+                  <div className="flex items-center justify-between gap-2">
+                    <span>{inlineFeedback}</span>
+                    {isConfirmingPayment && (
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => void loadDebt()}
+                        className="text-xs"
+                      >
+                        Refresh Status
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {debt.status === 'PAID' && invoiceUrl ? (
+                <div className="rounded-md border border-border/60 bg-background p-4">
+                  <p className="font-medium">Payment receipt</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Your invoice is ready. Open it to print or save as PDF.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button onClick={() => window.open(invoiceUrl, '_blank', 'noopener,noreferrer')}>
+                      Open invoice
+                    </Button>
+                    <Button variant="outline" onClick={() => window.open(invoiceUrl, '_blank', 'noopener,noreferrer')}>
+                      Print / save PDF
+                    </Button>
+                  </div>
                 </div>
               ) : null}
 

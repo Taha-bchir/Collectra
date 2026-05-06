@@ -1,30 +1,9 @@
 import type { Metadata } from 'next'
-import {
-  Geist,
-  Geist_Mono,
-  Source_Serif_4,
-} from 'next/font/google'
 
 import './globals.css'
 import { Analytics } from '@vercel/analytics/next'
-import { ThemeProvider } from "@/components/common/theme-provider"
+import { ThemeProvider } from '@/components/common/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
-
-const geist = Geist({
-  subsets: ['latin'],
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
-  variable: '--font-geist',
-})
-const geistMono = Geist_Mono({
-  subsets: ['latin'],
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
-  variable: '--font-geist-mono',
-})
-const sourceSerif = Source_Serif_4({
-  subsets: ['latin'],
-  weight: ['200', '300', '400', '500', '600', '700', '800', '900'],
-  variable: '--font-source-serif',
-})
 
 export const metadata: Metadata = {
   title: 'Collectra',
@@ -64,10 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        suppressHydrationWarning
-        className={`${geist.variable} ${geistMono.variable} ${sourceSerif.variable} font-sans antialiased`}
-      >
+      <body suppressHydrationWarning className="font-sans antialiased">
         <ThemeProvider>
           {children}
           <Toaster />

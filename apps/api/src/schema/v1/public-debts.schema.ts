@@ -259,3 +259,69 @@ export const trackPublicEmailOpenSchema = createRoute({
     },
   },
 })
+
+export const verifyStripePaymentByTokenSchema = createRoute({
+  method: 'get',
+  path: '/{token}/verify-payment',
+  tags: ['public-debts'],
+  summary: 'Verify Stripe payment status by secure customer token',
+  description:
+    'Public endpoint to verify if a payment has been confirmed for a debt. Useful for polling after redirecting from Stripe checkout.',
+  request: {
+    params: z.object({
+      token: z.string().min(1),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Payment status verified',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              debtId: z.string().uuid(),
+              debtStatus: z.nativeEnum(DebtStatus),
+              isPaid: z.boolean(),
+            }),
+          }),
+        },
+      },
+    },
+    404: {
+      description: 'Token not found or expired',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})
+
+export const createPublicInvoiceByTokenSchema = createRoute({
+  method: 'get',
+  path: '/{token}/invoice',
+  tags: ['public-debts'],
+  summary: 'Get a printable invoice for a paid debt',
+  description:
+    'Public endpoint used by the customer link to download or print an invoice after payment has been confirmed.',
+  request: {
+    params: z.object({
+      token: z.string().min(1),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Printable invoice HTML',
+      content: {
+        'text/html': {
+          schema: z.string(),
+        },
+      },
+    },
+    400: {
+      description: 'Debt is not yet paid or invoice is unavailable',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+    404: {
+      description: 'Token not found or expired',
+      content: { 'application/json': { schema: ErrorResponse } },
+    },
+  },
+})

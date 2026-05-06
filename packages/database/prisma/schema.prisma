@@ -169,6 +169,8 @@ model DebtRecord {
   dueDate     DateTime
   status      DebtStatus @default(UNPAID)
   promiseDate DateTime?
+  pendingStripeSessionId String?
+  invoiceNumber String?   @unique
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

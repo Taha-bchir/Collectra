@@ -109,7 +109,7 @@ export class BrevoEmailService {
     try {
       if (env.WEB_URL) {
         const { token } = await signCustomerToken(payload.debtId)
-        const baseUrl = (env.API_URL ?? env.WEB_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+        const baseUrl = (env.API_URL ?? env.WEB_URL ?? 'https://collectra.xyz').replace(/\/$/, '')
         debtLink = `${baseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/track-click`
       }
     } catch {
@@ -222,7 +222,7 @@ function escapeHtml(input: string): string {
 }
 
 function buildEmailOpenPixelUrl(debtId: string): string {
-  const origin = env.API_URL ?? env.WEB_URL ?? 'http://localhost:3000'
+  const origin = env.API_URL ?? env.WEB_URL ?? 'https://collectra.xyz'
   const base = origin.replace(/\/$/, '')
   return `${base}/api/v1/public/debts/${encodeURIComponent(debtId)}/open.gif`
 }
