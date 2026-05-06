@@ -1,5 +1,6 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { HTTPException } from 'hono/http-exception'
+import type Stripe from 'stripe'
 import { env } from '../../../config/env.js'
 
 import {
@@ -113,12 +114,9 @@ handler.openapi(
 
     const body = Uint8Array.from(atob(TRANSPARENT_GIF_BASE64), (char) => char.charCodeAt(0))
 
-    return new Response(body, {
-      status: 200,
-      headers: {
-        'Content-Type': 'image/gif',
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-      },
+    return c.body(body, 200, {
+      'Content-Type': 'image/gif',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
     })
   })
 )
@@ -302,13 +300,8 @@ handler.openapi(
   </body>
 </html>`
 
-    return new Response(html, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store',
-      },
-    })
+    c.header('Cache-Control', 'no-store')
+    return c.html(html, 200)
   })
 )
 
@@ -321,33 +314,37 @@ handler.openapi(
     const { debt } = await service.getByCustomerToken(token)
 
     // If a Stripe session_id is provided, query Stripe for authoritative status
-    const sessionId = c.req.query('session_id') || c.req.query('sessionId') || null
+    const sessionId = c.req.query('session_id') || c.req.query('sessionId') || undefined
     if (sessionId) {
       try {
         const stripe = getStripeClient()
         // Expand payment_intent to inspect status and id
-        const session = await stripe.checkout.sessions.retrieve(sessionId as string, {
+        const session = (await stripe.checkout.sessions.retrieve(sessionId, {
           expand: ['payment_intent'],
-        })
+        })) as Stripe.Checkout.Session & {
+          payment_intent: Stripe.PaymentIntent | null
+          livemode: boolean
+        }
 
-        const paymentIntent: any = session.payment_intent || null
-        const paidByStripe = (session.payment_status === 'paid') || (paymentIntent && paymentIntent.status === 'succeeded')
+        const paymentIntent = session.payment_intent
+        const paidByStripe =
+          session.payment_status === 'paid' || paymentIntent?.status === 'succeeded'
 
         if (paidByStripe) {
           // Sync DB using the existing idempotent confirm method.
           // We synthesize a minimal ConfirmStripePaymentInput — the method is safe to call multiple times.
-          const input = {
+          const input: Parameters<typeof service.confirmStripePaymentByDebtId>[1] = {
             stripeEventId: `manual-check:${session.id}`,
             stripeEventType: 'manual.verify',
-            stripeSessionId: session.id as string,
-            stripePaymentIntentId: paymentIntent ? (paymentIntent.id as string) : null,
+            stripeSessionId: session.id,
+            stripePaymentIntentId: paymentIntent?.id ?? null,
             amountTotal: session.amount_total ?? null,
             currency: session.currency ?? null,
-            livemode: Boolean((session as any).livemode),
+            livemode: session.livemode,
           }
 
           try {
-            await service.confirmStripePaymentByDebtId(debt.id, input as any)
+            await service.confirmStripePaymentByDebtId(debt.id, input)
           } catch (err) {
             // Log and continue — confirmStripePaymentByDebtId is idempotent but may fail
             logger.warn({ debtId: debt.id, err, scope: 'publicDebts.verifyStripePaymentByToken.sync' }, 'Failed to sync Stripe paid status to DB')
