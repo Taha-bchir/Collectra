@@ -2,7 +2,7 @@ import Stripe from 'stripe'
 import { HTTPException } from 'hono/http-exception'
 import { env } from '../config/env.js'
 
-let stripeClient: Stripe | null = null
+let stripeClient: InstanceType<typeof Stripe> | null = null
 
 export function getStripeClient() {
   if (!env.STRIPE_SECRET_KEY) {
