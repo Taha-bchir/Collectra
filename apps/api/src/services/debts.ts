@@ -1,7 +1,6 @@
 import { PrismaClient } from '@repo/database'
 import { HTTPException } from 'hono/http-exception'
 import type { DebtStatus } from '@repo/database'
-import Stripe from 'stripe'
 import { env } from '../config/env.js'
 import { logBrevoEvent } from './brevo-event-logs.js'
 import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
@@ -10,6 +9,13 @@ import { getStripeClient, getStripeCurrency } from '../lib/stripe.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
+
+type StripeClient = ReturnType<typeof getStripeClient>
+type StripLastResponse<T> = T extends { lastResponse: unknown } ? Omit<T, 'lastResponse'> : T
+type StripeCustomer = StripLastResponse<Awaited<ReturnType<StripeClient['customers']['create']>>>
+type StripeCustomerListItem = StripLastResponse<Awaited<ReturnType<StripeClient['customers']['list']>>['data'][number]>
+type StripeInvoice = StripLastResponse<Awaited<ReturnType<StripeClient['invoices']['create']>>>
+type StripeInvoiceItem = StripLastResponse<Awaited<ReturnType<StripeClient['invoiceItems']['create']>>>
 
 function buildInvoiceNumber(debtId: string) {
   return `INV-${debtId.replace(/-/g, '').slice(0, 10).toUpperCase()}`
@@ -56,19 +62,19 @@ function getStripeInvoiceIdempotencyKey(debtId: string) {
 }
 
 async function getOrCreateStripeCustomer(
-  stripe: Stripe,
+  stripe: StripeClient,
   debt: DebtInvoiceSource,
-): Promise<Stripe.Customer> {
+): Promise<StripeCustomer> {
   const email = debt.client.email?.trim()
   const customerList = email
     ? await stripe.customers.list({
         email,
         limit: 100,
       })
-    : { data: [] as Stripe.Customer[] }
+    : { data: [] as StripeCustomerListItem[] }
 
   const existingCustomer = customerList.data.find((customer) => !customer.deleted)
-  if (existingCustomer) {
+  if (existingCustomer !== undefined) {
     return existingCustomer
   }
 
@@ -91,10 +97,10 @@ async function getOrCreateStripeCustomer(
 }
 
 async function findStripeInvoiceForDebt(
-  stripe: Stripe,
-  customers: Stripe.Customer[],
+  stripe: StripeClient,
+  customers: StripeCustomer[],
   debtId: string,
-): Promise<Stripe.Invoice | null> {
+): Promise<StripeInvoice | null> {
   for (const customer of customers) {
     const invoices = await stripe.invoices.list({
       customer: customer.id,
@@ -111,11 +117,11 @@ async function findStripeInvoiceForDebt(
 }
 
 async function addDebtAmountToStripeInvoice(
-  stripe: Stripe,
+  stripe: StripeClient,
   invoiceId: string,
   customerId: string,
   debt: DebtInvoiceSource,
-): Promise<Stripe.InvoiceItem> {
+): Promise<StripeInvoiceItem> {
   const amount = debt.amount.toNumber()
   const currency = getStripeCurrency()
 
@@ -152,8 +158,7 @@ export async function createOrReuseStripeInvoiceForDebt(
   }
 
   const currency = getStripeCurrency()
-  const unitAmount = Math.round(amount * 100)
-  const customers: Stripe.Customer[] =
+  const customers: StripeCustomer[] =
     debt.client.email?.trim()
       ? (
           await stripe.customers.list({
