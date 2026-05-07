@@ -1,5 +1,4 @@
 import Stripe from 'stripe'
-import type { Stripe as StripeTypes } from 'stripe'
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { HTTPException } from 'hono/http-exception'
 import type { Env } from '../../../../types/index.js'
@@ -26,7 +25,7 @@ handler.post('/events', async (c) => {
 
   const rawBody = await c.req.text()
 
-  let event: StripeTypes.Event
+  let event: Stripe.Event
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET)
   } catch (error) {
@@ -43,7 +42,7 @@ handler.post('/events', async (c) => {
   const debtsService = new DebtsService(c.get('prisma'))
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as StripeTypes.Checkout.Session
+    const session = event.data.object as Stripe.Checkout.Session
     const debtId = session.metadata?.debtId
 
     if (!debtId) {
