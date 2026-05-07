@@ -25,7 +25,8 @@ handler.post('/events', async (c) => {
 
   const rawBody = await c.req.text()
 
-  let event: Stripe.Event
+  type StripeEvent = import('stripe').Event
+  let event: StripeEvent
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET)
   } catch (error) {
@@ -42,7 +43,8 @@ handler.post('/events', async (c) => {
   const debtsService = new DebtsService(c.get('prisma'))
 
   if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session
+    type CheckoutSession = import('stripe').Checkout.Session
+    const session = event.data.object as CheckoutSession
     const debtId = session.metadata?.debtId
 
     if (!debtId) {
