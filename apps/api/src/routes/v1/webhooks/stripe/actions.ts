@@ -25,10 +25,25 @@ handler.post('/events', async (c) => {
 
   const rawBody = await c.req.text()
 
-  type StripeEvent = import('stripe').Event
-  let event: StripeEvent
+  type WebhookEvent = {
+    id: string
+    type: string
+    livemode?: boolean
+    data: {
+      object: {
+        id: string
+        metadata?: Record<string, string>
+        payment_intent?: string | Record<string, unknown>
+        amount_total?: number
+        currency?: string
+      }
+    }
+  }
+
+  let event: WebhookEvent
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET)
+    // Stripe returns a strongly-typed Event; cast to our minimal WebhookEvent
+    event = (stripe.webhooks.constructEvent(rawBody, signature, env.STRIPE_WEBHOOK_SECRET) as unknown) as WebhookEvent
   } catch (error) {
     logger.warn(
       {
@@ -43,8 +58,13 @@ handler.post('/events', async (c) => {
   const debtsService = new DebtsService(c.get('prisma'))
 
   if (event.type === 'checkout.session.completed') {
-    type CheckoutSession = import('stripe').Checkout.Session
-    const session = event.data.object as CheckoutSession
+    const session = event.data.object as {
+      id: string
+      metadata?: Record<string, string>
+      payment_intent?: string | Record<string, unknown>
+      amount_total?: number
+      currency?: string
+    }
     const debtId = session.metadata?.debtId
 
     if (!debtId) {
@@ -63,9 +83,9 @@ handler.post('/events', async (c) => {
         stripeSessionId: session.id,
         stripePaymentIntentId:
           typeof session.payment_intent === 'string' ? session.payment_intent : null,
-        amountTotal: session.amount_total,
-        currency: session.currency,
-        livemode: event.livemode,
+        amountTotal: (session.amount_total ?? null) as number | null,
+        currency: (session.currency ?? null) as string | null,
+        livemode: Boolean(event.livemode),
       })
     }
   }
