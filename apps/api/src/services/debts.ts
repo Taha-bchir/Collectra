@@ -61,6 +61,14 @@ function getStripeInvoiceIdempotencyKey(debtId: string) {
   return `collectra:stripe-invoice:${debtId}`
 }
 
+function isDeletedStripeResource(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || !('deleted' in value)) {
+    return false
+  }
+
+  return (value as { deleted?: unknown }).deleted === true
+}
+
 async function getOrCreateStripeCustomer(
   stripe: StripeClient,
   debt: DebtInvoiceSource,
@@ -73,7 +81,7 @@ async function getOrCreateStripeCustomer(
       })
     : { data: [] as StripeCustomerListItem[] }
 
-  const existingCustomer = customerList.data.find((customer) => !customer.deleted)
+  const existingCustomer = customerList.data.find((customer) => !isDeletedStripeResource(customer))
   if (existingCustomer !== undefined) {
     return existingCustomer
   }
@@ -165,7 +173,7 @@ export async function createOrReuseStripeInvoiceForDebt(
             email: debt.client.email.trim(),
             limit: 100,
           })
-        ).data.filter((customer) => !customer.deleted)
+        ).data.filter((customer) => !isDeletedStripeResource(customer))
       : []
 
   if (customers.length === 0) {
