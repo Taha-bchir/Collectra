@@ -18,8 +18,8 @@ The public payment flow starts when a customer opens a secure link and ends when
 8. Payment confirmation is verified either by Stripe webhook or by an explicit verify call that can query Stripe directly.
 9. The debt status becomes `PAID`.
 10. An invoice number is generated and stored.
-11. The invoice becomes available as HTML at the public invoice endpoint.
-12. The customer receives an email with a button to download the invoice.
+11. The invoice becomes available through Stripe and the public invoice endpoint redirects to the hosted invoice or PDF.
+12. The customer receives an email with a button to open the Stripe invoice.
 
 ## 2. Core Code Files
 
@@ -220,22 +220,19 @@ The invoice is served by `GET /{token}/invoice` in [apps/api/src/routes/v1/publi
 1. Resolve the debt from the token.
 2. Reject the request unless the debt status is `PAID`.
 3. Load the last `PAYMENT_CONFIRMED` action from `customerActionHistory`.
-4. Build the invoice HTML.
-5. Return a full HTML document.
+4. Create or reuse the Stripe invoice for the debt.
+5. Redirect the customer to the Stripe hosted invoice URL or PDF URL.
 
 ### What the invoice shows
 
-The page includes:
+The Stripe invoice includes:
 
 - invoice number
 - payment date
-- customer name
-- customer contact
-- campaign name
-- debt reference
+- customer and campaign details
+- debt reference in Stripe metadata
 - amount paid
-- due date
-- payment metadata such as Stripe session id when available
+- hosted invoice and PDF access
 
 ### Why this endpoint matters
 
@@ -272,9 +269,9 @@ That means:
 
 ## 12. Download Button In The Email
 
-The email now includes a download button that points to the public invoice endpoint.
+The email now includes a button that points to the Stripe invoice URL or PDF.
 
-This is generated in [apps/api/src/services/debts.ts](../apps/api/src/services/debts.ts) inside `generateInvoiceHtml()`.
+This is generated in [apps/api/src/services/debts.ts](../apps/api/src/services/debts.ts) after the Stripe invoice is created or reused.
 
 ### What the button does
 
@@ -284,12 +281,12 @@ The button links to:
 /api/v1/public/debts/{token}/invoice
 ```
 
-Because the invoice endpoint already returns the rendered receipt, the customer can use the button to open the invoice in the browser and save or print it as PDF.
+Because the invoice endpoint redirects to Stripe, the customer can use the button to open the invoice in Stripe and save or print the PDF.
 
 ### Why this is better than attaching a file
 
-- The endpoint always reflects the latest invoice rendering.
-- There is no need to generate and store binary attachments.
+- The endpoint always reflects the latest Stripe invoice state.
+- There is no need to generate and store binary attachments locally.
 - The customer can print or save the invoice from the browser.
 
 ## 13. Frontend Post-Payment Handling

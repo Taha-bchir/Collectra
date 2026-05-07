@@ -1,6 +1,7 @@
 import { PrismaClient } from '@repo/database'
 import { HTTPException } from 'hono/http-exception'
 import type { DebtStatus } from '@repo/database'
+import Stripe from 'stripe'
 import { env } from '../config/env.js'
 import { logBrevoEvent } from './brevo-event-logs.js'
 import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
@@ -23,105 +24,235 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-function generateInvoiceHtml(
-  invoiceNumber: string,
+export type StripeInvoiceDetails = {
+  invoiceId: string
+  invoiceNumber: string
+  hostedInvoiceUrl: string | null
+  invoicePdfUrl: string | null
+  customerId: string
+}
+
+export type DebtInvoiceSource = {
+  id: string
+  amount: { toNumber(): number }
+  dueDate: Date
+  status: DebtStatus
+  invoiceNumber: string | null
+  clientId: string
+  client: {
+    id: string
+    fullName: string
+    email: string | null
+    phone: string | null
+  }
+  campaign: {
+    id: string
+    name: string
+  }
+}
+
+function getStripeInvoiceIdempotencyKey(debtId: string) {
+  return `collectra:stripe-invoice:${debtId}`
+}
+
+async function getOrCreateStripeCustomer(
+  stripe: Stripe,
+  debt: DebtInvoiceSource,
+): Promise<Stripe.Customer> {
+  const email = debt.client.email?.trim()
+  const customerList = email
+    ? await stripe.customers.list({
+        email,
+        limit: 100,
+      })
+    : { data: [] as Stripe.Customer[] }
+
+  const existingCustomer = customerList.data.find((customer) => !customer.deleted)
+  if (existingCustomer) {
+    return existingCustomer
+  }
+
+  return stripe.customers.create(
+    {
+      name: debt.client.fullName,
+      email: email || undefined,
+      phone: debt.client.phone || undefined,
+      metadata: {
+        debtId: debt.id,
+        clientId: debt.clientId,
+        campaignId: debt.campaign.id,
+        source: 'collectra_debt_invoice',
+      },
+    },
+    {
+      idempotencyKey: `collectra:stripe-customer:${debt.id}`,
+    },
+  )
+}
+
+async function findStripeInvoiceForDebt(
+  stripe: Stripe,
+  customers: Stripe.Customer[],
   debtId: string,
-  paymentDate: string,
-  amount: string,
-  customerName: string,
-  customerEmail: string,
-  customerPhone: string | null,
-  campaignName: string,
-  dueDate: Date,
-  debtStatus: DebtStatus,
-  stripeSessionId: string | null,
-  invoiceDownloadUrl: string | null,
-): string {
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Invoice ${escapeHtml(invoiceNumber)}</title>
-    <style>
-      :root { color-scheme: light; }
-      body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 32px; background: #f6f7fb; color: #111827; }
-      .sheet { max-width: 840px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08); }
-      .header { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 24px; }
-      h1 { margin: 0; font-size: 30px; }
-      .muted { color: #6b7280; }
-      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
-      .card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; background: #fafafa; }
-      .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 6px; }
-      .value { font-size: 16px; font-weight: 600; word-break: break-word; }
-      .amount { font-size: 34px; font-weight: 800; }
-      .actions { margin-top: 18px; }
-      .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; border-radius: 999px; border: 1px solid #111827; color: #ffffff; background: #111827; text-decoration: none; font-weight: 700; }
-      .footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-      @media print { body { background: #fff; padding: 0; } .sheet { box-shadow: none; border: none; border-radius: 0; } }
-    </style>
-  </head>
-  <body>
-    <main class="sheet">
-      <div class="header">
-        <div>
-          <p class="muted" style="margin:0 0 8px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px;">Collectra</p>
-          <h1>Invoice / Receipt</h1>
-          <p class="muted" style="margin: 10px 0 0;">Payment confirmed for your debt account.</p>
-        </div>
-        <div style="text-align:right;">
-          <div class="label">Invoice number</div>
-          <div class="value">${escapeHtml(invoiceNumber)}</div>
-          <div class="label" style="margin-top: 12px;">Payment date</div>
-          <div class="value">${escapeHtml(new Date(paymentDate).toLocaleString())}</div>
-        </div>
-      </div>
+): Promise<Stripe.Invoice | null> {
+  for (const customer of customers) {
+    const invoices = await stripe.invoices.list({
+      customer: customer.id,
+      limit: 100,
+    })
 
-      <div class="grid">
-        <div class="card">
-          <div class="label">Customer</div>
-          <div class="value">${escapeHtml(customerName)}</div>
-          <div class="muted" style="margin-top:6px;">${escapeHtml(customerEmail ?? customerPhone ?? 'No contact provided')}</div>
-        </div>
-        <div class="card">
-          <div class="label">Campaign</div>
-          <div class="value">${escapeHtml(campaignName)}</div>
-          <div class="muted" style="margin-top:6px;">Debt reference: ${escapeHtml(debtId)}</div>
-        </div>
-        <div class="card">
-          <div class="label">Amount paid</div>
-          <div class="amount">${amount}</div>
-        </div>
-        <div class="card">
-          <div class="label">Due date</div>
-          <div class="value">${escapeHtml(dueDate.toLocaleString())}</div>
-          <div class="muted" style="margin-top:6px;">Status: ${escapeHtml(debtStatus)}</div>
-        </div>
-      </div>
+    const existingInvoice = invoices.data.find((invoice) => invoice.metadata?.debtId === debtId)
+    if (existingInvoice) {
+      return existingInvoice
+    }
+  }
 
-      <div class="card" style="margin-top: 16px;">
-        <div class="label">Payment details</div>
-        <div class="muted">This receipt was generated after the payment was confirmed.</div>
-        <div class="muted" style="margin-top:8px;">Stripe session: ${escapeHtml(stripeSessionId ?? 'n/a')}</div>
-      </div>
+  return null
+}
 
-      ${invoiceDownloadUrl
-        ? `<div class="actions"><a class="btn" href="${escapeHtml(invoiceDownloadUrl)}">Download Invoice (PDF)</a></div>`
-        : ''}
+async function addDebtAmountToStripeInvoice(
+  stripe: Stripe,
+  invoiceId: string,
+  customerId: string,
+  debt: DebtInvoiceSource,
+): Promise<Stripe.InvoiceItem> {
+  const amount = debt.amount.toNumber()
+  const currency = getStripeCurrency()
 
-      <div class="footer">
-        Collectra receipt generated for ${escapeHtml(customerName)}. Keep this document for your records.
-      </div>
-    </main>
-  </body>
-</html>`
+  return stripe.invoiceItems.create(
+    {
+      customer: customerId,
+      invoice: invoiceId,
+      currency,
+      amount: Math.round(amount * 100),
+      description: `Debt repayment for ${debt.campaign.name}`,
+      metadata: {
+        debtId: debt.id,
+        clientId: debt.clientId,
+        campaignId: debt.campaign.id,
+        source: 'collectra_debt_invoice_item',
+      },
+    },
+    {
+      idempotencyKey: `collectra:stripe-invoice-item:${debt.id}:${invoiceId}`,
+    },
+  )
+}
+
+export async function createOrReuseStripeInvoiceForDebt(
+  debt: DebtInvoiceSource,
+): Promise<StripeInvoiceDetails | null> {
+  const stripe = getStripeClient()
+  const amount = debt.amount.toNumber()
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new HTTPException(400, {
+      message: 'Debt amount is invalid for Stripe invoice creation',
+    })
+  }
+
+  const currency = getStripeCurrency()
+  const unitAmount = Math.round(amount * 100)
+  const customers: Stripe.Customer[] =
+    debt.client.email?.trim()
+      ? (
+          await stripe.customers.list({
+            email: debt.client.email.trim(),
+            limit: 100,
+          })
+        ).data.filter((customer) => !customer.deleted)
+      : []
+
+  if (customers.length === 0) {
+    customers.push(await getOrCreateStripeCustomer(stripe, debt))
+  }
+
+  const existingInvoice = await findStripeInvoiceForDebt(stripe, customers, debt.id)
+  if (existingInvoice) {
+    const invoiceNumber = existingInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id)
+
+    if (existingInvoice.status !== 'paid') {
+      if ((existingInvoice.total ?? 0) === 0) {
+        await addDebtAmountToStripeInvoice(stripe, existingInvoice.id, customers[0].id, debt)
+      }
+
+      const finalizedInvoice =
+        existingInvoice.status === 'draft'
+          ? await stripe.invoices.finalizeInvoice(existingInvoice.id)
+          : existingInvoice
+
+      const paidInvoice =
+        finalizedInvoice.status === 'paid'
+          ? finalizedInvoice
+          : await stripe.invoices.pay(finalizedInvoice.id, {
+              paid_out_of_band: true,
+            })
+
+      return {
+        invoiceId: paidInvoice.id,
+        invoiceNumber: paidInvoice.number ?? invoiceNumber,
+        hostedInvoiceUrl: paidInvoice.hosted_invoice_url ?? null,
+        invoicePdfUrl: paidInvoice.invoice_pdf ?? null,
+        customerId: paidInvoice.customer as string,
+      }
+    }
+
+    return {
+      invoiceId: existingInvoice.id,
+      invoiceNumber,
+      hostedInvoiceUrl: existingInvoice.hosted_invoice_url ?? null,
+      invoicePdfUrl: existingInvoice.invoice_pdf ?? null,
+      customerId: existingInvoice.customer as string,
+    }
+  }
+
+  const customer = customers[0]
+  const createdInvoice = await stripe.invoices.create(
+    {
+      customer: customer.id,
+      collection_method: 'send_invoice',
+      auto_advance: false,
+      days_until_due: 0,
+      pending_invoice_items_behavior: 'exclude',
+      metadata: {
+        debtId: debt.id,
+        clientId: debt.clientId,
+        campaignId: debt.campaign.id,
+        source: 'collectra_debt_invoice',
+      },
+    },
+    {
+      idempotencyKey: getStripeInvoiceIdempotencyKey(debt.id),
+    },
+  )
+
+  await addDebtAmountToStripeInvoice(stripe, createdInvoice.id, customer.id, debt)
+
+  const finalizedInvoice =
+    createdInvoice.status === 'draft' ? await stripe.invoices.finalizeInvoice(createdInvoice.id) : createdInvoice
+
+  const paidInvoice =
+    finalizedInvoice.status === 'paid'
+      ? finalizedInvoice
+      : await stripe.invoices.pay(finalizedInvoice.id, {
+          paid_out_of_band: true,
+        })
+
+  return {
+    invoiceId: paidInvoice.id,
+    invoiceNumber: paidInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id),
+    hostedInvoiceUrl: paidInvoice.hosted_invoice_url ?? null,
+    invoicePdfUrl: paidInvoice.invoice_pdf ?? null,
+    customerId: customer.id,
+  }
 }
 
 async function sendInvoiceEmailToBrevo(options: {
   toEmail: string
   toName: string
-  invoiceHtml: string
   invoiceNumber: string
+  invoiceUrl: string
+  invoicePdfUrl: string | null
   debtId: string
   campaignId?: string
 }): Promise<{ ok: boolean; messageId: string | null }> {
@@ -165,8 +296,24 @@ async function sendInvoiceEmailToBrevo(options: {
           ].join('|'),
         },
         subject: `Payment Receipt - Invoice ${options.invoiceNumber}`,
-        htmlContent: options.invoiceHtml,
-        textContent: `Your payment receipt for invoice ${options.invoiceNumber} has been generated. Please keep this for your records.`,
+        htmlContent: `<!doctype html>
+<html lang="en">
+  <body style="font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #f6f7fb; color: #111827;">
+    <div style="max-width: 640px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; padding: 28px;">
+      <p style="margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; color: #6b7280;">Collectra</p>
+      <h1 style="margin: 0 0 12px; font-size: 28px;">Stripe invoice ready</h1>
+      <p style="margin: 0 0 16px; color: #374151;">Your payment receipt for invoice ${escapeHtml(options.invoiceNumber)} is available through Stripe.</p>
+      <p style="margin: 0 0 18px;"><a href="${escapeHtml(options.invoiceUrl)}" style="display: inline-block; background: #111827; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 16px; border-radius: 999px;">Open invoice</a></p>
+      ${options.invoicePdfUrl ? `<p style="margin: 0 0 12px;"><a href="${escapeHtml(options.invoicePdfUrl)}" style="color: #111827;">Download Stripe PDF</a></p>` : ''}
+      <p style="margin: 0; font-size: 12px; color: #6b7280;">Keep this invoice for your records.</p>
+    </div>
+  </body>
+</html>`,
+        textContent: [
+          `Your Stripe invoice ${options.invoiceNumber} is ready.`,
+          `Open it here: ${options.invoiceUrl}`,
+          ...(options.invoicePdfUrl ? [`PDF: ${options.invoicePdfUrl}`] : []),
+        ].join('\n'),
       }),
     })
 
@@ -395,6 +542,40 @@ export class DebtsService {
     }
   }
 
+  private async checkAndUpdateOverdueStatus<
+    T extends {
+      id: string
+      status: DebtStatus
+      promiseDate: Date | null
+    },
+  >(debt: T): Promise<T> {
+    // If debt is PROMISE_TO_PAY and promise date has passed, update to OVERDUE_AFTER_PROMISE
+    if (debt.status === 'PROMISE_TO_PAY' && debt.promiseDate) {
+      const promiseDateStart = new Date(
+        Date.UTC(
+          debt.promiseDate.getUTCFullYear(),
+          debt.promiseDate.getUTCMonth(),
+          debt.promiseDate.getUTCDate(),
+        ),
+      )
+
+      const todayStart = new Date()
+      todayStart.setUTCHours(0, 0, 0, 0)
+
+      // If today is after the promise date, update status to OVERDUE_AFTER_PROMISE
+      if (todayStart > promiseDateStart) {
+        const updatedDebt = await this.prisma.debtRecord.update({
+          where: { id: debt.id },
+          data: { status: 'OVERDUE_AFTER_PROMISE' },
+        })
+
+        return { ...debt, status: updatedDebt.status } as T
+      }
+    }
+
+    return debt
+  }
+
   async getByCustomerToken(token: string) {
     let debtId: string
     let tokenExpiresAt: Date
@@ -416,7 +597,10 @@ export class DebtsService {
       throw new HTTPException(404, { message: 'Debt link is invalid or expired' })
     }
 
-    return { debt, tokenExpiresAt }
+    // Check if debt should be marked as overdue
+    const updatedDebt = await this.checkAndUpdateOverdueStatus(debt)
+
+    return { debt: updatedDebt, tokenExpiresAt }
   }
 
   async createPromiseByCustomerToken(token: string, promisedDate: Date) {
@@ -491,9 +675,10 @@ export class DebtsService {
       pendingStripeSessionId?: string | null
     }
 
-    if (debt.status !== 'PROMISE_TO_PAY') {
+    // Allow payment if debt is PROMISE_TO_PAY (on time) or OVERDUE_AFTER_PROMISE (late)
+    if (debt.status !== 'PROMISE_TO_PAY' && debt.status !== 'OVERDUE_AFTER_PROMISE') {
       throw new HTTPException(400, {
-        message: 'Fake payment is only available for debts in PROMISE_TO_PAY status',
+        message: 'Payment is only available for debts with a promise date',
       })
     }
 
@@ -613,9 +798,9 @@ export class DebtsService {
       pendingStripeSessionId?: string | null
     }
 
-    if (debt.status !== 'PROMISE_TO_PAY') {
+    if (debt.status !== 'PROMISE_TO_PAY' && debt.status !== 'OVERDUE_AFTER_PROMISE') {
       throw new HTTPException(400, {
-        message: 'Stripe payment is only available for debts in PROMISE_TO_PAY status',
+        message: 'Payment is only available for debts with a promise date',
       })
     }
 
@@ -710,6 +895,39 @@ export class DebtsService {
   }
 
   async confirmStripePaymentByDebtId(debtId: string, input: ConfirmStripePaymentInput) {
+    const fullDebt = await this.prisma.debtRecord.findUnique({
+      where: { id: debtId },
+      include: { client: true, campaign: true },
+    })
+
+    if (!fullDebt) {
+      logger.warn(
+        {
+          debtId,
+          stripeEventId: input.stripeEventId,
+          scope: 'debts.confirmStripePaymentByDebtId',
+        },
+        'Skipping Stripe payment confirmation because debt was not found',
+      )
+      return null
+    }
+
+    const wasAlreadyPaid = fullDebt.status === 'PAID'
+
+    let stripeInvoice: StripeInvoiceDetails | null = null
+    try {
+      stripeInvoice = await createOrReuseStripeInvoiceForDebt(fullDebt)
+    } catch (error) {
+      logger.warn(
+        {
+          debtId,
+          error: error instanceof Error ? error.message : String(error),
+          scope: 'debts.confirmStripePaymentByDebtId.stripeInvoice',
+        },
+        'Stripe invoice creation failed; payment confirmation will continue',
+      )
+    }
+
     const updatedDebt = await this.prisma.$transaction(async (tx) => {
       const debt = (await tx.debtRecord.findUnique({
         where: { id: debtId },
@@ -745,7 +963,8 @@ export class DebtsService {
         data: ({
           status: 'PAID',
           pendingStripeSessionId: null,
-          invoiceNumber: debt.invoiceNumber ?? buildInvoiceNumber(debt.id),
+          invoiceNumber:
+            stripeInvoice?.invoiceNumber ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id),
         } as unknown) as Parameters<typeof tx.debtRecord.update>[0]['data'],
       })
 
@@ -774,6 +993,7 @@ export class DebtsService {
               amountTotal: input.amountTotal,
               currency: input.currency,
               livemode: input.livemode,
+              invoice: stripeInvoice,
             },
           },
         },
@@ -782,57 +1002,43 @@ export class DebtsService {
       return paidDebt
     })
 
-    // Send invoice email (non-blocking – failure won't block payment confirmation)
-    if (updatedDebt && updatedDebt.status === 'PAID') {
+    if (updatedDebt && updatedDebt.status === 'PAID' && fullDebt.client.email) {
+      const invoiceEmailAlreadyLogged = await this.prisma.brevoEventLog.findFirst({
+        where: {
+          debtId: fullDebt.id,
+          source: 'stripe_payment_confirmation',
+          eventName: 'invoice_sent',
+        },
+      })
+
+      if (invoiceEmailAlreadyLogged || wasAlreadyPaid) {
+        return updatedDebt
+      }
+
       try {
-        // Fetch full debt data (including client and campaign) outside transaction for email
-        const fullDebt = await this.prisma.debtRecord.findUnique({
-          where: { id: debtId },
-          include: { client: true, campaign: true },
+        const { token } = await signCustomerToken(fullDebt.id)
+        const invoiceBaseUrl = (env.API_URL ?? env.WEB_URL ?? 'https://collectra.xyz').replace(/\/$/, '')
+        const invoiceDownloadUrl = `${invoiceBaseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
+
+        await sendInvoiceEmailToBrevo({
+          toEmail: fullDebt.client.email,
+          toName: fullDebt.client.fullName,
+          invoiceNumber: stripeInvoice?.invoiceNumber ?? updatedDebt.invoiceNumber ?? buildInvoiceNumber(fullDebt.id),
+          invoiceUrl: stripeInvoice?.hostedInvoiceUrl ?? invoiceDownloadUrl,
+          invoicePdfUrl: stripeInvoice?.invoicePdfUrl ?? null,
+          debtId: fullDebt.id,
+          campaignId: fullDebt.campaign.id,
         })
 
-        if (fullDebt && fullDebt.client.email) {
-          const invoiceNumber = (fullDebt as unknown as { invoiceNumber?: string | null }).invoiceNumber ?? buildInvoiceNumber(fullDebt.id)
-          const amount = fullDebt.amount.toNumber().toFixed(2)
-          const { token } = await signCustomerToken(fullDebt.id)
-          const invoiceBaseUrl = (env.API_URL ?? env.WEB_URL ?? 'https://collectra.xyz').replace(/\/$/, '')
-          const invoiceDownloadUrl = `${invoiceBaseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
-          const invoiceHtml = generateInvoiceHtml(
-            invoiceNumber,
-            fullDebt.id,
-            new Date().toISOString(),
-            amount,
-            fullDebt.client.fullName,
-            fullDebt.client.email ?? '',
-            fullDebt.client.phone ?? null,
-            fullDebt.campaign.name,
-            fullDebt.dueDate,
-            fullDebt.status,
-            input.stripeSessionId,
-            invoiceDownloadUrl,
-          )
-
-          await sendInvoiceEmailToBrevo({
-            toEmail: fullDebt.client.email,
-            toName: fullDebt.client.fullName,
-            invoiceHtml,
-            invoiceNumber,
-            debtId: fullDebt.id,
-            campaignId: fullDebt.campaign.id,
-          })
-
-          // Log email event
-          await logBrevoEvent(this.prisma, {
-            debtId: fullDebt.id,
-            customerId: fullDebt.clientId,
-            provider: 'brevo',
-            source: 'stripe_payment_confirmation',
-            eventName: 'invoice_sent',
-            email: fullDebt.client.email,
-          })
-        }
+        await logBrevoEvent(this.prisma, {
+          debtId: fullDebt.id,
+          customerId: fullDebt.clientId,
+          provider: 'brevo',
+          source: 'stripe_payment_confirmation',
+          eventName: 'invoice_sent',
+          email: fullDebt.client.email,
+        })
       } catch (error) {
-        // Log error but don't block payment confirmation
         logger.error(
           {
             debtId: updatedDebt.id,
@@ -896,7 +1102,10 @@ export class DebtsService {
       throw new HTTPException(404, { message: 'Debt not found or not in your workspace' })
     }
 
-    return debt
+    // Check if debt should be marked as overdue
+    const updatedDebt = await this.checkAndUpdateOverdueStatus(debt)
+
+    return updatedDebt
   }
 
   async create(workspaceId: string, data: CreateDebtInput) {

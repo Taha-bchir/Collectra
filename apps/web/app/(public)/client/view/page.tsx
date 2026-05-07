@@ -498,14 +498,14 @@ function ClientDebtViewContent() {
                 <div className="rounded-md border border-border/60 bg-background p-4">
                   <p className="font-medium">Payment receipt</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Your invoice is ready. Open it to print or save as PDF.
+                    Your Stripe invoice is ready. Open it to view or download the PDF.
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button onClick={() => window.open(invoiceUrl, '_blank', 'noopener,noreferrer')}>
-                      Open invoice
+                      Open Stripe invoice
                     </Button>
                     <Button variant="outline" onClick={() => window.open(invoiceUrl, '_blank', 'noopener,noreferrer')}>
-                      Print / save PDF
+                      Download PDF
                     </Button>
                   </div>
                 </div>

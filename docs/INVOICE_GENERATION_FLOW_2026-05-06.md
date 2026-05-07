@@ -21,8 +21,8 @@ The invoice is generated after these payment events, not before:
 2. The backend confirms the payment is real or accepted.
 3. The debt status is updated to `PAID`.
 4. The invoice number is created or reused.
-5. The invoice HTML becomes available at the public invoice endpoint.
-6. The invoice email is sent with a button to open the invoice.
+5. The invoice becomes available through Stripe and the public invoice endpoint redirects to the hosted invoice or PDF.
+6. The invoice email is sent with a button to open the Stripe invoice.
 
 So the invoice is a post-payment artifact. It is not the thing that starts the payment flow.
 
@@ -31,9 +31,9 @@ So the invoice is a post-payment artifact. It is not the thing that starts the p
 There are two related meanings of “invoice generation” in this codebase:
 
 - **Invoice state generation**: the backend stores the invoice number on the paid debt row.
-- **Invoice rendering generation**: the backend renders the HTML invoice page when the customer opens the invoice URL.
+- **Invoice delivery generation**: the backend creates or reuses the Stripe invoice and exposes its hosted invoice / PDF URL.
 
-That means the invoice number is created once, but the invoice HTML can be rendered many times from the same paid debt data.
+That means the invoice number is created once, but the Stripe invoice can be reopened many times from the same paid debt data.
 
 ### How each invoice maps to one debt
 
@@ -135,7 +135,7 @@ When the fake payment path runs, the service:
 2. Checks that the debt is in `PROMISE_TO_PAY`.
 3. Checks that the promise date has arrived.
 4. Updates the debt status to `PAID`.
-5. Stores `invoiceNumber` if it does not already exist.
+5. Creates or reuses the Stripe invoice and stores `invoiceNumber` if it does not already exist.
 6. Marks active promises as `KEPT`.
 7. Writes a `PAYMENT_CONFIRMED` action history record.
 8. Sends the invoice email.
@@ -160,14 +160,14 @@ When Stripe confirms the payment, the service:
 2. Skips the update if the debt is already `PAID`.
 3. Updates the debt status to `PAID`.
 4. Clears `pendingStripeSessionId`.
-5. Stores `invoiceNumber` if it does not already exist.
+5. Creates or reuses the Stripe invoice and stores `invoiceNumber` if it does not already exist.
 6. Marks active promises as `KEPT`.
 7. Writes a `PAYMENT_CONFIRMED` action history record with Stripe metadata.
 8. Sends the invoice email.
 
 ### How this controls invoice generation
 
-The invoice is generated from the paid debt record immediately after this transaction succeeds.
+The Stripe invoice is generated from the paid debt record immediately after this transaction succeeds.
 
 The important fields are:
 
@@ -202,24 +202,12 @@ The route is:
 
 1. The token is validated and resolved to a debt.
 2. The endpoint rejects the request if the debt is not `PAID`.
-3. The latest `PAYMENT_CONFIRMED` action is loaded from `customerActionHistory`.
-4. The endpoint reads the stored `invoiceNumber`.
-5. If `invoiceNumber` is missing, it falls back to a generated value from the debt id.
-6. The endpoint formats the payment date, amount, customer details, and campaign details.
-7. It renders a full HTML invoice page.
+3. The backend creates or reuses the Stripe invoice for that debt.
+4. The endpoint redirects to the Stripe hosted invoice URL or PDF URL.
 
 ### How the HTML invoice is produced
 
-The HTML is built directly in the route handler as a template string.
-
-It uses the paid debt data plus the latest payment confirmation record:
-
-- debt customer fields come from the debt record
-- payment date comes from `PAYMENT_CONFIRMED` history when available
-- Stripe session metadata is read from the stored action metadata
-- invoice number comes from `debt.invoiceNumber` or a fallback based on debt id
-
-This means the invoice page is deterministic: the same paid debt always renders the same invoice reference.
+The route no longer builds local HTML. It redirects the customer to Stripe so the invoice layout and PDF are owned by Stripe.
 
 ### Code part
 
@@ -231,17 +219,14 @@ const amount = debt.amount.toNumber().toFixed(2)
 
 ### What the HTML includes
 
-The invoice HTML contains:
+The Stripe invoice contains:
 
 - invoice number
 - payment date
-- customer name and contact
-- campaign name
-- debt reference
+- customer and campaign details
+- debt reference in the Stripe metadata
 - amount paid
-- due date
-- payment metadata such as Stripe session id when available
-- print / save as PDF controls
+- hosted invoice and PDF access
 
 ## 5. How the invoice email is created
 
@@ -251,51 +236,33 @@ The email is generated in [apps/api/src/services/debts.ts](../apps/api/src/servi
 
 ### Email generation flow
 
-1. The code builds the invoice number.
-2. It creates the invoice HTML.
-3. It sends the HTML to Brevo through the transactional email API.
-4. It logs the email event in Brevo tracking logs.
+1. The code builds or reuses the Stripe invoice.
+2. It sends a Brevo email that links to the Stripe invoice.
+3. It logs the email event in Brevo tracking logs.
 
 ### How the email relates to invoice generation
 
 The email does not create the invoice by itself.
 
-Instead, the email is a delivery channel for the invoice that was already generated from the paid debt state.
+Instead, the email is a delivery channel for the Stripe invoice that was already generated from the paid debt state.
 
 The email contains:
 
-- the invoice HTML content
-- a download button linking to the public invoice URL
+- a button linking to the Stripe invoice URL or PDF
 - invoice tracking tags so the send can be observed later
 
-If email sending fails, the invoice still exists at the public invoice endpoint because the invoice is generated from the database state, not from the email send result.
+If email sending fails, the Stripe invoice still exists at the public invoice endpoint because the invoice is generated from the payment state, not from the email send result.
 
 ### Code part
 
 ```ts
 const invoiceDownloadUrl = `${invoiceBaseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
-const invoiceHtml = generateInvoiceHtml(
-  invoiceNumber,
-  debt.id,
-  new Date().toISOString(),
-  amount,
-  debt.client.fullName,
-  debt.client.email ?? '',
-  debt.client.phone ?? null,
-  debt.campaign.name,
-  debt.dueDate,
-  debt.status,
-  stripeSessionId,
-  invoiceDownloadUrl,
-)
-```
-
-```ts
 await sendInvoiceEmailToBrevo({
   toEmail: debt.client.email,
   toName: debt.client.fullName,
-  invoiceHtml,
   invoiceNumber,
+  invoiceUrl: stripeInvoice?.hostedInvoiceUrl ?? invoiceDownloadUrl,
+  invoicePdfUrl: stripeInvoice?.invoicePdfUrl ?? null,
   debtId: debt.id,
   campaignId: debt.campaign.id,
 })
@@ -334,4 +301,4 @@ The invoice generation flow is simple:
 4. The invoice HTML is rendered from the paid debt data.
 5. The customer can open the invoice page or download it from the email.
 
-The invoice is therefore a consequence of payment confirmation, not the trigger for payment itself.
+The Stripe invoice is therefore a consequence of payment confirmation, not the trigger for payment itself.

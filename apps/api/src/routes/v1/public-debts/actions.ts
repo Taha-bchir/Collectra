@@ -14,7 +14,7 @@ import {
   verifyStripePaymentByTokenSchema,
 } from '../../../schema/v1/index.js'
 import { toPrismaMetadata } from '../../../utils/metadata.js'
-import { DebtsService } from '../../../services/debts.js'
+import { DebtsService, createOrReuseStripeInvoiceForDebt } from '../../../services/debts.js'
 import type { Env } from '../../../types/index.js'
 import { withRouteTryCatch } from '../../../utils/route-helpers.js'
 import { logger } from '../../../utils/logger.js'
@@ -183,8 +183,7 @@ handler.openapi(
   createPublicInvoiceByTokenSchema,
   withRouteTryCatch('publicDebts.getInvoiceByToken', async (c) => {
     const { token } = c.req.valid('param')
-    const prisma = c.get('prisma')
-    const service = new DebtsService(prisma)
+    const service = new DebtsService(c.get('prisma'))
     const { debt } = await service.getByCustomerToken(token)
 
     if (debt.status !== 'PAID') {
@@ -193,114 +192,24 @@ handler.openapi(
       })
     }
 
-    const paymentConfirmation = await prisma.customerActionHistory.findFirst({
-      where: {
-        debtId: debt.id,
-        actionType: 'PAYMENT_CONFIRMED',
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
-    })
+    const stripeInvoice = await createOrReuseStripeInvoiceForDebt(debt)
 
-    const metadata = paymentConfirmation?.metadata as
-      | { stripe?: { sessionId?: string | null; paymentIntentId?: string | null } }
-      | null
-    const invoiceNumber = debt.invoiceNumber ?? `INV-${debt.id.slice(0, 8).toUpperCase()}`
-    const paymentDate = paymentConfirmation?.timestamp?.toISOString() ?? debt.updatedAt.toISOString()
-    const amount = debt.amount.toNumber().toFixed(2)
+    if (!stripeInvoice) {
+      throw new HTTPException(503, {
+        message: 'Stripe invoice is not available',
+      })
+    }
 
-    const escapeHtml = (value: string) =>
-      value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;')
+    const invoiceUrl = stripeInvoice.hostedInvoiceUrl ?? stripeInvoice.invoicePdfUrl
 
-    const html = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Invoice ${escapeHtml(invoiceNumber)}</title>
-    <style>
-      :root { color-scheme: light; }
-      body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 32px; background: #f6f7fb; color: #111827; }
-      .sheet { max-width: 840px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(17, 24, 39, 0.08); }
-      .header { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; border-bottom: 1px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 24px; }
-      h1 { margin: 0; font-size: 30px; }
-      .muted { color: #6b7280; }
-      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
-      .card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; background: #fafafa; }
-      .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; margin-bottom: 6px; }
-      .value { font-size: 16px; font-weight: 600; word-break: break-word; }
-      .amount { font-size: 34px; font-weight: 800; }
-      .footer { margin-top: 28px; padding-top: 18px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
-      .actions { margin-top: 18px; display: flex; gap: 12px; flex-wrap: wrap; }
-      .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; border-radius: 999px; border: 1px solid #111827; color: #111827; text-decoration: none; font-weight: 700; }
-      .btn.primary { background: #111827; color: #fff; }
-      @media print { body { background: #fff; padding: 0; } .sheet { box-shadow: none; border: none; border-radius: 0; } .actions { display: none; } }
-    </style>
-  </head>
-  <body>
-    <main class="sheet">
-      <div class="header">
-        <div>
-          <p class="muted" style="margin:0 0 8px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px;">Collectra</p>
-          <h1>Invoice / Receipt</h1>
-          <p class="muted" style="margin: 10px 0 0;">Payment confirmed for your debt account.</p>
-        </div>
-        <div style="text-align:right;">
-          <div class="label">Invoice number</div>
-          <div class="value">${escapeHtml(invoiceNumber)}</div>
-          <div class="label" style="margin-top: 12px;">Payment date</div>
-          <div class="value">${escapeHtml(new Date(paymentDate).toLocaleString())}</div>
-        </div>
-      </div>
-
-      <div class="grid">
-        <div class="card">
-          <div class="label">Customer</div>
-          <div class="value">${escapeHtml(debt.client.fullName)}</div>
-          <div class="muted" style="margin-top:6px;">${escapeHtml(debt.client.email ?? debt.client.phone ?? 'No contact provided')}</div>
-        </div>
-        <div class="card">
-          <div class="label">Campaign</div>
-          <div class="value">${escapeHtml(debt.campaign.name)}</div>
-          <div class="muted" style="margin-top:6px;">Debt reference: ${escapeHtml(debt.id)}</div>
-        </div>
-        <div class="card">
-          <div class="label">Amount paid</div>
-          <div class="amount">${amount}</div>
-        </div>
-        <div class="card">
-          <div class="label">Due date</div>
-          <div class="value">${escapeHtml(debt.dueDate.toLocaleString())}</div>
-          <div class="muted" style="margin-top:6px;">Status: ${escapeHtml(debt.status)}</div>
-        </div>
-      </div>
-
-      <div class="card" style="margin-top: 16px;">
-        <div class="label">Payment details</div>
-        <div class="muted">This receipt was generated after the payment webhook or Stripe verification confirmed the payment.</div>
-        <div class="muted" style="margin-top:8px;">Stripe session: ${escapeHtml(metadata?.stripe?.sessionId ?? 'n/a')}</div>
-      </div>
-
-      <div class="actions">
-        <a class="btn primary" href="javascript:window.print()">Print / Save as PDF</a>
-        <a class="btn" href="${escapeHtml(`${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}`)}">Back to debt view</a>
-      </div>
-
-      <div class="footer">
-        Collectra receipt generated for ${escapeHtml(debt.client.fullName)}. Keep this document for your records.
-      </div>
-    </main>
-  </body>
-</html>`
+    if (!invoiceUrl) {
+      throw new HTTPException(503, {
+        message: 'Stripe invoice URL is not available',
+      })
+    }
 
     c.header('Cache-Control', 'no-store')
-    return c.html(html, 200)
+    return c.redirect(invoiceUrl, 302)
   })
 )
 
