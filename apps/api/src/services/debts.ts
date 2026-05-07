@@ -167,13 +167,20 @@ export async function createOrReuseStripeInvoiceForDebt(
     customers.push(await getOrCreateStripeCustomer(stripe, debt))
   }
 
+  const customer = customers[0]
+  if (!customer) {
+    throw new HTTPException(500, {
+      message: 'Failed to create or retrieve Stripe customer',
+    })
+  }
+
   const existingInvoice = await findStripeInvoiceForDebt(stripe, customers, debt.id)
   if (existingInvoice) {
     const invoiceNumber = existingInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id)
 
     if (existingInvoice.status !== 'paid') {
       if ((existingInvoice.total ?? 0) === 0) {
-        await addDebtAmountToStripeInvoice(stripe, existingInvoice.id, customers[0].id, debt)
+        await addDebtAmountToStripeInvoice(stripe, existingInvoice.id, customer.id, debt)
       }
 
       const finalizedInvoice =
@@ -206,7 +213,6 @@ export async function createOrReuseStripeInvoiceForDebt(
     }
   }
 
-  const customer = customers[0]
   const createdInvoice = await stripe.invoices.create(
     {
       customer: customer.id,
@@ -737,31 +743,17 @@ export class DebtsService {
 
     // Send invoice email (non-blocking – failure won't block payment confirmation)
     try {
-      const invoiceNumber = (updatedDebt as unknown as { invoiceNumber?: string | null }).invoiceNumber ?? buildInvoiceNumber(updatedDebt.id)
-      const amount = updatedDebt.amount.toNumber().toFixed(2)
-      const invoiceBaseUrl = (env.API_URL ?? env.WEB_URL ?? 'https://collectra.xyz').replace(/\/$/, '')
-      const invoiceDownloadUrl = `${invoiceBaseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
-      const invoiceHtml = generateInvoiceHtml(
-        invoiceNumber,
-        updatedDebt.id,
-        new Date().toISOString(),
-        amount,
-        debt.client.fullName,
-        debt.client.email ?? '',
-        debt.client.phone ?? null,
-        debt.campaign.name,
-        debt.dueDate,
-        updatedDebt.status,
-        null,
-        invoiceDownloadUrl,
+      const stripeInvoice = await createOrReuseStripeInvoiceForDebt(
+        updatedDebt as unknown as DebtInvoiceSource,
       )
 
-      if (debt.client.email) {
+      if (stripeInvoice && debt.client.email) {
         await sendInvoiceEmailToBrevo({
           toEmail: debt.client.email,
           toName: debt.client.fullName,
-          invoiceHtml,
-          invoiceNumber,
+          invoiceUrl: stripeInvoice.hostedInvoiceUrl ?? '',
+          invoicePdfUrl: stripeInvoice.invoicePdfUrl,
+          invoiceNumber: stripeInvoice.invoiceNumber,
           debtId: updatedDebt.id,
           campaignId: debt.campaign.id,
         })
