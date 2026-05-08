@@ -26,6 +26,10 @@ const emptyToUndefined = (value: unknown) => {
 const optionalString = z.preprocess(emptyToUndefined, z.string().optional())
 const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional())
 const optionalEmail = z.preprocess(emptyToUndefined, z.string().email().optional())
+const optionalPositiveInteger = z.preprocess(
+  emptyToUndefined,
+  z.coerce.number().int().positive().optional(),
+)
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'staging']).default('development'),
@@ -50,6 +54,7 @@ const envSchema = z.object({
   BREVO_API_KEY: optionalString,
   BREVO_SENDER_EMAIL: optionalEmail,
   BREVO_SENDER_NAME: optionalString,
+  BREVO_CSV_TEMPLATE_ID: optionalPositiveInteger,
   BREVO_WEBHOOK_TOKEN: optionalString,
   BREVO_WEBHOOK_SECRET: optionalString,
 

@@ -1,5 +1,6 @@
 import { env } from '../config/env.js'
 import { signCustomerToken } from '../lib/customer-jwt.js'
+import { logger } from '../utils/logger.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
@@ -30,6 +31,7 @@ export class BrevoEmailService {
   private readonly apiKey = env.BREVO_API_KEY
   private readonly senderEmail = env.BREVO_SENDER_EMAIL
   private readonly senderName = env.BREVO_SENDER_NAME || DEFAULT_SENDER_NAME
+  private readonly csvTemplateId = env.BREVO_CSV_TEMPLATE_ID
 
   isConfigured() {
     return Boolean(this.apiKey && this.senderEmail)
@@ -162,15 +164,32 @@ export class BrevoEmailService {
           'If you were not expecting this message, please contact support.',
         ].join('\n')
 
-    try {
-      const response = await fetch(BREVO_EMAIL_API_URL, {
-        method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          'api-key': this.apiKey,
-        },
-        body: JSON.stringify({
+    const body = this.csvTemplateId
+      ? {
+          sender: {
+            email: this.senderEmail,
+            name: this.senderName,
+          },
+          to: [{ email: payload.toEmail, name: displayName }],
+          tags: ['collectra', `debt:${payload.debtId}`, ...(payload.campaignId ? [`campaign:${payload.campaignId}`] : [])],
+          headers: {
+            'X-Mailin-custom': [
+              `debt_id=${payload.debtId}`,
+              ...(payload.campaignId ? [`campaign_id=${payload.campaignId}`] : []),
+            ].join('|'),
+          },
+          templateId: this.csvTemplateId,
+          params: {
+            customerName: displayName,
+            campaignName: payload.campaignName,
+            amount: amountText,
+            dueDate: dueDateText,
+            debtLink: debtLink,
+            openPixelUrl: buildEmailOpenPixelUrl(payload.debtId),
+            senderName: this.senderName,
+          },
+        }
+      : {
           sender: {
             email: this.senderEmail,
             name: this.senderName,
@@ -186,16 +205,39 @@ export class BrevoEmailService {
           subject: 'Collectra - Debt Notification',
           htmlContent,
           textContent,
-        }),
+        }
+
+    try {
+      const response = await fetch(BREVO_EMAIL_API_URL, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'api-key': this.apiKey,
+        },
+        body: JSON.stringify(body),
       })
 
+      const responseText = await response.text()
+
       if (!response.ok) {
+        logger.error(
+          {
+            status: response.status,
+            statusText: response.statusText,
+            debtId: payload.debtId,
+            responseBody: truncateText(responseText),
+            templateId: this.csvTemplateId,
+            scope: 'BrevoEmailService.sendOne.response',
+          },
+          'Brevo API error while sending CSV import email',
+        )
         return { ok: false, messageId: null }
       }
 
       let messageId: string | null = null
       try {
-        const responseBody = (await response.json()) as Record<string, unknown>
+        const responseBody = JSON.parse(responseText) as Record<string, unknown>
         messageId = getString(responseBody.messageId) ?? getString(responseBody['message-id']) ?? getString(responseBody.message_id)
       } catch {
         messageId = null
@@ -261,4 +303,12 @@ async function runWithConcurrency<T, TResult>(
 
 function getString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function truncateText(value: string, maxLength = 1000): string {
+  if (value.length <= maxLength) {
+    return value
+  }
+
+  return `${value.slice(0, maxLength)}…`
 }
