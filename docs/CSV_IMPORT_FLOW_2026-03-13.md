@@ -10,7 +10,7 @@
 
 A staff member uploads a `.csv` file from the campaigns dashboard. The API parses it, creates a new `Campaign`, deduplicates `Client` records, and inserts one `DebtRecord` per valid row — all inside a single database transaction. Invalid rows are skipped and returned with reasons instead of aborting the whole import.
 
----
+--- 
 
 ## End-to-End Flow
 
