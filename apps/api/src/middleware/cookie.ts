@@ -87,6 +87,7 @@ export const setAuthCookies = (
 export const clearAuthCookies = (c: AppContext) => {
   deleteCookie(c, AUTH_COOKIE_NAMES.accessToken, { path: '/' })
   deleteCookie(c, AUTH_COOKIE_NAMES.refreshToken, { path: '/' })
+  deleteCookie(c, WORKSPACE_COOKIE_NAME, { path: '/' })
 }
 
 export const deleteCookieHelper = (c: AppContext, name: string) => deleteCookie(c, name)

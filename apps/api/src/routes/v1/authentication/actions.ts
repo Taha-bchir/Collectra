@@ -14,6 +14,7 @@ import {
   googleOAuthCallbackSchema,
   googleOAuthTokensSchema,
 } from "../../../schema/v1/index.js";
+import { WorkspaceMemberStatus } from "@repo/database";
 import { AuthenticationService } from "../../../services/authentication.js";
 import { env } from "../../../config/env.js";
 import { logger } from "../../../utils/logger.js";
@@ -51,6 +52,27 @@ const normalizeError = (error: unknown, fallbackStatus = 500) => {
   }
 
   return { status: fallbackStatus, message: "Unexpected error" };
+};
+
+const setDefaultWorkspaceCookie = async (c: AppContext, userId: string) => {
+  const prisma = c.get('prisma');
+
+  const membership = await prisma.workspaceMember.findFirst({
+    where: {
+      userId,
+      status: WorkspaceMemberStatus.ACTIVE,
+    },
+    select: {
+      workspaceId: true,
+    },
+    orderBy: {
+      joinedAt: 'desc',
+    },
+  });
+
+  if (membership?.workspaceId) {
+    setWorkspaceCookie(c, membership.workspaceId);
+  }
 };
 
 handler.openapi(registerUserSchema, withRouteTryCatch('auth.register', async (c) => {
@@ -116,6 +138,7 @@ handler.openapi(loginSchema, withRouteTryCatch('auth.login', async (c) => {
   try {
     const result = await service.signIn(payload);
     setAuthCookies(c, result.accessToken, result.refreshToken, result.expiresIn);
+    await setDefaultWorkspaceCookie(c, result.user.id);
     return c.json({ data: result }, 200);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -218,6 +241,7 @@ handler.openapi(refreshSchema, withRouteTryCatch('auth.refresh', async (c) => {
   try {
     const result = await service.refreshSession({ refreshToken });
     setAuthCookies(c, result.accessToken, result.refreshToken, result.expiresIn);
+    await setDefaultWorkspaceCookie(c, result.user.id);
     return c.json({ data: result }, 200);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -282,6 +306,7 @@ handler.openapi(googleOAuthCallbackSchema, withRouteTryCatch('auth.googleCallbac
   try {
     const result = await service.handleGoogleOAuthCallback(payload);
     setAuthCookies(c, result.accessToken, result.refreshToken, result.expiresIn);
+    await setDefaultWorkspaceCookie(c, result.user.id);
     return c.json({ data: result }, 200);
   } catch (error) {
     logger.warn({ error, scope: "auth.google.callback" }, "Google OAuth callback failed");
@@ -308,6 +333,7 @@ handler.openapi(googleOAuthTokensSchema, withRouteTryCatch('auth.googleTokens', 
   try {
     const result = await service.handleGoogleOAuthTokens(payload);
     setAuthCookies(c, result.accessToken, result.refreshToken, result.expiresIn);
+    await setDefaultWorkspaceCookie(c, result.user.id);
     return c.json({ data: result }, 200);
   } catch (error) {
     logger.warn({ error, scope: "auth.google.tokens" }, "Google OAuth token validation failed");

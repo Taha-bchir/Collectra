@@ -21,30 +21,38 @@ handler.openapi(getCurrentWorkspaceSchema, withRouteTryCatch('workspaces.current
   const prisma = c.get("prisma");
   const preferredWorkspaceId = getCookieHelper(c, WORKSPACE_COOKIE_NAME) || null;
 
-  const membership = preferredWorkspaceId
+  let membership = preferredWorkspaceId
     ? await prisma.workspaceMember.findFirst({
-        where: {
-          userId,
-          workspaceId: preferredWorkspaceId,
-          status: WorkspaceMemberStatus.ACTIVE,
+      where: {
+        userId,
+        workspaceId: preferredWorkspaceId,
+        status: WorkspaceMemberStatus.ACTIVE,
+      },
+      select: {
+        workspace: {
+          select: { id: true, name: true },
         },
-        select: {
-          workspace: {
-            select: { id: true, name: true },
-          },
-        },
-      })
-    : await prisma.workspaceMember.findFirst({
+      },
+    })
+    : null;
+
+  if (!membership?.workspace) {
+    membership = await prisma.workspaceMember.findFirst({
       where: { userId, status: WorkspaceMemberStatus.ACTIVE },
-        select: {
-          workspace: {
-            select: { id: true, name: true },
-          },
+      select: {
+        workspace: {
+          select: { id: true, name: true },
         },
-        orderBy: { joinedAt: "desc" },
-      });
+      },
+      orderBy: { joinedAt: "desc" },
+    });
+  }
 
   const workspace = membership?.workspace ?? null;
+
+  if (workspace) {
+    setWorkspaceCookie(c, workspace.id);
+  }
 
   return c.json(
     {
