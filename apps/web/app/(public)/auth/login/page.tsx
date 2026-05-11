@@ -93,7 +93,7 @@ function LoginPageContent() {
   const isFormValid = email && password && !hasValidationErrors
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" suppressHydrationWarning>
       <div className="flex-1 flex">
         {/* Left Side - Form */}
         <div className="flex-1 flex flex-col bg-background p-4 sm:p-6 lg:p-8 xl:p-12">

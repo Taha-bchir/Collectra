@@ -1,28 +1,21 @@
 import { createRoute, z } from "@hono/zod-openapi";
+import { WorkspaceRole } from "@repo/database";
 
-const workspaceResponseSchema = z.object({
-  data: z.object({
-    id: z.string().uuid(),
-    name: z.string().min(1),
+const workspaceSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1),
+  website: z.string().url().nullable(),
+});
+
+const workspaceListItemSchema = workspaceSchema.extend({
+  role: z.nativeEnum(WorkspaceRole),
+});
+
+const errorSchema = z.object({
+  error: z.object({
+    message: z.string(),
+    code: z.string().optional(),
   }),
-});
-
-const currentWorkspaceResponseSchema = z.object({
-  data: z
-    .object({
-      id: z.string().uuid(),
-      name: z.string().min(1),
-    })
-    .nullable(),
-});
-
-const workspaceListResponseSchema = z.object({
-  data: z.array(
-    z.object({
-      id: z.string().uuid(),
-      name: z.string().min(1),
-    })
-  ),
 });
 
 export const getCurrentWorkspaceSchema = createRoute({
@@ -37,7 +30,9 @@ export const getCurrentWorkspaceSchema = createRoute({
       description: "Current workspace or null",
       content: {
         "application/json": {
-          schema: currentWorkspaceResponseSchema,
+          schema: z.object({
+            data: workspaceSchema.nullable(),
+          }),
         },
       },
     },
@@ -67,7 +62,7 @@ export const createWorkspaceSchema = createRoute({
       description: "Workspace created successfully",
       content: {
         "application/json": {
-          schema: workspaceResponseSchema,
+          schema: z.object({ data: workspaceSchema }),
         },
       },
     },
@@ -75,12 +70,7 @@ export const createWorkspaceSchema = createRoute({
       description: "Validation error",
       content: {
         "application/json": {
-          schema: z.object({
-            error: z.object({
-              message: z.string(),
-              code: z.string().optional(),
-            }),
-          }),
+          schema: errorSchema,
         },
       },
     },
@@ -88,12 +78,7 @@ export const createWorkspaceSchema = createRoute({
       description: "Workspace already exists",
       content: {
         "application/json": {
-          schema: z.object({
-            error: z.object({
-              message: z.string(),
-              code: z.string().optional(),
-            }),
-          }),
+          schema: errorSchema,
         },
       },
     },
@@ -111,7 +96,9 @@ export const listWorkspacesSchema = createRoute({
       description: "Workspace list",
       content: {
         "application/json": {
-          schema: workspaceListResponseSchema,
+          schema: z.object({
+            data: z.array(workspaceListItemSchema),
+          }),
         },
       },
     },
@@ -140,7 +127,7 @@ export const setCurrentWorkspaceSchema = createRoute({
       description: "Workspace selected",
       content: {
         "application/json": {
-          schema: workspaceResponseSchema,
+          schema: z.object({ data: workspaceSchema }),
         },
       },
     },
@@ -148,12 +135,81 @@ export const setCurrentWorkspaceSchema = createRoute({
       description: "Workspace not found",
       content: {
         "application/json": {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+});
+
+export const updateWorkspaceSchema = createRoute({
+  method: "patch",
+  path: "/{workspaceId}",
+  tags: ["workspaces"],
+  summary: "Update workspace",
+  description: "Updates workspace details. Owner role required.",
+  request: {
+    params: z.object({
+      workspaceId: z.string().uuid(),
+    }),
+    body: {
+      content: {
+        "application/json": {
           schema: z.object({
-            error: z.object({
-              message: z.string(),
-              code: z.string().optional(),
-            }),
+            name: z.string().min(1).max(120),
+            website: z.string().url().max(255).nullable().optional(),
           }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Workspace updated",
+      content: {
+        "application/json": {
+          schema: z.object({ data: workspaceSchema }),
+        },
+      },
+    },
+    403: {
+      description: "Forbidden",
+      content: {
+        "application/json": {
+          schema: errorSchema,
+        },
+      },
+    },
+  },
+});
+
+export const deleteWorkspaceSchema = createRoute({
+  method: "delete",
+  path: "/{workspaceId}",
+  tags: ["workspaces"],
+  summary: "Delete workspace",
+  description: "Deletes a workspace. Owner role required.",
+  request: {
+    params: z.object({
+      workspaceId: z.string().uuid(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Workspace deleted",
+      content: {
+        "application/json": {
+          schema: z.object({
+            data: z.object({ id: z.string().uuid() }),
+          }),
+        },
+      },
+    },
+    403: {
+      description: "Forbidden",
+      content: {
+        "application/json": {
+          schema: errorSchema,
         },
       },
     },

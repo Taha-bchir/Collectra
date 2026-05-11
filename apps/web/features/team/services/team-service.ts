@@ -99,6 +99,7 @@ export async function acceptInvitation(token: string): Promise<AcceptInvitationR
       workspace: {
         id: string
         name: string
+        website?: string | null
       }
       role: TeamManageableRole
     }
@@ -106,7 +107,10 @@ export async function acceptInvitation(token: string): Promise<AcceptInvitationR
   }>(TEAM_ROUTES.acceptInvite, { token })
 
   return {
-    workspace: data.data.workspace,
+    workspace: {
+      ...data.data.workspace,
+      website: data.data.workspace.website ?? null,
+    },
     role: data.data.role,
     message: data.message,
   }

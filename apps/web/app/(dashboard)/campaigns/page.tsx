@@ -52,6 +52,8 @@ function getErrorMessage(error: unknown) {
   return 'Failed to load campaigns'
 }
 
+const CAMPAIGNS_PER_PAGE = 6
+
 export default function CampaignsPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -72,6 +74,7 @@ export default function CampaignsPage() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null)
   const [campaignDeletingId, setCampaignDeletingId] = useState<string | null>(null)
   const [campaignToDelete, setCampaignToDelete] = useState<CampaignSummary | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const loadCampaigns = useCallback(async () => {
     setIsLoading(true)
@@ -107,6 +110,10 @@ export default function CampaignsPage() {
     const query = params.toString()
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }, [pathname, router, search, sortBy, statusFilter])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, sortBy, statusFilter])
 
   const campaignCounts = useMemo(() => {
     return campaigns.reduce(
@@ -152,6 +159,19 @@ export default function CampaignsPage() {
       return a.debtsCount - b.debtsCount
     })
   }, [campaigns, search, sortBy, statusFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredCampaigns.length / CAMPAIGNS_PER_PAGE))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const visibleCampaigns = useMemo(() => {
+    const start = (currentPage - 1) * CAMPAIGNS_PER_PAGE
+    return filteredCampaigns.slice(start, start + CAMPAIGNS_PER_PAGE)
+  }, [currentPage, filteredCampaigns])
 
   const handleToggleCampaignDone = useCallback(async (campaign: CampaignSummary) => {
     const nextStatus: CampaignSummary['status'] = campaign.status === 'COMPLETED' ? 'ACTIVE' : 'COMPLETED'
@@ -348,6 +368,36 @@ export default function CampaignsPage() {
             <Badge variant="outline">Archived: {campaignCounts.archived}</Badge>
           </div>
 
+          {filteredCampaigns.length > CAMPAIGNS_PER_PAGE ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-muted/20 px-4 py-3">
+              <p className="text-sm text-muted-foreground">
+                Showing {(currentPage - 1) * CAMPAIGNS_PER_PAGE + 1}-
+                {Math.min(currentPage * CAMPAIGNS_PER_PAGE, filteredCampaigns.length)} of {filteredCampaigns.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Badge variant="secondary" className="px-3 py-1 text-sm">
+                  Page {currentPage} of {totalPages}
+                </Badge>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           {filteredCampaigns.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="py-10 text-center">
@@ -357,7 +407,7 @@ export default function CampaignsPage() {
             </Card>
           ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filteredCampaigns.map((campaign) => (
+            {visibleCampaigns.map((campaign) => (
               <Card key={campaign.id} className="transition-colors hover:bg-muted/20">
                 <CardHeader className="space-y-2">
                   <div className="flex items-center justify-between gap-2">

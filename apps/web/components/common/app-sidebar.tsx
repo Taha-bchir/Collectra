@@ -5,7 +5,7 @@ import Image from "next/image"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ChevronDown, LayoutGrid } from "lucide-react"
+import { ChevronDown, LayoutGrid, PencilLine, Trash2 } from "lucide-react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { listTeamMembers } from "@/features/team/services/team-service"
 import { useWorkspaceStore } from "@/store/workspace-store"
@@ -70,15 +70,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const fetchCurrentWorkspace = useWorkspaceStore((state) => state.fetchCurrentWorkspace)
   const fetchWorkspaces = useWorkspaceStore((state) => state.fetchWorkspaces)
   const createWorkspace = useWorkspaceStore((state) => state.createWorkspace)
+  const updateWorkspace = useWorkspaceStore((state) => state.updateWorkspace)
+  const deleteWorkspace = useWorkspaceStore((state) => state.deleteWorkspace)
   const setCurrentWorkspace = useWorkspaceStore((state) => state.setCurrentWorkspace)
   const ensureWorkspaceSelected = useWorkspaceStore((state) => state.ensureWorkspaceSelected)
   const router = useRouter()
   const { state: sidebarState } = useSidebar()
   const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [workspaceName, setWorkspaceName] = useState("")
   const [workspaceWebsite, setWorkspaceWebsite] = useState("")
   const [createError, setCreateError] = useState<string | null>(null)
+  const [editError, setEditError] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [isCreating, setIsCreating] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [canManageTeam, setCanManageTeam] = useState(false)
 
   const handleLogout = () => {
@@ -95,6 +103,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     setWorkspaceName("")
     setWorkspaceWebsite("")
     setCreateError(null)
+  }
+
+  const resetEditForm = () => {
+    setWorkspaceName(workspace?.name ?? "")
+    setWorkspaceWebsite(workspace?.website ?? "")
+    setEditError(null)
   }
 
   useEffect(() => {
@@ -133,6 +147,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       resetCreateForm()
     }
   }, [createOpen])
+
+  useEffect(() => {
+    if (editOpen) {
+      resetEditForm()
+    } else {
+      setEditError(null)
+    }
+  }, [editOpen, workspace?.id])
+
+  useEffect(() => {
+    if (!deleteOpen) {
+      setDeleteError(null)
+    }
+  }, [deleteOpen])
 
   const workspaceLabel = workspaceLoading
     ? strings.loading
@@ -180,6 +208,60 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to switch workspace"
       setCreateError(message)
+    }
+  }
+
+  const handleEditWorkspace = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    const nameError = validateWorkspaceName(workspaceName)
+    const websiteError = validateWebsite(workspaceWebsite)
+
+    if (nameError || websiteError) {
+      setEditError(nameError ?? websiteError)
+      return
+    }
+
+    if (!workspace?.id) {
+      setEditError("No active workspace selected")
+      return
+    }
+
+    setIsUpdating(true)
+    setEditError(null)
+
+    try {
+      await updateWorkspace(workspace.id, {
+        name: workspaceName.trim(),
+        website: workspaceWebsite.trim() ? workspaceWebsite.trim() : undefined,
+      })
+      setEditOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update workspace"
+      setEditError(message)
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspace?.id) {
+      setDeleteError("No active workspace selected")
+      return
+    }
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      await deleteWorkspace(workspace.id)
+      setDeleteOpen(false)
+      setEditOpen(false)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete workspace"
+      setDeleteError(message)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -264,10 +346,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         event.preventDefault()
                         handleWorkspaceSelect(item.id)
                       }}
+                      className="flex items-start gap-2"
                     >
-                      <span className="truncate">{item.name}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{item.name}</div>
+                        {item.website ? (
+                          <div className="truncate text-xs text-muted-foreground">{item.website}</div>
+                        ) : null}
+                      </div>
                       {workspace?.id === item.id ? (
-                        <Badge variant="secondary" className="ml-auto">
+                        <Badge variant="secondary" className="ml-auto shrink-0">
                           Active
                         </Badge>
                       ) : null}
@@ -275,6 +363,31 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   ))
                 )}
                 <DropdownMenuSeparator />
+                {workspace?.id ? (
+                  <>
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        resetEditForm()
+                        setEditOpen(true)
+                      }}
+                    >
+                      <PencilLine className="mr-2 h-4 w-4" />
+                      Edit current workspace
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        setDeleteOpen(true)
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete current workspace
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : null}
                 <DropdownMenuItem
                   onSelect={(event) => {
                     event.preventDefault()
@@ -465,6 +578,88 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit workspace</DialogTitle>
+            <DialogDescription>
+              Update the active workspace name or website.
+            </DialogDescription>
+          </DialogHeader>
+          <Card>
+            <CardHeader className="pb-2" />
+            <CardContent>
+              <form onSubmit={handleEditWorkspace} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-workspace-name">Workspace name</Label>
+                  <Input
+                    id="edit-workspace-name"
+                    type="text"
+                    value={workspaceName}
+                    onChange={(event) => setWorkspaceName(event.target.value)}
+                    maxLength={120}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-workspace-website">Website (optional)</Label>
+                  <Input
+                    id="edit-workspace-website"
+                    type="url"
+                    value={workspaceWebsite}
+                    onChange={(event) => setWorkspaceWebsite(event.target.value)}
+                    maxLength={255}
+                  />
+                </div>
+                {editError && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                    {editError}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isUpdating}>
+                    {isUpdating ? "Saving..." : "Save changes"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Delete workspace</DialogTitle>
+            <DialogDescription>
+              This removes the active workspace and its members from the account.
+            </DialogDescription>
+          </DialogHeader>
+          <Card>
+            <CardHeader className="pb-2" />
+            <CardContent className="space-y-4">
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                This action cannot be undone.
+              </div>
+              {deleteError && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {deleteError}
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" variant="destructive" onClick={handleDeleteWorkspace} disabled={isDeleting}>
+                  {isDeleting ? "Deleting..." : "Delete workspace"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </DialogContent>

@@ -5,17 +5,21 @@ import { AUTH_ROUTES } from "@/features/auth/services/auth-service";
 import {
   WORKSPACE_ROUTES,
   type BackendWorkspace,
+  type BackendWorkspaceListItem,
   type CreateWorkspacePayload,
+  type UpdateWorkspacePayload,
 } from "@/features/workspaces/services/workspace-service";
 
 export interface WorkspaceState {
   workspace: BackendWorkspace | null;
-  workspaces: BackendWorkspace[];
+  workspaces: BackendWorkspaceListItem[];
   loading: boolean;
   error: string | null;
   fetchCurrentWorkspace: () => Promise<void>;
   fetchWorkspaces: () => Promise<void>;
   createWorkspace: (payload: CreateWorkspacePayload) => Promise<BackendWorkspace>;
+  updateWorkspace: (workspaceId: string, payload: UpdateWorkspacePayload) => Promise<BackendWorkspace>;
+  deleteWorkspace: (workspaceId: string) => Promise<void>;
   setCurrentWorkspace: (workspaceId: string) => Promise<BackendWorkspace>;
   invalidateWorkspace: () => void;
   ensureWorkspaceSelected: () => Promise<void>;
@@ -73,16 +77,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const client = getWorkspaceClient();
-      let workspaces: BackendWorkspace[] = [];
+      let workspaces: BackendWorkspaceListItem[] = [];
 
       try {
-        const { data } = await client.get<{ data: BackendWorkspace[] }>(
+        const { data } = await client.get<{ data: BackendWorkspaceListItem[] }>(
           WORKSPACE_ROUTES.list
         );
         workspaces = data.data;
       } catch (primaryErr) {
         if (primaryErr instanceof ApiError && primaryErr.status === 404) {
-          const { data } = await client.get<{ data: BackendWorkspace[] }>(
+          const { data } = await client.get<{ data: BackendWorkspaceListItem[] }>(
             `${WORKSPACE_ROUTES.list}/`
           );
           workspaces = data.data;
@@ -98,7 +102,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           );
 
           if (data.data) {
-            workspaces = [data.data];
+            workspaces = [{ ...data.data, role: "OWNER" }];
           }
         } catch {
           // Keep empty list when fallback cannot resolve a workspace.
@@ -117,7 +121,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
       const existingCurrentWorkspace = get().workspace;
       if (existingCurrentWorkspace) {
-        set({ workspaces: [existingCurrentWorkspace], loading: false, error: null });
+        set({
+          workspaces: [{ ...existingCurrentWorkspace, role: "OWNER" }],
+          loading: false,
+          error: null,
+        });
         return;
       }
 
@@ -134,9 +142,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         payload
       );
       const existing = get().workspaces;
+      const createdWorkspace: BackendWorkspaceListItem = {
+        ...data.data,
+        role: "OWNER",
+      };
       const next = existing.some((item) => item.id === data.data.id)
         ? existing
-        : [data.data, ...existing];
+        : [createdWorkspace, ...existing];
       set({ workspace: data.data, workspaces: next, loading: false, error: null });
       return data.data;
     } catch (err) {
@@ -144,6 +156,74 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         err instanceof ApiError
           ? err.message
           : "Failed to create workspace. Please try again.";
+      set({ error: message, loading: false });
+      throw err;
+    }
+  },
+
+  updateWorkspace: async (workspaceId: string, payload: UpdateWorkspacePayload) => {
+    set({ loading: true, error: null });
+    try {
+      const client = getWorkspaceClient();
+      const { data } = await client.patch<{ data: BackendWorkspace }>(
+        WORKSPACE_ROUTES.update(workspaceId),
+        payload
+      );
+
+      const updatedWorkspace = data.data;
+      const currentWorkspace = get().workspace;
+      const nextWorkspaces = get().workspaces.map((item) =>
+        item.id === workspaceId
+          ? {
+              ...item,
+              name: updatedWorkspace.name,
+              website: updatedWorkspace.website,
+            }
+          : item,
+      );
+
+      set({
+        workspace: currentWorkspace?.id === workspaceId ? updatedWorkspace : currentWorkspace,
+        workspaces: nextWorkspaces,
+        loading: false,
+        error: null,
+      });
+
+      return updatedWorkspace;
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Failed to update workspace. Please try again.";
+      set({ error: message, loading: false });
+      throw err;
+    }
+  },
+
+  deleteWorkspace: async (workspaceId: string) => {
+    set({ loading: true, error: null });
+    try {
+      const client = getWorkspaceClient();
+      await client.delete<{ data: { id: string } }>(WORKSPACE_ROUTES.delete(workspaceId));
+
+      const currentWorkspace = get().workspace;
+      const nextWorkspaces = get().workspaces.filter((item) => item.id !== workspaceId);
+
+      set({
+        workspace: currentWorkspace?.id === workspaceId ? null : currentWorkspace,
+        workspaces: nextWorkspaces,
+        loading: false,
+        error: null,
+      });
+
+      if (currentWorkspace?.id === workspaceId && nextWorkspaces.length > 0) {
+        await get().fetchCurrentWorkspace();
+      }
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : "Failed to delete workspace. Please try again.";
       set({ error: message, loading: false });
       throw err;
     }
