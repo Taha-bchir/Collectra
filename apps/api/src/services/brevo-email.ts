@@ -111,7 +111,7 @@ export class BrevoEmailService {
     try {
       const { token } = await signCustomerToken(payload.debtId)
       const baseUrl = resolvePublicWebUrl()
-      debtLink = `${baseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/track-click`
+      debtLink = `${baseUrl}/client/view?token=${encodeURIComponent(token)}`
     } catch {
       // If token signing fails, still send a plain notification email.
       debtLink = null
@@ -347,7 +347,7 @@ function escapeHtml(input: string): string {
 }
 
 function buildEmailOpenPixelUrl(debtId: string): string {
-  const base = resolvePublicWebUrl()
+  const base = resolvePublicApiUrl()
   return `${base}/api/v1/public/debts/${encodeURIComponent(debtId)}/open.gif`
 }
 

@@ -390,6 +390,7 @@ Ensure all required environment variables are set:
 - `NODE_ENV=production`
 - `API_URL` - Public API URL
 - `WEB_URL` - Public web app URL
+- `PUBLIC_WEB_URL` - Public web app URL used in generated email links and redirects
 - `ALLOWED_ORIGINS` - Comma-separated CORS origins
 - Database URLs
 - Supabase credentials

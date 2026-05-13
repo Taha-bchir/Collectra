@@ -36,6 +36,7 @@ const envSchema = z.object({
   PORT: z.string().default('3000'),
   API_URL: optionalString,
   WEB_URL: optionalString,
+  PUBLIC_WEB_URL: optionalUrl,
   ALLOWED_ORIGINS: optionalString, // Comma-separated list of allowed origins for CORS
 
   // Database (Supabase via Prisma)
