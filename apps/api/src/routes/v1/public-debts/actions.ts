@@ -19,6 +19,7 @@ import type { Env } from '../../../types/index.js'
 import { withRouteTryCatch } from '../../../utils/route-helpers.js'
 import { logger } from '../../../utils/logger.js'
 import { getStripeClient } from '../../../lib/stripe.js'
+import { resolvePublicWebUrl } from '../../../utils/public-url.js'
 
 const handler = new OpenAPIHono<Env>()
 const TRANSPARENT_GIF_BASE64 =
@@ -79,7 +80,7 @@ handler.openapi(
     const service = new DebtsService(c.get('prisma'))
     await service.recordLinkClickByCustomerToken(token)
 
-    return c.redirect(`${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}`, 302)
+    return c.redirect(`${resolvePublicWebUrl()}/client/view?token=${encodeURIComponent(token)}`, 302)
   })
 )
 

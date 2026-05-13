@@ -7,6 +7,7 @@ import { createInvitationSchema, acceptInvitationSchema } from '../../../schema/
 import { env } from '../../../config/env.js'
 import { requireUserId, requireWorkspaceId, withRouteTryCatch } from '../../../utils/route-helpers.js'
 import { setWorkspaceCookie } from '../../../middleware/cookie.js'
+import { resolvePublicWebUrl } from '../../../utils/public-url.js'
 
 const handler = new OpenAPIHono<Env>()
 
@@ -109,7 +110,7 @@ handler.openapi(createInvitationSchema, withRouteTryCatch('invitations.create', 
     },
   })
 
-  const baseUrl = env.WEB_URL ?? c.req.header('origin') ?? null
+  const baseUrl = env.WEB_URL ?? c.req.header('origin') ?? resolvePublicWebUrl()
   const inviteLink = baseUrl
     ? `${baseUrl.replace(/\/$/, '')}/auth/accept-invite?token=${encodeURIComponent(invitation.token)}`
     : null

@@ -6,6 +6,7 @@ import { logBrevoEvent } from './brevo-event-logs.js'
 import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
 import { getStripeClient, getStripeCurrency } from '../lib/stripe.js'
+import { resolvePublicWebUrl } from '../utils/public-url.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
@@ -1066,7 +1067,7 @@ export class DebtsService {
   async getPersonalLink(workspaceId: string, debtId: string) {
     const { token, expiresAt } = await this.generateCustomerToken(workspaceId, debtId)
     return {
-      link: `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}`,
+      link: `${resolvePublicWebUrl()}/client/view?token=${encodeURIComponent(token)}`,
       token,
       expiresAt,
     }

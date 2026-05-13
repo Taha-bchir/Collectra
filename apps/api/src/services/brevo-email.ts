@@ -1,6 +1,7 @@
 import { env } from '../config/env.js'
 import { signCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
+import { resolvePublicWebUrl } from '../utils/public-url.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
@@ -31,7 +32,6 @@ export class BrevoEmailService {
   private readonly apiKey = env.BREVO_API_KEY
   private readonly senderEmail = env.BREVO_SENDER_EMAIL
   private readonly senderName = env.BREVO_SENDER_NAME || DEFAULT_SENDER_NAME
-  private readonly csvTemplateId = env.BREVO_CSV_TEMPLATE_ID
 
   isConfigured() {
     return Boolean(this.apiKey && this.senderEmail)
@@ -109,11 +109,9 @@ export class BrevoEmailService {
 
     let debtLink: string | null = null
     try {
-      if (env.WEB_URL) {
-        const { token } = await signCustomerToken(payload.debtId)
-        const baseUrl = (env.API_URL ?? env.WEB_URL ?? 'https://collectra.xyz').replace(/\/$/, '')
-        debtLink = `${baseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/track-click`
-      }
+      const { token } = await signCustomerToken(payload.debtId)
+      const baseUrl = resolvePublicWebUrl()
+      debtLink = `${baseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/track-click`
     } catch {
       // If token signing fails, still send a plain notification email.
       debtLink = null
@@ -123,89 +121,42 @@ export class BrevoEmailService {
     const amountText = formatCurrency(payload.amount)
     const safeName = escapeHtml(displayName)
     const safeCampaignName = escapeHtml(payload.campaignName)
+    const htmlContent = buildProfessionalDebtEmailHtml({
+      customerName: safeName,
+      campaignName: safeCampaignName,
+      amountText,
+      dueDateText,
+      debtLink,
+      openPixelUrl: buildEmailOpenPixelUrl(payload.debtId),
+      senderName: this.senderName,
+    })
 
-    const htmlContent = debtLink
-      ? [
-          `<p>Hello ${safeName},</p>`,
-          `<p>A debt item related to you was imported into campaign <strong>${safeCampaignName}</strong>.</p>`,
-          `<p><strong>Amount:</strong> ${amountText}<br/><strong>Due date:</strong> ${dueDateText}</p>`,
-          `<p>You can review it securely using this link:</p>`,
-          `<p><a href="${escapeHtml(debtLink)}">Open your secure debt page</a></p>`,
-          `<img src="${escapeHtml(buildEmailOpenPixelUrl(payload.debtId))}" alt="" width="1" height="1" style="display:none;opacity:0;overflow:hidden" />`,
-          '<p>If you were not expecting this message, please contact support.</p>',
-        ].join('')
-      : [
-          `<p>Hello ${safeName},</p>`,
-          `<p>A debt item related to you was imported into campaign <strong>${safeCampaignName}</strong>.</p>`,
-          `<p><strong>Amount:</strong> ${amountText}<br/><strong>Due date:</strong> ${dueDateText}</p>`,
-          `<img src="${escapeHtml(buildEmailOpenPixelUrl(payload.debtId))}" alt="" width="1" height="1" style="display:none;opacity:0;overflow:hidden" />`,
-          '<p>If you were not expecting this message, please contact support.</p>',
-        ].join('')
+    const textContent = buildProfessionalDebtEmailText({
+      customerName: displayName,
+      campaignName: payload.campaignName,
+      amountText,
+      dueDateText,
+      debtLink,
+      senderName: this.senderName,
+    })
 
-    const textContent = debtLink
-      ? [
-          `Hello ${displayName},`,
-          '',
-          `A debt item related to you was imported into campaign ${payload.campaignName}.`,
-          `Amount: ${amountText}`,
-          `Due date: ${dueDateText}`,
-          '',
-          `Secure link: ${debtLink}`,
-          '',
-          'If you were not expecting this message, please contact support.',
-        ].join('\n')
-      : [
-          `Hello ${displayName},`,
-          '',
-          `A debt item related to you was imported into campaign ${payload.campaignName}.`,
-          `Amount: ${amountText}`,
-          `Due date: ${dueDateText}`,
-          '',
-          'If you were not expecting this message, please contact support.',
-        ].join('\n')
-
-    const body = this.csvTemplateId
-      ? {
-          sender: {
-            email: this.senderEmail,
-            name: this.senderName,
-          },
-          to: [{ email: payload.toEmail, name: displayName }],
-          tags: ['collectra', `debt:${payload.debtId}`, ...(payload.campaignId ? [`campaign:${payload.campaignId}`] : [])],
-          headers: {
-            'X-Mailin-custom': [
-              `debt_id=${payload.debtId}`,
-              ...(payload.campaignId ? [`campaign_id=${payload.campaignId}`] : []),
-            ].join('|'),
-          },
-          templateId: this.csvTemplateId,
-          params: {
-            customerName: displayName,
-            campaignName: payload.campaignName,
-            amount: amountText,
-            dueDate: dueDateText,
-            debtLink: debtLink,
-            openPixelUrl: buildEmailOpenPixelUrl(payload.debtId),
-            senderName: this.senderName,
-          },
-        }
-      : {
-          sender: {
-            email: this.senderEmail,
-            name: this.senderName,
-          },
-          to: [{ email: payload.toEmail, name: displayName }],
-          tags: ['collectra', `debt:${payload.debtId}`, ...(payload.campaignId ? [`campaign:${payload.campaignId}`] : [])],
-          headers: {
-            'X-Mailin-custom': [
-              `debt_id=${payload.debtId}`,
-              ...(payload.campaignId ? [`campaign_id=${payload.campaignId}`] : []),
-            ].join('|'),
-          },
-          subject: 'Collectra - Debt Notification',
-          htmlContent,
-          textContent,
-        }
+    const body = {
+      sender: {
+        email: this.senderEmail,
+        name: this.senderName,
+      },
+      to: [{ email: payload.toEmail, name: displayName }],
+      tags: ['collectra', `debt:${payload.debtId}`, ...(payload.campaignId ? [`campaign:${payload.campaignId}`] : [])],
+      headers: {
+        'X-Mailin-custom': [
+          `debt_id=${payload.debtId}`,
+          ...(payload.campaignId ? [`campaign_id=${payload.campaignId}`] : []),
+        ].join('|'),
+      },
+      subject: `Collectra | New debt notice for ${payload.campaignName}`,
+      htmlContent,
+      textContent,
+    }
 
     try {
       const response = await fetch(BREVO_EMAIL_API_URL, {
@@ -254,6 +205,139 @@ function formatCurrency(amount: number): string {
   return Number(amount).toFixed(2)
 }
 
+function buildProfessionalDebtEmailHtml(input: {
+  customerName: string
+  campaignName: string
+  amountText: string
+  dueDateText: string
+  debtLink: string | null
+  openPixelUrl: string
+  senderName: string
+}): string {
+  const ctaBlock = input.debtLink
+    ? `
+      <tr>
+        <td style="padding: 28px 40px 12px 40px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 auto;">
+            <tr>
+              <td align="center" bgcolor="#6d241f" style="border-radius: 999px;">
+                <a href="${escapeHtml(input.debtLink)}" style="display: inline-block; padding: 14px 24px; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none;">
+                  Open secure debt page
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`
+    : `
+      <tr>
+        <td style="padding: 28px 40px 12px 40px; text-align: center;">
+          <div style="display: inline-block; padding: 12px 18px; border-radius: 999px; background: #f0e8e1; color: #6d241f; font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700;">
+            Secure link is being prepared
+          </div>
+        </td>
+      </tr>`
+
+  const secureLinkRow = input.debtLink
+    ? `<tr><td style="padding: 0 40px 8px 40px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.6; color: #6b5f58; text-align: center;">If the button does not work, copy and paste this link:<br/><a href="${escapeHtml(input.debtLink)}" style="color: #6d241f; word-break: break-word;">${escapeHtml(input.debtLink)}</a></td></tr>`
+    : `<tr><td style="padding: 0 40px 8px 40px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.6; color: #6b5f58; text-align: center;">A secure customer link could not be generated automatically. Please contact support if this persists.</td></tr>`
+
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light only" />
+    <title>Collectra debt notice</title>
+  </head>
+  <body style="margin:0; padding:0; background:#f6f1e8;">
+    <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">A new debt notice is ready for ${escapeHtml(input.customerName)} in ${escapeHtml(input.campaignName)}.</div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f6f1e8; padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px; background:#fffaf4; border:1px solid #eadfce; border-radius:24px; overflow:hidden; box-shadow:0 12px 28px rgba(64, 37, 29, 0.08);">
+            <tr>
+              <td style="background:linear-gradient(135deg, #6d241f 0%, #8f4338 60%, #a85f4e 100%); padding:32px 40px; color:#ffffff; font-family: Arial, Helvetica, sans-serif;">
+                <div style="font-size:12px; letter-spacing:0.18em; text-transform:uppercase; opacity:0.82;">${escapeHtml(input.senderName)}</div>
+                <div style="margin-top:10px; font-size:28px; line-height:1.1; font-weight:700;">New debt notice</div>
+                <div style="margin-top:10px; font-size:14px; line-height:1.7; max-width:520px; opacity:0.96;">A new customer debt has been imported and is ready for secure review.</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 36px 40px 0 40px; font-family: Arial, Helvetica, sans-serif; color:#302722;">
+                <div style="font-size:16px; line-height:1.7;">Hello <strong>${input.customerName}</strong>,</div>
+                <div style="margin-top:14px; font-size:15px; line-height:1.8; color:#4e423b;">A debt item related to you was imported into campaign <strong>${input.campaignName}</strong>.</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 24px 40px 0 40px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate; border-spacing:0; background:#fdf8f2; border:1px solid #eadfce; border-radius:20px;">
+                  <tr>
+                    <td style="padding:20px 22px; font-family: Arial, Helvetica, sans-serif;">
+                      <div style="font-size:12px; letter-spacing:0.12em; text-transform:uppercase; color:#7a6e64; font-weight:700;">Summary</div>
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-top:14px;">
+                        <tr>
+                          <td style="padding:10px 0; color:#5f534b; font-size:14px;">Amount</td>
+                          <td align="right" style="padding:10px 0; color:#2f241e; font-size:15px; font-weight:700;">${escapeHtml(input.amountText)}</td>
+                        </tr>
+                        <tr>
+                          <td style="padding:10px 0; color:#5f534b; font-size:14px; border-top:1px solid #eadfce;">Due date</td>
+                          <td align="right" style="padding:10px 0; color:#2f241e; font-size:15px; font-weight:700; border-top:1px solid #eadfce;">${escapeHtml(input.dueDateText)}</td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            ${ctaBlock}
+            ${secureLinkRow}
+            <tr>
+              <td style="padding: 22px 40px 12px 40px; font-family: Arial, Helvetica, sans-serif; color:#5f534b; font-size:13px; line-height:1.7; text-align:center;">
+                If you were not expecting this message, please contact support.
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 40px 34px 40px; font-family: Arial, Helvetica, sans-serif; color:#8b7f75; font-size:12px; line-height:1.6; text-align:center;">
+                Sent by ${escapeHtml(input.senderName)} for secure debt review.
+              </td>
+            </tr>
+          </table>
+          <img src="${escapeHtml(input.openPixelUrl)}" alt="" width="1" height="1" style="display:block; opacity:0; overflow:hidden; border:0; width:1px; height:1px;" />
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
+}
+
+function buildProfessionalDebtEmailText(input: {
+  customerName: string
+  campaignName: string
+  amountText: string
+  dueDateText: string
+  debtLink: string | null
+  senderName: string
+}): string {
+  const lines = [
+    `${input.senderName} - New debt notice`,
+    '',
+    `Hello ${input.customerName},`,
+    '',
+    `A debt item related to you was imported into campaign ${input.campaignName}.`,
+    `Amount: ${input.amountText}`,
+    `Due date: ${input.dueDateText}`,
+  ]
+
+  if (input.debtLink) {
+    lines.push('', `Secure link: ${input.debtLink}`)
+  }
+
+  lines.push('', 'If you were not expecting this message, please contact support.')
+  return lines.join('\n')
+}
+
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, '&amp;')
@@ -264,8 +348,7 @@ function escapeHtml(input: string): string {
 }
 
 function buildEmailOpenPixelUrl(debtId: string): string {
-  const origin = env.API_URL ?? env.WEB_URL ?? 'https://collectra.xyz'
-  const base = origin.replace(/\/$/, '')
+  const base = resolvePublicWebUrl()
   return `${base}/api/v1/public/debts/${encodeURIComponent(debtId)}/open.gif`
 }
 
