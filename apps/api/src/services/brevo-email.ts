@@ -178,7 +178,6 @@ export class BrevoEmailService {
             statusText: response.statusText,
             debtId: payload.debtId,
             responseBody: truncateText(responseText),
-            templateId: this.csvTemplateId,
             scope: 'BrevoEmailService.sendOne.response',
           },
           'Brevo API error while sending CSV import email',
