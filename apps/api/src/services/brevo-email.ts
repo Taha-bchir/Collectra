@@ -1,7 +1,7 @@
 import { env } from '../config/env.js'
 import { signCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
-import { resolvePublicWebUrl } from '../utils/public-url.js'
+import { resolvePublicApiUrl, resolvePublicWebUrl } from '../utils/public-url.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
