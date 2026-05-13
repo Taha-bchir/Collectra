@@ -810,13 +810,6 @@ export class DebtsService {
       })
     }
 
-    // Prevent duplicate checkout sessions while one is pending
-    if (debt.pendingStripeSessionId) {
-      throw new HTTPException(400, {
-        message: 'A payment session is already in progress for this debt. Please wait or try again later.',
-      })
-    }
-
     // Validate payment is allowed on/after promise date
     if (debt.promiseDate) {
       const promiseDateStart = new Date(
@@ -846,6 +839,36 @@ export class DebtsService {
     const stripe = getStripeClient()
     const currency = getStripeCurrency()
     const unitAmount = Math.round(amount * 100)
+
+    if (debt.pendingStripeSessionId) {
+      try {
+        const pendingSession = await stripe.checkout.sessions.retrieve(debt.pendingStripeSessionId)
+
+        if (pendingSession.status === 'open' && pendingSession.url) {
+          return {
+            sessionId: pendingSession.id,
+            checkoutUrl: pendingSession.url,
+          }
+        }
+
+        if (pendingSession.status === 'complete' || pendingSession.payment_status === 'paid') {
+          throw new HTTPException(400, {
+            message: 'This payment has already been completed. Please refresh the page.',
+          })
+        }
+      } catch (error) {
+        if (error instanceof HTTPException) {
+          throw error
+        }
+
+        await this.prisma.debtRecord.update({
+          where: { id: debt.id },
+          data: {
+            pendingStripeSessionId: null,
+          },
+        })
+      }
+    }
 
     const successUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=success&session_id={CHECKOUT_SESSION_ID}`
     const cancelUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=cancelled`
