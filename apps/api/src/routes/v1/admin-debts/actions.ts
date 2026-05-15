@@ -26,13 +26,13 @@ handler.post(
       return c.json({ data: { updated: 0 } })
     }
 
-    const ids = debtsToUpdate.map((d) => d.id)
+    const ids = debtsToUpdate.map((d: { id: string }) => d.id)
 
-    const updated = await c.get('prisma').$transaction(async (tx) => {
+    const updated = await c.get('prisma').$transaction(async (tx: any) => {
       await tx.debtRecord.updateMany({ where: { id: { in: ids } }, data: { status: 'OVERDUE_AFTER_PROMISE' } })
 
       // create customerActionHistory entries for each
-      const actions = debtsToUpdate.map((d) => ({
+      const actions = debtsToUpdate.map((d: { id: string; clientId: string }) => ({
         debtId: d.id,
         customerId: d.clientId,
         actionType: 'STATUS_CHANGED',

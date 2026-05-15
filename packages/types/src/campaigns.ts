@@ -12,6 +12,7 @@ export type CampaignSummary<TDate = string> = {
   createdAt: TDate
   updatedAt: TDate
   debtsCount: number
+  nextDueDate?: TDate | null
 }
 
 export type CampaignDebtDetail<TDate = string, TDebtStatus = string> = {
