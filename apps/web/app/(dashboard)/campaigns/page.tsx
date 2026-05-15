@@ -37,7 +37,11 @@ import {
 } from '@/features/campaigns/services/campaign-service'
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString()
+  try {
+    return new Date(value).toLocaleDateString('en-GB')
+  } catch {
+    return String(value)
+  }
 }
 
 function getStatusVariant(status: CampaignSummary['status']) {
@@ -462,6 +466,11 @@ export default function CampaignsPage() {
                 <CardContent className="space-y-3">
                   <div className="text-xs text-muted-foreground">
                     <p>Debt records: {campaign.debtsCount}</p>
+                    {campaign.nextDueDate ? (
+                      <p>Due date: {formatDate(campaign.nextDueDate)}</p>
+                    ) : (
+                      <p>Due date: —</p>
+                    )}
                     <p>Created: {formatDate(campaign.createdAt)}</p>
                   </div>
 

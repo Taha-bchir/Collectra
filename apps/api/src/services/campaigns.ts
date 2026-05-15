@@ -68,6 +68,12 @@ export class CampaignsService {
             debts: true,
           },
         },
+        debts: {
+          where: { status: { not: DebtStatus.PAID } },
+          orderBy: { dueDate: 'asc' },
+          take: 1,
+          select: { dueDate: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -80,6 +86,7 @@ export class CampaignsService {
       createdAt: campaign.createdAt,
       updatedAt: campaign.updatedAt,
       debtsCount: campaign._count.debts,
+      nextDueDate: campaign.debts && campaign.debts.length > 0 ? campaign.debts[0]!.dueDate : null,
     }))
   }
 

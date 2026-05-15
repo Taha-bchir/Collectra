@@ -567,8 +567,12 @@ export class DebtsService {
       id: string
       status: DebtStatus
       promiseDate: Date | null
+      dueDate?: Date
     },
   >(debt: T): Promise<T> {
+    const todayStart = new Date()
+    todayStart.setUTCHours(0, 0, 0, 0)
+
     // If debt is PROMISE_TO_PAY and promise date has passed, update to OVERDUE_AFTER_PROMISE
     if (debt.status === 'PROMISE_TO_PAY' && debt.promiseDate) {
       const promiseDateStart = new Date(
@@ -579,11 +583,29 @@ export class DebtsService {
         ),
       )
 
-      const todayStart = new Date()
-      todayStart.setUTCHours(0, 0, 0, 0)
-
       // If today is after the promise date, update status to OVERDUE_AFTER_PROMISE
       if (todayStart > promiseDateStart) {
+        const updatedDebt = await this.prisma.debtRecord.update({
+          where: { id: debt.id },
+          data: { status: 'OVERDUE_AFTER_PROMISE' },
+        })
+
+        return { ...debt, status: updatedDebt.status } as T
+      }
+    }
+
+    // If there is no valid promise (or not PROMISE_TO_PAY) and dueDate passed, mark overdue
+    if (debt.dueDate && debt.status !== 'PAID' && debt.status !== 'OVERDUE_AFTER_PROMISE') {
+      const dueDateStart = new Date(
+        Date.UTC(
+          debt.dueDate.getUTCFullYear(),
+          debt.dueDate.getUTCMonth(),
+          debt.dueDate.getUTCDate(),
+        ),
+      )
+
+      // If today is after the due date, mark overdue
+      if (todayStart > dueDateStart) {
         const updatedDebt = await this.prisma.debtRecord.update({
           where: { id: debt.id },
           data: { status: 'OVERDUE_AFTER_PROMISE' },
@@ -1131,7 +1153,7 @@ export class DebtsService {
       throw new HTTPException(404, { message: 'Debt not found or not in your workspace' })
     }
 
-    // Check if debt should be marked as overdue
+    // Check if debt should be marked as overdue (either promise date or due date)
     const updatedDebt = await this.checkAndUpdateOverdueStatus(debt)
 
     return updatedDebt

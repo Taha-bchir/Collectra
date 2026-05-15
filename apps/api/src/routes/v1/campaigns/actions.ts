@@ -35,6 +35,7 @@ handler.openapi(
         createdAt: campaign.createdAt.toISOString(),
         updatedAt: campaign.updatedAt.toISOString(),
         debtsCount: campaign.debtsCount,
+        nextDueDate: campaign.nextDueDate ? campaign.nextDueDate.toISOString() : null,
       })),
     })
   })
@@ -57,6 +58,7 @@ handler.get(
         createdAt: campaign.createdAt.toISOString(),
         updatedAt: campaign.updatedAt.toISOString(),
         debtsCount: campaign.debtsCount,
+        nextDueDate: campaign.nextDueDate ? campaign.nextDueDate.toISOString() : null,
       })),
     })
   })
