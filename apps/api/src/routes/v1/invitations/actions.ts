@@ -8,6 +8,7 @@ import { env } from '../../../config/env.js'
 import { requireUserId, requireWorkspaceId, withRouteTryCatch } from '../../../utils/route-helpers.js'
 import { setWorkspaceCookie } from '../../../middleware/cookie.js'
 import { resolvePublicWebUrl } from '../../../utils/public-url.js'
+import { BrevoEmailService } from '../../../services/brevo-email.js'
 
 const handler = new OpenAPIHono<Env>()
 
@@ -115,6 +116,48 @@ handler.openapi(createInvitationSchema, withRouteTryCatch('invitations.create', 
     ? `${baseUrl.replace(/\/$/, '')}/auth/accept-invite?token=${encodeURIComponent(invitation.token)}`
     : null
 
+  const [workspaceRow, inviterRow] = await Promise.all([
+    prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { name: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: invitedByUserId },
+      select: { email: true, fullName: true },
+    }),
+  ])
+
+  const workspaceName = workspaceRow?.name?.trim() || 'Collectra workspace'
+  const inviterDisplayName = inviterRow?.fullName?.trim() || inviterRow?.email?.trim() || 'A teammate'
+  const roleLabel = payload.role === WorkspaceRole.MANAGER ? 'Manager' : 'Agent'
+
+  const brevo = new BrevoEmailService()
+  let invitationEmailSent = false
+  if (inviteLink && brevo.isConfigured()) {
+    const sendResult = await brevo.sendWorkspaceInvitationEmail({
+      toEmail: invitation.email,
+      inviteLink,
+      workspaceName,
+      inviterDisplayName,
+      roleLabel,
+      invitationId: invitation.id,
+    })
+    invitationEmailSent = sendResult.ok
+  }
+
+  let message: string
+  if (!inviteLink) {
+    message = 'Invitation created. Share the token with the new member to complete onboarding.'
+  } else if (invitationEmailSent) {
+    message = `Invitation created. We emailed the invite link to ${invitation.email}.`
+  } else if (brevo.isConfigured()) {
+    message =
+      'Invitation created. Automatic email delivery failed; copy the invite link below and send it to the new member yourself.'
+  } else {
+    message =
+      'Invitation created. Share the invite link with the new member. Set BREVO_API_KEY and BREVO_SENDER_EMAIL to email invites automatically.'
+  }
+
   return c.json(
     {
       data: {
@@ -125,10 +168,9 @@ handler.openapi(createInvitationSchema, withRouteTryCatch('invitations.create', 
         inviteLink,
         expiresAt: invitation.expiresAt.toISOString(),
         status: invitation.status,
+        invitationEmailSent,
       },
-      message: inviteLink
-        ? 'Invitation created. Share the invite link with the new member.'
-        : 'Invitation created. Share the token with the new member to complete onboarding.',
+      message,
     },
     201,
   )
@@ -177,6 +219,8 @@ handler.openapi(acceptInvitationSchema, withRouteTryCatch('invitations.accept', 
         error: {
           message: 'This invitation was issued for a different email account',
           code: 'INVITATION_EMAIL_MISMATCH',
+          /** Helps the invitee sign in or sign up with the correct address (they already hold the token). */
+          invitedEmail: invitation.email,
         },
       },
       403,

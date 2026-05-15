@@ -7,6 +7,7 @@ import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
 import { getStripeClient, getStripeCurrency } from '../lib/stripe.js'
 import { resolvePublicWebUrl } from '../utils/public-url.js'
+import { utcCalendarDayStart } from '../utils/calendar.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
@@ -683,6 +684,7 @@ export class DebtsService {
         data: {
           promiseDate: normalizedPromisedDate,
           status: 'PROMISE_TO_PAY',
+          prePromiseDueReminderSentFor: null,
         },
       }),
       this.prisma.paymentPromise.create({
@@ -1182,12 +1184,20 @@ export class DebtsService {
   }
 
   async update(workspaceId: string, id: string, data: UpdateDebtInput) {
-    // Reuse tenant check from getById to ensure isolation
-    await this.getById(workspaceId, id)
+    const existing = await this.getById(workspaceId, id)
+
+    let clearReminder = false
+    if (data.promiseDate !== undefined) {
+      const nextStart = data.promiseDate ? utcCalendarDayStart(data.promiseDate) : null
+      const prevStart = existing.promiseDate ? utcCalendarDayStart(existing.promiseDate) : null
+      const prevMs = prevStart?.getTime() ?? null
+      const nextMs = nextStart?.getTime() ?? null
+      clearReminder = prevMs !== nextMs
+    }
 
     return this.prisma.debtRecord.update({
       where: { id },
-      data,
+      data: clearReminder ? { ...data, prePromiseDueReminderSentFor: null } : data,
       include: { client: true },
     })
   }

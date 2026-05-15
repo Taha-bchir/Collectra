@@ -37,6 +37,8 @@ export type InviteMemberResult = {
   inviteLink: string | null
   expiresAt: string
   status: InvitationStatus
+  /** True when the invite link was sent successfully through Brevo. */
+  invitationEmailSent: boolean
   message: string
 }
 

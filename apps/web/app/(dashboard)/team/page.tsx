@@ -28,6 +28,7 @@ type InviteResultState = {
   token: string | null;
   message: string;
   expiresAt: string;
+  invitationEmailSent: boolean;
 } | null;
 
 const ROLE_OPTIONS = [
@@ -113,9 +114,10 @@ export default function TeamPage() {
         token: result.token,
         message: result.message,
         expiresAt: result.expiresAt,
+        invitationEmailSent: result.invitationEmailSent,
       });
       setInviteEmail('');
-      toast.success('Invitation created successfully');
+      toast.success(result.message);
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to send invitation'));
     } finally {
@@ -256,7 +258,9 @@ export default function TeamPage() {
               )}
 
               <p className="text-xs text-muted-foreground mt-2">
-                Next step: send this invite to the member securely. It expires on{' '}
+                {inviteResult.invitationEmailSent
+                  ? 'We emailed this link to the invitee. It expires on '
+                  : 'Next step: send this invite to the member securely. It expires on '}{' '}
                 {new Date(inviteResult.expiresAt).toLocaleString()}.
               </p>
             </div>

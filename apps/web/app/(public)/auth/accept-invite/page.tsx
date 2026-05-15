@@ -7,21 +7,43 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/hooks/use-auth"
-import { acceptInvitation, ApiError } from "@/features/team/services/team-service"
+import { acceptInvitation } from "@/features/team/services/team-service"
+import { ApiError } from "@/lib/api-client"
 
-type InviteState = "loading" | "ready" | "accepting" | "accepted" | "invalid" | "error"
+type InviteState =
+  | "loading"
+  | "ready"
+  | "accepting"
+  | "accepted"
+  | "invalid"
+  | "error"
+  | "email_mismatch"
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
+function getInvitationMismatchInvitedEmail(err: unknown): string | null {
+  if (!(err instanceof ApiError) || err.status !== 403) return null
+  const payload = err.data
+  if (!payload || typeof payload !== "object") return null
+  const errorObj = (payload as Record<string, unknown>).error
+  if (!errorObj || typeof errorObj !== "object") return null
+  const record = errorObj as Record<string, unknown>
+  if (record.code !== "INVITATION_EMAIL_MISMATCH") return null
+  const invited = record.invitedEmail
+  return typeof invited === "string" && invited.includes("@") ? invited : null
+}
+
 function AcceptInvitePageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { isAuthenticated, hasHydrated } = useAuth()
+  const { isAuthenticated, hasHydrated, profile, signOut } = useAuth()
   const [state, setState] = useState<InviteState>("loading")
   const [token, setToken] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [invitedEmail, setInvitedEmail] = useState<string | null>(null)
+  const [signOutBusy, setSignOutBusy] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
@@ -49,6 +71,13 @@ function AcceptInvitePageContent() {
         setSuccessMessage(result.message)
         setState("accepted")
       } catch (inviteError: unknown) {
+        const mismatchEmail = getInvitationMismatchInvitedEmail(inviteError)
+        if (mismatchEmail) {
+          setInvitedEmail(mismatchEmail)
+          setError(null)
+          setState("email_mismatch")
+          return
+        }
         const message =
           inviteError instanceof ApiError
             ? inviteError.message
@@ -100,6 +129,8 @@ function AcceptInvitePageContent() {
           ? "Invitation accepted"
       : state === "ready"
         ? "You are invited"
+        : state === "email_mismatch"
+          ? "Sign in with the invited email"
         : state === "error"
           ? "Unable to accept invitation"
         : "Invalid invitation link"
@@ -115,6 +146,10 @@ function AcceptInvitePageContent() {
         ? (isAuthenticated
           ? "You are signed in. We will now accept your invitation."
           : "Continue to create your account or sign in to join the workspace.")
+        : state === "email_mismatch"
+          ? invitedEmail
+            ? `You are signed in as ${profile?.email ?? "another account"}, but this invitation was sent to ${invitedEmail}. Sign out, then sign in or create an account using the invited address.`
+            : "This invitation applies to a specific email address. Sign out, then sign in or create an account using the address that received the invite."
         : state === "error"
           ? (error ?? "Failed to accept invitation.")
         : "This invite link is missing a valid token. Ask your manager for a new invitation link."
@@ -159,6 +194,47 @@ function AcceptInvitePageContent() {
 
               <p className="text-xs text-muted-foreground text-center break-all">
                 Invitation token: {token}
+              </p>
+            </div>
+          )}
+
+          {state === "email_mismatch" && (
+            <div className="space-y-3">
+              <Button
+                className="w-full bg-foreground text-background hover:bg-foreground/90"
+                size="lg"
+                disabled={signOutBusy}
+                onClick={async () => {
+                  setSignOutBusy(true)
+                  try {
+                    await signOut()
+                    setInvitedEmail(null)
+                    setState("ready")
+                  } catch {
+                    setError("Could not sign out. Try again or clear site cookies.")
+                    setState("error")
+                  } finally {
+                    setSignOutBusy(false)
+                  }
+                }}
+              >
+                {signOutBusy ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing out…
+                  </>
+                ) : (
+                  "Sign out and use the invited email"
+                )}
+              </Button>
+
+              <Button asChild variant="outline" className="w-full bg-muted/50" size="lg">
+                <Link href={loginHref}>Go to sign in (same browser)</Link>
+              </Button>
+
+              <p className="text-xs text-muted-foreground text-center">
+                After signing out, use{" "}
+                <span className="font-medium text-foreground">{invitedEmail ?? "the invited email"}</span> on the sign-in or sign-up screen.
               </p>
             </div>
           )}

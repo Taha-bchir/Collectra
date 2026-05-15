@@ -12,6 +12,7 @@ const invitationResponseSchema = z.object({
     inviteLink: z.string().url().nullable(),
     expiresAt: z.string().datetime(),
     status: z.nativeEnum(InvitationStatus),
+    invitationEmailSent: z.boolean(),
   }),
   message: z.string(),
 })

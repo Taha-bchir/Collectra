@@ -169,6 +169,8 @@ model DebtRecord {
   dueDate                DateTime
   status                 DebtStatus @default(UNPAID)
   promiseDate            DateTime?
+  /// UTC date (midnight) of the promise we already sent a pre-due payment reminder for (idempotency).
+  prePromiseDueReminderSentFor DateTime?
   pendingStripeSessionId String?
   invoiceNumber          String?    @unique
   createdAt              DateTime   @default(now())
@@ -183,6 +185,7 @@ model DebtRecord {
   @@index([campaignId, status, createdAt])
   @@index([campaignId, clientId])
   @@index([clientId, createdAt])
+  @@index([status, promiseDate])
   @@map("Debt")
 }
 

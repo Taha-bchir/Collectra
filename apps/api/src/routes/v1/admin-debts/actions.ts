@@ -1,23 +1,30 @@
 import { OpenAPIHono } from '@hono/zod-openapi'
 import { withRouteTryCatch } from '../../../utils/route-helpers.js'
-import { DebtsService } from '../../../services/debts.js'
 import type { Env } from '../../../types/index.js'
+import { assertCronSecret } from '../../../utils/cron-auth.js'
+import { sendPromiseDueReminders } from '../../../services/promise-due-reminders.js'
 
 const handler = new OpenAPIHono<Env>()
 
 handler.post(
   '/mark-overdue',
   withRouteTryCatch('adminDebts.markOverdueByDueDate', async (c) => {
-    const service = new DebtsService(c.get('prisma'))
+    const denied = assertCronSecret(c)
+    if (denied) return denied
 
-    // Find debts past due date and not paid/already overdue, mark them overdue
     const todayStart = new Date()
     todayStart.setUTCHours(0, 0, 0, 0)
 
     const debtsToUpdate = await c.get('prisma').debtRecord.findMany({
       where: {
         status: { notIn: ['PAID', 'OVERDUE_AFTER_PROMISE'] },
-        dueDate: { lt: todayStart },
+        OR: [
+          { dueDate: { lt: todayStart } },
+          {
+            status: 'PROMISE_TO_PAY',
+            promiseDate: { lt: todayStart },
+          },
+        ],
       },
       select: { id: true, clientId: true },
     })
@@ -45,6 +52,17 @@ handler.post(
     })
 
     return c.json({ data: { updated: updated } })
+  }),
+)
+
+handler.post(
+  '/send-promise-reminders',
+  withRouteTryCatch('adminDebts.sendPromiseReminders', async (c) => {
+    const denied = assertCronSecret(c)
+    if (denied) return denied
+
+    const result = await sendPromiseDueReminders(c.get('prisma'))
+    return c.json({ data: result })
   }),
 )
 

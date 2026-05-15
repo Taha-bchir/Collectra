@@ -67,6 +67,11 @@ const envSchema = z.object({
   // Security
   JWT_SECRET: optionalString,
   COOKIE_SECRET: optionalString,
+
+  /** If set, admin cron routes require Authorization: Bearer <secret> or x-cron-secret header. */
+  CRON_SECRET: optionalString,
+  /** Calendar days before promise date to send the reminder email (default 1 = day before). */
+  PROMISE_REMINDER_DAYS_BEFORE: optionalPositiveInteger,
 })
 
 export type Env = z.infer<typeof envSchema>
