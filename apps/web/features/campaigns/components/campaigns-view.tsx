@@ -49,7 +49,12 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 function formatDateOnly(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString()
+  // Display dates as day-month-year for consistency
+  try {
+    return new Date(`${value}T00:00:00`).toLocaleDateString('en-GB')
+  } catch {
+    return String(value)
+  }
 }
 
 function getTodayAtMidnight() {

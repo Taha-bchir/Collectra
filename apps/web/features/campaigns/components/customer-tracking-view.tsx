@@ -141,10 +141,8 @@ export function CustomerTrackingView({ campaigns, campaignId: routeCampaignId = 
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItem['customer'] | null>(null)
   const [openingDebtId, setOpeningDebtId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({
-    fullName: '',
     email: '',
     phone: '',
-    address: '',
   })
   const [savingEdit, setSavingEdit] = useState(false)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
@@ -295,27 +293,17 @@ export function CustomerTrackingView({ campaigns, campaignId: routeCampaignId = 
   const openEditDialog = useCallback((customer: CustomerListItem['customer']) => {
     setEditingCustomer(customer)
     setEditForm({
-      fullName: customer.fullName,
       email: customer.email ?? '',
       phone: customer.phone ?? '',
-      address: customer.address ?? '',
     })
   }, [])
 
   const handleSaveEditCustomer = useCallback(async () => {
     if (!editingCustomer) return
 
-    const fullName = editForm.fullName.trim()
-    if (!fullName) {
-      toast.error('Customer name is required')
-      return
-    }
-
     const payload: UpdateCustomerInput = {
-      fullName,
       email: editForm.email.trim() ? editForm.email.trim() : null,
       phone: editForm.phone.trim() ? editForm.phone.trim() : null,
-      address: editForm.address.trim() ? editForm.address.trim() : null,
     }
 
     setSavingEdit(true)
@@ -330,10 +318,8 @@ export function CustomerTrackingView({ campaigns, campaignId: routeCampaignId = 
                 ...row,
                 customer: {
                   ...row.customer,
-                  fullName: updated.fullName,
                   email: updated.email,
                   phone: updated.phone,
-                  address: updated.address,
                 },
               }
             : row,
@@ -348,7 +334,7 @@ export function CustomerTrackingView({ campaigns, campaignId: routeCampaignId = 
     } finally {
       setSavingEdit(false)
     }
-  }, [editForm.address, editForm.email, editForm.fullName, editForm.phone, editingCustomer])
+  }, [editForm.email, editForm.phone, editingCustomer])
 
   const handleOpenDebtDetails = useCallback(async (debtId: string) => {
     setOpeningDebtId(debtId)
@@ -642,70 +628,50 @@ export function CustomerTrackingView({ campaigns, campaignId: routeCampaignId = 
 
         <Dialog open={Boolean(editingCustomer)} onOpenChange={(open) => (!open ? setEditingCustomer(null) : null)}>
           <DialogContent>
-            <DialogHeader>
-                  <DialogTitle>Edit customer</DialogTitle>
-                  <DialogDescription>Update customer contact fields for the selected record.</DialogDescription>
-            </DialogHeader>
+              <DialogHeader>
+                    <DialogTitle>Edit customer</DialogTitle>
+                    <DialogDescription>Update customer contact fields (email and phone).</DialogDescription>
+              </DialogHeader>
 
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label htmlFor="edit-customer-full-name" className="text-sm font-medium">Full name</label>
-                <Input
-                  id="edit-customer-full-name"
-                  value={editForm.fullName}
-                  onChange={(event) => setEditForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                  placeholder="Customer full name"
-                />
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label htmlFor="edit-customer-email" className="text-sm font-medium">Email</label>
+                  <Input
+                    id="edit-customer-email"
+                    type="email"
+                    value={editForm.email}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
+                    placeholder="customer@email.com"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="edit-customer-phone" className="text-sm font-medium">Phone</label>
+                  <Input
+                    id="edit-customer-phone"
+                    value={editForm.phone}
+                    onChange={(event) => setEditForm((prev) => ({ ...prev, phone: event.target.value }))}
+                    placeholder="+212..."
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label htmlFor="edit-customer-email" className="text-sm font-medium">Email</label>
-                <Input
-                  id="edit-customer-email"
-                  type="email"
-                  value={editForm.email}
-                  onChange={(event) => setEditForm((prev) => ({ ...prev, email: event.target.value }))}
-                  placeholder="customer@email.com"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="edit-customer-phone" className="text-sm font-medium">Phone</label>
-                <Input
-                  id="edit-customer-phone"
-                  value={editForm.phone}
-                  onChange={(event) => setEditForm((prev) => ({ ...prev, phone: event.target.value }))}
-                  placeholder="+212..."
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="edit-customer-address" className="text-sm font-medium">Address</label>
-                <Input
-                  id="edit-customer-address"
-                  value={editForm.address}
-                  onChange={(event) => setEditForm((prev) => ({ ...prev, address: event.target.value }))}
-                  placeholder="Street, city"
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingCustomer(null)} disabled={savingEdit}>
-                Cancel
-              </Button>
-              <Button onClick={() => void handleSaveEditCustomer()} disabled={savingEdit}>
-                {savingEdit ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save changes'
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingCustomer(null)} disabled={savingEdit}>
+                  Cancel
+                </Button>
+                <Button onClick={() => void handleSaveEditCustomer()} disabled={savingEdit}>
+                  {savingEdit ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save changes'
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
         </Dialog>
 
         <Dialog open={Boolean(openHistoryDialog)} onOpenChange={(open) => (!open ? setOpenHistoryDialog(null) : null)}>

@@ -61,6 +61,7 @@ handler.openapi(
         promiseDate: debt.promiseDate ? debt.promiseDate.toISOString() : null,
         status: debt.status,
         campaignName: debt.campaign.name,
+        workspaceName: debt.campaign.workspace?.name ?? null,
         tokenExpiresAt: tokenExpiresAt.toISOString(),
         customer: {
           fullName: debt.client.fullName,

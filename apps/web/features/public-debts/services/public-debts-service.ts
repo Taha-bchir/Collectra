@@ -9,6 +9,7 @@ export type PublicDebtView = {
   promiseDate?: string | null
   status: 'IMPORTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
   campaignName: string
+  workspaceName?: string | null
   tokenExpiresAt: string | null
   customer: {
     fullName: string

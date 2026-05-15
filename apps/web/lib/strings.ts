@@ -13,28 +13,28 @@ export const strings: Record<string, string> = {
 
   // Landing
   landing_badge: 'Collectra',
-  landing_title_main: 'Next.js + Hono',
-  landing_title_highlight: 'Starter',
+  landing_title_main: 'Debt recovery',
+  landing_title_highlight: 'made simple',
   landing_description:
-    'A reusable monorepo with authentication, authorization, and authenticated user management. Built for production-ready SaaS apps.',
-  landing_feature_auth_title: 'Authentication',
+    'Recover outstanding payments faster with automated reminders, customer-friendly payment links, and clear tracking for every debt.',
+  landing_feature_auth_title: 'Automated Reminders',
   landing_feature_auth_desc:
-    'Email/password sign-up and login, session refresh, forgot password, and optional Google OAuth.',
-  landing_feature_authz_title: 'Authorization',
+    'Schedule friendly reminder emails and SMS with one-click payment links to accelerate recoveries.',
+  landing_feature_authz_title: 'Workspace Security',
   landing_feature_authz_desc:
-    'Protected API routes with Bearer tokens and optional role-based access (RBAC).',
-  landing_feature_user_title: 'User Management',
+    'Role-based access and workspace isolation keep your financial data safe and separate by team.',
+  landing_feature_user_title: 'Customer Management',
   landing_feature_user_desc:
-    'Profile and account settings, password change, and account deletion.',
-  landing_cta_badge: 'Get started',
-  landing_cta_title: 'Ready to build your app?',
+    'Manage customers, send invoices and debt links, and view payment history in a single place.',
+  landing_cta_badge: 'Start free today',
+  landing_cta_title: 'Recover more payments, with less effort',
   landing_cta_description:
-    'Sign in or create an account to access the dashboard and start from a clean, authenticated baseline.',
-  landing_cta_primary_call: 'Sign up',
-  landing_cta_secondary_call: 'Privacy',
-  landing_cta_benefit_free: 'Free to use',
-  landing_cta_benefit_no_card: 'No credit card',
-  landing_cta_benefit_cancel: 'Open source',
+    'Create an account to manage debts, send payment links, and track collections from a simple dashboard.',
+  landing_cta_primary_call: 'Create account',
+  landing_cta_secondary_call: 'Learn more',
+  landing_cta_benefit_free: 'Free trial',
+  landing_cta_benefit_no_card: 'No card required',
+  landing_cta_benefit_cancel: 'Cancel anytime',
   logout: 'Logout',
   loading: 'Loading...',
   theme: 'Theme',
@@ -50,7 +50,7 @@ export const strings: Record<string, string> = {
   dashboard_overview: 'Overview',
   dashboard_my_cars: 'My Cars',
   dashboard_overview_description:
-    'Welcome to your dashboard. Replace this with your own metrics and features.',
+    'Overview of debts, collection status, and recent activity. Use this dashboard to prioritize recovery actions and track success.',
   dashboard_redirect_login: 'Redirecting to login...',
   dashboard_log_out: 'Log out',
 

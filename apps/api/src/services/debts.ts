@@ -610,7 +610,7 @@ export class DebtsService {
 
     const debt = await this.prisma.debtRecord.findUnique({
       where: { id: debtId },
-      include: { client: true, campaign: true },
+      include: { client: true, campaign: { include: { workspace: true } } },
     })
 
     if (!debt) {

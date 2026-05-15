@@ -2,7 +2,9 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Calendar, CircleDollarSign, Loader2, UserRound } from 'lucide-react'
+import { Calendar as CalendarIcon, CircleDollarSign, Loader2, UserRound } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +26,12 @@ const ENABLE_DEMO_PAYMENT = process.env.NEXT_PUBLIC_ENABLE_DEMO_PAYMENT === 'tru
 const ENABLE_STRIPE_PAYMENT = process.env.NEXT_PUBLIC_ENABLE_STRIPE_PAYMENT !== 'false'
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleString()
+  // Use day-month-year ordering (DD/MM/YYYY) with time, e.g. "21/05/2026, 13:45:00"
+  try {
+    return new Date(value).toLocaleString('en-GB')
+  } catch {
+    return String(value)
+  }
 }
 
 function formatAmount(value: number) {
@@ -45,6 +52,24 @@ function getStatusVariant(status: PublicDebtView['status']) {
   return 'outline'
 }
 
+function getStatusLabel(status: PublicDebtView['status']) {
+  switch (status) {
+    case 'PAID':
+      return 'Paid'
+    case 'OVERDUE_AFTER_PROMISE':
+      return 'Overdue (after promise date)'
+    case 'PROMISE_TO_PAY':
+      return 'Promise to pay'
+    case 'NOTIFIED':
+      return 'Notified'
+    case 'UNPAID':
+      return 'Unpaid'
+    default:
+      // Fallback: make it human readable
+      return String(status).replace(/_/g, ' ').toLowerCase()
+  }
+}
+
 function ClientDebtViewContent() {
   const searchParams = useSearchParams()
 
@@ -54,6 +79,7 @@ function ClientDebtViewContent() {
   const [error, setError] = useState<string | null>(null)
   const [debt, setDebt] = useState<PublicDebtView | null>(null)
   const [promiseDate, setPromiseDate] = useState('')
+  const [promiseDatePickerOpen, setPromiseDatePickerOpen] = useState(false)
   const [submittingPromise, setSubmittingPromise] = useState(false)
   const [submittingStripePayment, setSubmittingStripePayment] = useState(false)
   const [submittingFakePayment, setSubmittingFakePayment] = useState(false)
@@ -214,11 +240,21 @@ function ClientDebtViewContent() {
   }, [])
 
   const maxPromiseDate = useMemo(() => {
-    if (!debt) {
-      return undefined
-    }
-
+    if (!debt) return undefined
     return toLocalDateInputValue(new Date(debt.dueDate))
+  }, [debt])
+
+  const minPromiseDateObj = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  const maxPromiseDateObj = useMemo(() => {
+    if (!debt) return undefined
+    const d = new Date(debt.dueDate)
+    d.setHours(23, 59, 59, 999)
+    return d
   }, [debt])
 
   const handleSubmitPromiseDate = async () => {
@@ -259,7 +295,7 @@ function ClientDebtViewContent() {
   }
 
   const handleStripePayment = async () => {
-    if (!token || !debt || debt.status !== 'PROMISE_TO_PAY') {
+    if (!token || !debt || debt.status === 'PAID') {
       return
     }
 
@@ -286,7 +322,7 @@ function ClientDebtViewContent() {
   }
 
   const handleFakePayment = async () => {
-    if (!token || !debt || debt.status !== 'PROMISE_TO_PAY') {
+    if (!token || !debt || debt.status === 'PAID') {
       return
     }
 
@@ -318,7 +354,7 @@ function ClientDebtViewContent() {
           <CardHeader>
             <CardTitle>Debt Details</CardTitle>
             <CardDescription>
-              Personal debt link from Collectra. No signup or login required.
+              Secure link from Collectra — view and act on your outstanding payment. No login required.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -343,47 +379,47 @@ function ClientDebtViewContent() {
                 <Card className="border-border/60">
                   <CardContent className="pt-5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Customer</p>
-                    <p className="mt-2 font-medium flex items-center gap-2">
+                    <div className="mt-2 font-medium flex items-center gap-2">
                       <UserRound className="h-4 w-4 text-muted-foreground" />
                       {debt.customer.fullName}
-                    </p>
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-border/60">
                   <CardContent className="pt-5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount</p>
-                    <p className="mt-2 font-semibold text-lg flex items-center gap-2">
+                    <div className="mt-2 font-semibold text-lg flex items-center gap-2">
                       <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
                       {formatAmount(debt.amount)}
-                    </p>
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-border/60">
                   <CardContent className="pt-5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Due date</p>
-                    <p className="mt-2 font-medium flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div className="mt-2 font-medium flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                       {formatDate(debt.dueDate)}
-                    </p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-md border border-border/60 bg-background p-4">
-                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Campaign</p>
-                  <p className="mt-2 font-medium">{debt.campaignName}</p>
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Workspace</p>
+                  <p className="mt-2 font-medium">{debt.workspaceName ?? debt.campaignName}</p>
                 </div>
                 <div className="rounded-md border border-border/60 bg-background p-4">
-                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Contact</p>
-                  <p className="mt-2 font-medium">{debt.customer.email || debt.customer.phone || 'N/A'}</p>
+                  <p className="text-muted-foreground text-xs uppercase tracking-wide">Reference</p>
+                  <p className="mt-2 font-medium">{debt.tokenExpiresAt ? `Link expires ${formatDate(debt.tokenExpiresAt)}` : 'Secure customer link'}</p>
                 </div>
                 <div className="rounded-md border border-border/60 bg-background p-4">
                   <p className="text-muted-foreground text-xs uppercase tracking-wide">Status</p>
                   <div className="mt-2">
-                    <Badge variant={getStatusVariant(debt.status)}>{debt.status}</Badge>
+                    <Badge variant={getStatusVariant(debt.status)}>{getStatusLabel(debt.status)}</Badge>
                   </div>
                 </div>
                 <div className="rounded-md border border-border/60 bg-background p-4">
@@ -393,88 +429,105 @@ function ClientDebtViewContent() {
               </div>
 
               {debt.status !== 'PAID' && (
-                <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-4">
-                  <p className="font-medium">Choose your payment promise date</p>
-                  <p className="text-xs text-muted-foreground">
-                    Select a date between today and the date limit set by the manager. Dates after that limit are blocked.
-                  </p>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <Input
-                      type="date"
-                      value={promiseDate}
-                      onChange={(event) => setPromiseDate(event.target.value)}
-                      min={minPromiseDate}
-                      max={maxPromiseDate}
-                      disabled={submittingPromise}
-                      className="sm:max-w-xs"
-                    />
-                    <Button onClick={handleSubmitPromiseDate} disabled={!promiseDate || submittingPromise}>
-                      {submittingPromise ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        'Submit promise date'
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardHeader className="space-y-2">
+                      <CardTitle className="text-lg">Pay now</CardTitle>
+                      <CardDescription>
+                        Settle the full amount right away with a secure online payment.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        {ENABLE_STRIPE_PAYMENT
+                          ? 'You will be redirected to Stripe Checkout.'
+                          : 'Online payments are currently disabled for this environment.'}
+                      </p>
+                      <Button
+                        onClick={handleStripePayment}
+                        disabled={submittingStripePayment || isConfirmingPayment || !ENABLE_STRIPE_PAYMENT}
+                        className="w-full"
+                      >
+                        {submittingStripePayment ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Redirecting...
+                          </>
+                        ) : isConfirmingPayment ? (
+                          'Confirming payment...'
+                        ) : ENABLE_STRIPE_PAYMENT ? (
+                          'Pay now securely'
+                        ) : (
+                          'Payments unavailable'
+                        )}
+                      </Button>
+                      {ENABLE_DEMO_PAYMENT && (
+                        <Button
+                          variant="ghost"
+                          onClick={handleFakePayment}
+                          disabled={submittingFakePayment}
+                          className="w-full"
+                        >
+                          {submittingFakePayment ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            'Try demo payment'
+                          )}
+                        </Button>
                       )}
-                    </Button>
-                  </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-border/60 bg-background">
+                    <CardHeader className="space-y-2">
+                      <CardTitle className="text-lg">Choose a promise date</CardTitle>
+                      <CardDescription>
+                        Pick the date you plan to pay. You can only choose a date up to the due date.
+                      </CardDescription>
+                    </CardHeader>
+                      <CardContent className="space-y-3">
+                        <Popover open={promiseDatePickerOpen} onOpenChange={setPromiseDatePickerOpen}>
+                          <PopoverTrigger asChild>
+                            <Button type="button" variant="outline" className="w-full justify-start text-left font-normal" disabled={submittingPromise}>
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {promiseDate ? new Date(`${promiseDate}T00:00:00`).toLocaleDateString('en-GB') : 'Select promise date'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={promiseDate ? new Date(`${promiseDate}T00:00:00`) : undefined}
+                              onSelect={(date) => {
+                                if (!date) return
+                                const yyyy = date.getFullYear()
+                                const mm = String(date.getMonth() + 1).padStart(2, '0')
+                                const dd = String(date.getDate()).padStart(2, '0')
+                                setPromiseDate(`${yyyy}-${mm}-${dd}`)
+                                setPromiseDatePickerOpen(false)
+                              }}
+                              disabled={{ before: minPromiseDateObj, after: maxPromiseDateObj }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+
+                        <Button onClick={handleSubmitPromiseDate} disabled={!promiseDate || submittingPromise} className="w-full">
+                          {submittingPromise ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            'Submit promise date'
+                          )}
+                        </Button>
+                      </CardContent>
+                  </Card>
                 </div>
               )}
-
-              {ENABLE_STRIPE_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (() => {
-                const canPayNow = !debt.promiseDate || new Date(debt.promiseDate) <= new Date()
-                return (
-                  <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
-                    <p className="font-medium">Secure payment with Stripe</p>
-                    <p className="text-xs text-muted-foreground">
-                      {canPayNow
-                        ? 'Pay securely via Stripe'
-                        : `Payment available from ${new Date(debt.promiseDate!).toLocaleDateString()}`}
-                    </p>
-                    <Button onClick={handleStripePayment} disabled={submittingStripePayment || isConfirmingPayment || !canPayNow}>
-                      {submittingStripePayment ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Redirecting...
-                        </>
-                      ) : isConfirmingPayment ? (
-                        'Confirming payment...'
-                      ) : !canPayNow ? (
-                        'Payment not yet available'
-                      ) : (
-                        'Pay now securely'
-                      )}
-                    </Button>
-                  </div>
-                )
-              })()}
-
-              {ENABLE_DEMO_PAYMENT && debt.status === 'PROMISE_TO_PAY' && (() => {
-                const canPayNow = !debt.promiseDate || new Date(debt.promiseDate) <= new Date()
-                return (
-                  <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-4">
-                    <p className="font-medium">Fake payment (demo)</p>
-                    <p className="text-xs text-muted-foreground">
-                      {canPayNow
-                        ? 'Process a demo payment'
-                        : `Payment available from ${new Date(debt.promiseDate!).toLocaleDateString()}`}
-                    </p>
-                    <Button onClick={handleFakePayment} disabled={submittingFakePayment || !canPayNow}>
-                      {submittingFakePayment ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : !canPayNow ? (
-                        'Payment not yet available'
-                      ) : (
-                        'Pay now (fake)'
-                      )}
-                    </Button>
-                  </div>
-                )
-              })()}
 
               {inlineFeedback ? (
                 <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm text-primary">
@@ -513,7 +566,7 @@ function ClientDebtViewContent() {
 
               {debt.tokenExpiresAt && (
                 <p className="text-xs text-muted-foreground">
-                  Link expires at: {formatDate(debt.tokenExpiresAt)}
+                  Link expires: {formatDate(debt.tokenExpiresAt)}
                 </p>
               )}
             </div>
