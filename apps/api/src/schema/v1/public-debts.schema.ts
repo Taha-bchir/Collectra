@@ -7,6 +7,12 @@ const ErrorResponse = z.object({
   }),
 })
 
+/** Calendar date from the debtor UI (`YYYY-MM-DD`) or ISO datetime. */
+const promisedDateInputSchema = z.union([
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  z.string().datetime(),
+])
+
 const PublicDebtViewSchema = z.object({
   debtId: z.string().uuid(),
   amount: z.number(),
@@ -62,7 +68,7 @@ export const createPublicPromiseByTokenSchema = createRoute({
   tags: ['public-debts'],
   summary: 'Submit a payment promise date by secure customer token',
   description:
-    'Public endpoint used by debtor links to choose a promise date. The date must be between now and the debt due date.',
+    'Public endpoint used by debtor links to choose a promise date. The date must be today or later; if the due date has not passed, the promise date cannot be after the due date.',
   request: {
     params: z.object({
       token: z.string().min(1),
@@ -72,7 +78,7 @@ export const createPublicPromiseByTokenSchema = createRoute({
         'application/json': {
           schema: z
             .object({
-              promisedDate: z.string().datetime(),
+              promisedDate: promisedDateInputSchema,
             })
             .strict(),
         },

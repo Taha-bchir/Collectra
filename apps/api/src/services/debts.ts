@@ -7,7 +7,7 @@ import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
 import { getStripeClient, getStripeCurrency } from '../lib/stripe.js'
 import { resolvePublicWebUrl } from '../utils/public-url.js'
-import { utcCalendarDayStart } from '../utils/calendar.js'
+import { parsePromisedDateInput, utcCalendarDayStart } from '../utils/calendar.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
@@ -646,35 +646,25 @@ export class DebtsService {
     return { debt: updatedDebt, tokenExpiresAt }
   }
 
-  async createPromiseByCustomerToken(token: string, promisedDate: Date) {
+  async createPromiseByCustomerToken(token: string, promisedDateInput: string | Date) {
     const { debt } = await this.getByCustomerToken(token)
 
-    const parsedPromisedDate = new Date(promisedDate)
-    if (Number.isNaN(parsedPromisedDate.getTime())) {
+    const raw =
+      promisedDateInput instanceof Date ? promisedDateInput.toISOString() : promisedDateInput
+    const normalizedPromisedDate = parsePromisedDateInput(raw)
+    if (!normalizedPromisedDate) {
       throw new HTTPException(400, { message: 'Invalid promise date' })
     }
 
-    // The UI submits a date-only value; compare using UTC day boundaries so
-    // selecting "today" is always valid regardless of timezone offset.
-    const normalizedPromisedDate = new Date(
-      Date.UTC(
-        parsedPromisedDate.getUTCFullYear(),
-        parsedPromisedDate.getUTCMonth(),
-        parsedPromisedDate.getUTCDate(),
-      ),
-    )
+    const todayDay = utcCalendarDayStart(new Date())
+    const dueDay = utcCalendarDayStart(debt.dueDate)
+    const dueNotPassed = dueDay.getTime() >= todayDay.getTime()
 
-    const todayStart = new Date()
-    todayStart.setUTCHours(0, 0, 0, 0)
-
-    const dueDateEnd = new Date(debt.dueDate)
-    dueDateEnd.setUTCHours(23, 59, 59, 999)
-
-    if (normalizedPromisedDate < todayStart) {
+    if (normalizedPromisedDate.getTime() < todayDay.getTime()) {
       throw new HTTPException(400, { message: 'Promise date cannot be in the past' })
     }
 
-    if (normalizedPromisedDate > dueDateEnd) {
+    if (dueNotPassed && normalizedPromisedDate.getTime() > dueDay.getTime()) {
       throw new HTTPException(400, { message: 'Promise date must be on or before due date' })
     }
 

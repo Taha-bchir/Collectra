@@ -129,7 +129,7 @@ handler.openapi(
     const payload = c.req.valid('json')
 
     const service = new DebtsService(c.get('prisma'))
-    const updatedDebt = await service.createPromiseByCustomerToken(token, new Date(payload.promisedDate))
+    const updatedDebt = await service.createPromiseByCustomerToken(token, payload.promisedDate)
 
     return c.json(
       {

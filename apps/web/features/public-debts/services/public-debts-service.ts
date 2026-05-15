@@ -63,10 +63,29 @@ export async function createPublicPromiseByToken(token: string, promisedDate: st
     if (axios.isAxiosError(error)) {
       const status = error.response?.status ?? 0
       const payload = error.response?.data as
-        | { error?: { message?: string }; message?: string }
+        | {
+            error?: { message?: string } | string
+            message?: string
+            details?: Array<{ message?: string; path?: Array<string | number> }>
+          }
         | undefined
 
-      const message = payload?.error?.message || payload?.message || error.message || 'Failed to save promise date'
+      const validationHint =
+        Array.isArray(payload?.details) && payload.details.length > 0
+          ? payload.details.map((issue) => issue.message).filter(Boolean).join('. ')
+          : ''
+
+      const errorBody =
+        typeof payload?.error === 'string'
+          ? payload.error
+          : payload?.error?.message
+
+      const message =
+        errorBody ||
+        payload?.message ||
+        validationHint ||
+        error.message ||
+        'Failed to save promise date'
       throw new ApiError(message, status, payload)
     }
 

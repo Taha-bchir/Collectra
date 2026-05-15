@@ -38,11 +38,17 @@ function formatAmount(value: number) {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function toLocalDateInputValue(value: Date) {
+function toDateInputValue(value: Date) {
   const year = value.getFullYear()
   const month = String(value.getMonth() + 1).padStart(2, '0')
   const day = String(value.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+function calendarDayStart(value: Date) {
+  const d = new Date(value)
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
 function getStatusVariant(status: PublicDebtView['status']) {
@@ -233,29 +239,16 @@ function ClientDebtViewContent() {
     }
   }, [paymentStatus, token])
 
-  const minPromiseDate = useMemo(() => {
-    const now = new Date()
-    now.setHours(0, 0, 0, 0)
-    return toLocalDateInputValue(now)
-  }, [])
-
-  const maxPromiseDate = useMemo(() => {
-    if (!debt) return undefined
-    return toLocalDateInputValue(new Date(debt.dueDate))
-  }, [debt])
-
-  const minPromiseDateObj = useMemo(() => {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    return d
-  }, [])
+  const minPromiseDateObj = useMemo(() => calendarDayStart(new Date()), [])
 
   const maxPromiseDateObj = useMemo(() => {
     if (!debt) return undefined
-    const d = new Date(debt.dueDate)
-    d.setHours(23, 59, 59, 999)
-    return d
-  }, [debt])
+    const dueDay = calendarDayStart(new Date(debt.dueDate))
+    if (dueDay.getTime() < minPromiseDateObj.getTime()) {
+      return undefined
+    }
+    return dueDay
+  }, [debt, minPromiseDateObj])
 
   const handleSubmitPromiseDate = async () => {
     if (!token || !debt || !promiseDate) {
@@ -266,8 +259,7 @@ function ClientDebtViewContent() {
     setInlineFeedback(null)
 
     try {
-      const promisedDate = new Date(`${promiseDate}T00:00:00.000Z`).toISOString()
-      const result = await createPublicPromiseByToken(token, promisedDate)
+      const result = await createPublicPromiseByToken(token, promiseDate)
 
       setDebt((prev) =>
         prev
@@ -485,7 +477,7 @@ function ClientDebtViewContent() {
                     <CardHeader className="space-y-2">
                       <CardTitle className="text-lg">Choose a promise date</CardTitle>
                       <CardDescription>
-                        Pick the date you plan to pay. You can only choose a date up to the due date.
+                        Pick the date you plan to pay. If the due date has not passed yet, you cannot choose a date after it.
                       </CardDescription>
                     </CardHeader>
                       <CardContent className="space-y-3">
@@ -502,13 +494,13 @@ function ClientDebtViewContent() {
                               selected={promiseDate ? new Date(`${promiseDate}T00:00:00`) : undefined}
                               onSelect={(date) => {
                                 if (!date) return
-                                const yyyy = date.getFullYear()
-                                const mm = String(date.getMonth() + 1).padStart(2, '0')
-                                const dd = String(date.getDate()).padStart(2, '0')
-                                setPromiseDate(`${yyyy}-${mm}-${dd}`)
+                                setPromiseDate(toDateInputValue(date))
                                 setPromiseDatePickerOpen(false)
                               }}
-                              disabled={{ before: minPromiseDateObj, after: maxPromiseDateObj }}
+                              disabled={{
+                                before: minPromiseDateObj,
+                                ...(maxPromiseDateObj ? { after: maxPromiseDateObj } : {}),
+                              }}
                               initialFocus
                             />
                           </PopoverContent>
