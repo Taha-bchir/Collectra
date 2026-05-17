@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { acceptInvitation } from "@/features/team/services/team-service"
 import { ApiError } from "@/lib/api-client"
+import { useWorkspaceStore } from "@/store/workspace-store"
 
 type InviteState =
   | "loading"
@@ -68,6 +69,11 @@ function AcceptInvitePageContent() {
       setError(null)
       try {
         const result = await acceptInvitation(token)
+        const workspaceStore = useWorkspaceStore.getState()
+
+        workspaceStore.invalidateWorkspace()
+        await Promise.all([workspaceStore.fetchWorkspaces(), workspaceStore.fetchCurrentWorkspace()])
+
         setSuccessMessage(result.message)
         setState("accepted")
       } catch (inviteError: unknown) {

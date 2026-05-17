@@ -9,6 +9,7 @@ import {
   type TeamMember,
   type TeamPermissions,
   inviteTeamMember,
+  deleteTeamMember,
   listTeamMembers,
   updateTeamMemberRole,
   updateTeamMemberStatus,
@@ -63,6 +64,7 @@ export default function TeamPage() {
   const [newRole, setNewRole] = useState<TeamManageableRole>('AGENT');
   const [roleLoading, setRoleLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
 
   const canManage = permissions?.canManageMembers ?? false;
 
@@ -164,6 +166,25 @@ export default function TeamPage() {
       toast.error(getErrorMessage(error, 'Failed to update status'));
     } finally {
       setStatusLoading(null);
+    }
+  };
+
+  const handleDeleteMember = async (member: TeamMember) => {
+    if (!canManage) {
+      toast.error('Only managers can delete members')
+      return
+    }
+
+    setDeleteLoading(member.id);
+
+    try {
+      await deleteTeamMember(member.id);
+      setMembers((prev) => prev.filter((item) => item.id !== member.id));
+      toast.success('Member deleted successfully');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to delete member'));
+    } finally {
+      setDeleteLoading(null);
     }
   };
 
@@ -356,6 +377,37 @@ export default function TeamPage() {
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction onClick={() => handleToggleStatus(member)}>
                               Confirm
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                            disabled={deleteLoading === member.id || member.role === 'OWNER' || member.id === profile?.id}
+                          >
+                            {deleteLoading === member.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              'Delete'
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete {member.email}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove the member from the workspace immediately. They can only return if they are invited again.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteMember(member)}>
+                              Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

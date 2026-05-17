@@ -25,6 +25,7 @@ export const TEAM_ROUTES = {
   listMembers: '/api/v1/internal-users',
   updateRole: (memberId: string) => `/api/v1/internal-users/${memberId}/role`,
   updateStatus: (memberId: string) => `/api/v1/internal-users/${memberId}/status`,
+  deleteMember: (memberId: string) => `/api/v1/internal-users/${memberId}`,
   invite: '/api/v1/invitations',
   acceptInvite: '/api/v1/invitations/accept',
 } as const
@@ -89,6 +90,12 @@ export async function updateTeamMemberRole(memberId: string, role: TeamManageabl
 export async function updateTeamMemberStatus(memberId: string, status: TeamMemberStatus): Promise<TeamMember> {
   const client = getTeamClient()
   const { data } = await client.patch<{ data: TeamMember }>(TEAM_ROUTES.updateStatus(memberId), { status })
+  return data.data
+}
+
+export async function deleteTeamMember(memberId: string): Promise<{ id: string }> {
+  const client = getTeamClient()
+  const { data } = await client.delete<{ data: { id: string } }>(TEAM_ROUTES.deleteMember(memberId))
   return data.data
 }
 

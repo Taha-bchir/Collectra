@@ -162,3 +162,54 @@ export const updateInternalUserStatusSchema = createRoute({
     },
   },
 })
+
+export const deleteInternalUserSchema = createRoute({
+  method: 'delete',
+  path: '/{memberId}',
+  tags: ['internal-users'],
+  summary: 'Delete internal user from workspace',
+  description: 'Removes a workspace member from the current workspace. Only managers and owners can perform this action.',
+  request: {
+    params: z.object({
+      memberId: z.string().uuid(),
+    }),
+  },
+  responses: {
+    200: {
+      description: 'Member deleted',
+      content: {
+        'application/json': {
+          schema: z.object({
+            data: z.object({
+              id: z.string().uuid(),
+            }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: 'Invalid operation',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'Forbidden',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Member not found',
+      content: {
+        'application/json': {
+          schema: errorResponseSchema,
+        },
+      },
+    },
+  },
+})

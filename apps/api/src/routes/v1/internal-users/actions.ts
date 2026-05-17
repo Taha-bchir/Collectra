@@ -6,6 +6,7 @@ import type { AutoLoadRoute } from 'hono-autoload/types'
 import type { Env } from '../../../types/index.js'
 import {
   listInternalUsersSchema,
+  deleteInternalUserSchema,
   updateInternalUserRoleSchema,
   updateInternalUserStatusSchema,
 } from '../../../schema/v1/index.js'
@@ -270,6 +271,65 @@ handler.openapi(updateInternalUserStatusSchema, withRouteTryCatch('internalUsers
         status: statusToString(updated.status),
         joinedAt: updated.joinedAt.toISOString(),
         lastLogin: null,
+      },
+    },
+    200,
+  )
+}))
+
+handler.openapi(deleteInternalUserSchema, withRouteTryCatch('internalUsers.delete', async (c) => {
+  const workspaceId = requireWorkspaceId(c)
+  const userId = requireUserId(c)
+  const prisma = c.get('prisma')
+
+  ensureCanManageMembers(c)
+
+  const { memberId } = c.req.valid('param')
+
+  const member = await prisma.workspaceMember.findFirst({
+    where: {
+      workspaceId,
+      userId: memberId,
+    },
+    select: {
+      userId: true,
+      role: true,
+    },
+  })
+
+  if (!member) {
+    throw new HTTPException(404, {
+      message: 'Member not found in current workspace',
+    })
+  }
+
+  if (member.userId === userId) {
+    return c.json(
+      { error: { message: 'You cannot delete your own membership', code: 'SELF_DELETE_FORBIDDEN' } },
+      400,
+    )
+  }
+
+  if (roleToString(member.role) === WorkspaceRole.OWNER) {
+    return c.json(
+      { error: { message: 'Owner account cannot be deleted', code: 'OWNER_DELETE_FORBIDDEN' } },
+      400,
+    )
+  }
+
+  await prisma.workspaceMember.delete({
+    where: {
+      userId_workspaceId: {
+        userId: memberId,
+        workspaceId,
+      },
+    },
+  })
+
+  return c.json(
+    {
+      data: {
+        id: memberId,
       },
     },
     200,

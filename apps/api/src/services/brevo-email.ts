@@ -48,6 +48,16 @@ export type PromiseDueReminderEmailInput = {
   debtPageUrl: string | null
 }
 
+export type OverdueNoticeEmailInput = {
+  toEmail: string
+  customerName: string
+  campaignName: string
+  campaignId: string
+  debtId: string
+  amount: number
+  dueDateLabel: string
+}
+
 export class BrevoEmailService {
   private readonly apiKey = env.BREVO_API_KEY
   private readonly senderEmail = env.BREVO_SENDER_EMAIL
@@ -315,6 +325,146 @@ export class BrevoEmailService {
       logger.warn(
         { error, debtId: input.debtId, scope: 'BrevoEmailService.sendPromiseDueReminderEmail.catch' },
         'Failed to send promise due reminder',
+      )
+      return { ok: false, messageId: null }
+    }
+  }
+
+  async sendOverdueNoticeEmail(
+    input: OverdueNoticeEmailInput
+  ): Promise<{ ok: boolean; messageId: string | null }> {
+    if (!this.apiKey || !this.senderEmail) {
+      return { ok: false, messageId: null }
+    }
+
+    const displayName = input.customerName.trim() || input.toEmail.split('@')[0] || 'Customer'
+    const campaignName = input.campaignName.trim() || 'your campaign'
+    const amountText = Number(input.amount).toFixed(2)
+    const dueDateLabel = input.dueDateLabel.trim()
+    const safeCampaign = escapeHtml(campaignName)
+    const safeAmount = escapeHtml(amountText)
+    const safeDueDate = escapeHtml(dueDateLabel)
+    const safeSender = escapeHtml(this.senderName)
+    const subject = `Overdue notice: payment for ${campaignName} is now overdue`
+
+    const htmlContent = `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Overdue notice</title>
+  </head>
+  <body style="margin:0; padding:0; background:#f6f1e8;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f6f1e8; padding:24px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px; background:#fffaf4; border:1px solid #eadfce; border-radius:24px; overflow:hidden;">
+            <tr>
+              <td style="background:linear-gradient(135deg, #8a1f17 0%, #af3d31 60%, #c46b58 100%); padding:32px 40px; color:#ffffff; font-family: Arial, Helvetica, sans-serif;">
+                <div style="font-size:12px; letter-spacing:0.18em; text-transform:uppercase; opacity:0.82;">${safeSender}</div>
+                <div style="margin-top:10px; font-size:26px; line-height:1.15; font-weight:700;">Payment overdue</div>
+                <div style="margin-top:10px; font-size:14px; line-height:1.7; max-width:520px; opacity:0.96;">
+                  The due date <strong>${safeDueDate}</strong> has passed. Online payment is no longer available for this debt.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 28px 40px 0 40px; font-family: Arial, Helvetica, sans-serif; color:#302722;">
+                <div style="font-size:16px; line-height:1.7;">Hello <strong>${escapeHtml(displayName)}</strong>,</div>
+                <div style="margin-top:14px; font-size:15px; line-height:1.8; color:#4e423b;">
+                  Your debt for campaign <strong>${safeCampaign}</strong> is now overdue.
+                </div>
+                <div style="margin-top:12px; padding:16px 18px; background:#fdf8f2; border:1px solid #eadfce; border-radius:16px;">
+                  <div style="font-size:13px; color:#5f534b;">Amount</div>
+                  <div style="font-size:20px; font-weight:700; color:#2f241e;">${safeAmount}</div>
+                </div>
+                <div style="margin-top:16px; font-size:14px; line-height:1.8; color:#5a4d46;">
+                  The company will take the appropriate next actions according to its recovery process.
+                </div>
+                <div style="margin-top:10px; font-size:14px; line-height:1.8; color:#5a4d46;">
+                  If you have already paid or need assistance, please contact the company directly.
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 40px 34px 40px; font-family: Arial, Helvetica, sans-serif; color:#8b7f75; font-size:12px; line-height:1.6; text-align:center;">
+                Sent by ${safeSender}.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
+
+    const textContent = [
+      `${this.senderName} — Overdue notice`,
+      '',
+      `Hello ${displayName},`,
+      '',
+      `Your debt for campaign ${campaignName} is now overdue. The due date ${dueDateLabel} has passed.`,
+      `Amount: ${amountText}`,
+      'Online payment is no longer available for this debt.',
+      'The company will take the appropriate next actions according to its recovery process.',
+      'If you have already paid or need assistance, please contact the company directly.',
+    ].join('\n')
+
+    const body = {
+      sender: {
+        email: this.senderEmail,
+        name: this.senderName,
+      },
+      to: [{ email: input.toEmail, name: displayName }],
+      tags: ['collectra', 'overdue-notice', `debt:${input.debtId}`, `campaign:${input.campaignId}`],
+      headers: {
+        'X-Mailin-custom': [`debt_id=${input.debtId}`, `campaign_id=${input.campaignId}`, 'email_type=overdue_notice'].join('|'),
+      },
+      subject,
+      htmlContent,
+      textContent,
+    }
+
+    try {
+      const response = await fetch(BREVO_EMAIL_API_URL, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'api-key': this.apiKey,
+        },
+        body: JSON.stringify(body),
+      })
+
+      const responseText = await response.text()
+
+      if (!response.ok) {
+        logger.error(
+          {
+            status: response.status,
+            debtId: input.debtId,
+            responseBody: truncateText(responseText),
+            scope: 'BrevoEmailService.sendOverdueNoticeEmail.response',
+          },
+          'Brevo API error while sending overdue notice',
+        )
+        return { ok: false, messageId: null }
+      }
+
+      let messageId: string | null = null
+      try {
+        const responseBody = JSON.parse(responseText) as Record<string, unknown>
+        messageId = getString(responseBody.messageId) ?? getString(responseBody['message-id']) ?? getString(responseBody.message_id)
+      } catch {
+        messageId = null
+      }
+
+      return { ok: true, messageId }
+    } catch (error) {
+      logger.warn(
+        { error, debtId: input.debtId, scope: 'BrevoEmailService.sendOverdueNoticeEmail.catch' },
+        'Failed to send overdue notice',
       )
       return { ok: false, messageId: null }
     }

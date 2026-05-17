@@ -8,6 +8,7 @@ import { logger } from '../utils/logger.js'
 import { getStripeClient, getStripeCurrency } from '../lib/stripe.js'
 import { resolvePublicWebUrl } from '../utils/public-url.js'
 import { parsePromisedDateInput, utcCalendarDayStart } from '../utils/calendar.js'
+import { transitionDebtToOverdue } from './overdue-debts.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
 const DEFAULT_SENDER_NAME = 'Collectra'
@@ -167,7 +168,6 @@ export async function createOrReuseStripeInvoiceForDebt(
     })
   }
 
-  const currency = getStripeCurrency()
   const customers: StripeCustomer[] =
     debt.client.email?.trim()
       ? (
@@ -566,54 +566,41 @@ export class DebtsService {
   private async checkAndUpdateOverdueStatus<
     T extends {
       id: string
+      clientId: string
       status: DebtStatus
       promiseDate: Date | null
       dueDate?: Date
+      client?: {
+        fullName: string
+        email: string | null
+      } | null
+      campaign?: {
+        id: string
+        name: string
+      } | null
+      amount?: { toNumber(): number }
     },
   >(debt: T): Promise<T> {
-    const todayStart = new Date()
-    todayStart.setUTCHours(0, 0, 0, 0)
-
-    // If debt is PROMISE_TO_PAY and promise date has passed, update to OVERDUE_AFTER_PROMISE
-    if (debt.status === 'PROMISE_TO_PAY' && debt.promiseDate) {
-      const promiseDateStart = new Date(
-        Date.UTC(
-          debt.promiseDate.getUTCFullYear(),
-          debt.promiseDate.getUTCMonth(),
-          debt.promiseDate.getUTCDate(),
-        ),
-      )
-
-      // If today is after the promise date, update status to OVERDUE_AFTER_PROMISE
-      if (todayStart > promiseDateStart) {
-        const updatedDebt = await this.prisma.debtRecord.update({
-          where: { id: debt.id },
-          data: { status: 'OVERDUE_AFTER_PROMISE' },
-        })
-
-        return { ...debt, status: updatedDebt.status } as T
-      }
+    const dueDate = debt.dueDate
+    if (!dueDate) {
+      return debt
     }
 
-    // If there is no valid promise (or not PROMISE_TO_PAY) and dueDate passed, mark overdue
-    if (debt.dueDate && debt.status !== 'PAID' && debt.status !== 'OVERDUE_AFTER_PROMISE') {
-      const dueDateStart = new Date(
-        Date.UTC(
-          debt.dueDate.getUTCFullYear(),
-          debt.dueDate.getUTCMonth(),
-          debt.dueDate.getUTCDate(),
-        ),
-      )
+    const result = await transitionDebtToOverdue(this.prisma, {
+      id: debt.id,
+      clientId: debt.clientId,
+      amount: debt.amount ?? { toNumber: () => 0 },
+      dueDate,
+      status: debt.status,
+      client: debt.client ?? { fullName: '', email: null },
+      campaign: debt.campaign ?? { id: '', name: '' },
+    })
 
-      // If today is after the due date, mark overdue
-      if (todayStart > dueDateStart) {
-        const updatedDebt = await this.prisma.debtRecord.update({
-          where: { id: debt.id },
-          data: { status: 'OVERDUE_AFTER_PROMISE' },
-        })
-
-        return { ...debt, status: updatedDebt.status } as T
-      }
+    if (result.transitioned) {
+      return {
+        ...debt,
+        status: 'OVERDUE_AFTER_PROMISE',
+      } as T
     }
 
     return debt
@@ -709,10 +696,9 @@ export class DebtsService {
       pendingStripeSessionId?: string | null
     }
 
-    // Allow payment if debt is PROMISE_TO_PAY (on time) or OVERDUE_AFTER_PROMISE (late)
-    if (debt.status !== 'PROMISE_TO_PAY' && debt.status !== 'OVERDUE_AFTER_PROMISE') {
+    if (debt.status !== 'PROMISE_TO_PAY') {
       throw new HTTPException(400, {
-        message: 'Payment is only available for debts with a promise date',
+        message: 'This debt is overdue and can no longer be paid online',
       })
     }
 
@@ -818,9 +804,9 @@ export class DebtsService {
       pendingStripeSessionId?: string | null
     }
 
-    if (debt.status !== 'PROMISE_TO_PAY' && debt.status !== 'OVERDUE_AFTER_PROMISE') {
+    if (debt.status !== 'PROMISE_TO_PAY') {
       throw new HTTPException(400, {
-        message: 'Payment is only available for debts with a promise date',
+        message: 'This debt is overdue and can no longer be paid online',
       })
     }
 
