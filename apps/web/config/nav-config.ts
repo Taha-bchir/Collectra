@@ -1,4 +1,4 @@
-import { LayoutDashboard, Megaphone, Settings, Users, type LucideIcon } from 'lucide-react'
+import { LayoutDashboard, LifeBuoy, Megaphone, Settings, Users, type LucideIcon } from 'lucide-react'
 
 export interface NavItem {
   title: string
@@ -29,6 +29,11 @@ export const navItems: NavItem[] = [
     title: 'Campaigns',
     href: '/campaigns',
     icon: Megaphone,
+  },
+  {
+    title: 'Support',
+    href: '/support',
+    icon: LifeBuoy,
   },
 ]
 

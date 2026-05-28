@@ -1,0 +1,2901 @@
+\documentclass[12pt,a4paper]{report}
+
+% ─────────────────────────────────── Packages ────────────────────────────────
+
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{geometry}
+\geometry{top=2.7cm, bottom=2.7cm, left=2.7cm, right=2.7cm}
+\usepackage{parskip}
+\setlength{\parskip}{0.55em plus 0.12em minus 0.08em}
+\usepackage{setspace}
+\onehalfspacing
+\setstretch{1.22}
+\usepackage{newtxtext, newtxmath}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{makecell}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{pdfpages}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{grffile}      % filenames with spaces (Digrams/, screenshots/)
+\usepackage{adjustbox}
+\usepackage{colortbl}
+\usepackage{emptypage}
+% ─── Float layout adjustments (prevent giant blank page spaces) ──────────────
+\renewcommand{\topfraction}{0.85}      % max fraction of floats at top
+\renewcommand{\bottomfraction}{0.85}   % max fraction of floats at bottom
+\renewcommand{\textfraction}{0.1}      % minimum fraction of page for text
+\renewcommand{\floatpagefraction}{0.75} % minimum fraction of page for a float-only page
+\widowpenalty=10000                     % prevent widow lines (split paragraphs at bottom of page)
+\clubpenalty=10000                      % prevent orphan lines (split paragraphs at top of page)
+% Do NOT use mdwtools/footnote here: it breaks tabular column specs.
+% Do NOT use \newcolumntype{ApiDesc} (or similar names starting with "c") — breaks all "c" columns.
+\titlespacing*{\chapter}{0pt}{18pt}{14pt}
+\titlespacing*{\section}{0pt}{14pt}{10pt}
+\titlespacing*{\subsection}{0pt}{10pt}{8pt}
+\titlespacing*{\subsubsection}{0pt}{8pt}{6pt}
+
+% ─────────────────────────────────── Colors ──────────────────────────────────
+
+\definecolor{passgreen}{RGB}{0,140,50}
+\definecolor{failred}{RGB}{200,30,30}
+\definecolor{graytext}{gray}{0.45}
+\definecolor{framegray}{RGB}{228,231,236}
+\definecolor{accentblue}{RGB}{42,82,152}
+\definecolor{sprint1col}{RGB}{70,130,180}
+\definecolor{sprint2col}{RGB}{60,179,113}
+\definecolor{sprint3col}{RGB}{255,165,0}
+\definecolor{sprint4col}{RGB}{186,85,211}
+
+% ─────────────────────────────── Title formatting ────────────────────────────
+
+\titleformat{\chapter}[hang]
+  {\normalfont\bfseries\fontsize{16}{20}\selectfont}
+  {\textcolor{accentblue}{\thechapter}}{1em}{}
+  [\vspace{0.35em}{\color{accentblue!35}\titlerule[0.55pt]}]
+\titleformat{name=\chapter,numberless}[hang]
+  {\normalfont\bfseries\fontsize{16}{20}\selectfont}
+  {}{0pt}{}
+  [\vspace{0.35em}{\color{accentblue!35}\titlerule[0.55pt]}]
+\titleformat{\section}[hang]
+  {\normalfont\bfseries\fontsize{14}{18}\selectfont}{\thesection}{1em}{}
+  [\vspace{0.2em}{\color{framegray}\titlerule[0.4pt]}]
+\titleformat{\subsection}[hang]
+  {\normalfont\bfseries\fontsize{12}{15}\selectfont}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}[hang]
+  {\normalfont\bfseries\fontsize{12}{15}\selectfont}{\thesubsubsection}{1em}{}
+
+% ─────────────────────────────── List spacing ────────────────────────────────
+
+\setlist[itemize]{itemsep=5pt, topsep=8pt, parsep=3pt, leftmargin=*}
+\setlist[enumerate]{itemsep=5pt, topsep=8pt, parsep=3pt, leftmargin=*}
+
+% ─────────────────────────────── Caption style ───────────────────────────────
+
+\captionsetup{
+  font=small,
+  labelfont=bf,
+  skip=8pt,
+  justification=centering,
+  singlelinecheck=false
+}
+\captionsetup[figure]{position=below}
+
+% ─────────────────────────────── Image paths ─────────────────────────────────
+
+\graphicspath{{./}{./images/}{./Digrams/}{./DiagramsV2/}{./logos/}{./screenshots/}{./scrennshots/}}
+
+% ─── Table helpers ───────────────────────────────────────────────────────────
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}{>{\centering\arraybackslash}X}
+% Do not define ApiDesc (or any column type whose name starts with "c"):
+% array's preamble lexer then treats lowercase "c" columns as invalid → Empty preamble error.
+\newcommand{\reporttablesetup}{%
+  \small%
+  \setlength{\tabcolsep}{5pt}%
+  \renewcommand{\arraystretch}{1.38}%
+  \arrayrulecolor{framegray}%
+}
+% Short column specs (TexPage must not wrap these lines)
+% comparison table uses {lccc} directly (TexPage-safe)
+\newcommand{\testcols}{|c|Y|p{3.85cm}|p{1.8cm}|c|}
+\newcommand{\apitablecols}{|p{1.2cm}|p{4.95cm}|p{2.25cm}|p{5.05cm}|}
+\newcommand{\journeycols}{|Y|c|Z|}
+\newcommand{\roadmapcols}{|Y|c|Z|}
+\newcommand{\timelinecols}{|c|Y|Z|}
+\newcommand{\nfrcols}{|p{3.2cm}|Y|Z|}
+\newcommand{\techstackcols}{|p{2.6cm}|Y|Z|}
+\newcommand{\statustablecols}{|p{2.8cm}|Y|Z|}
+\newcommand{\usecasecols}{|p{3.1cm}|Y|}
+\newcommand{\errorcols}{|p{3.2cm}|c|Y|}
+\newcommand{\entitycols}{|p{3.2cm}|Y|}
+\newcommand{\backlogcols}{|c|Y|c|c|}
+
+% Use \timelinecols etc. only as documentation; tabularx/longtable need literal preambles in \begin.
+
+% ─────────────────────────────────── Macros ──────────────────────────────────
+
+\newcommand{\reportfigbox}[1]{%
+  \setlength{\fboxsep}{5pt}%
+  \setlength{\fboxrule}{0.45pt}%
+  \fcolorbox{framegray}{white}{#1}%
+}
+
+\newcommand{\diagram}[3][]{%
+  \begin{figure}[!htbp]
+    \centering
+    \IfFileExists{#2}{%
+      \reportfigbox{%
+        \adjustbox{max width=0.85\linewidth, max height=0.30\textheight, center}{%
+          \includegraphics[width=0.85\linewidth,keepaspectratio]{#2}%
+        }%
+      }%
+    }{%
+      \setlength{\fboxsep}{12pt}\setlength{\fboxrule}{0.8pt}%
+      \fbox{\parbox[c][5cm][c]{0.92\textwidth}{\centering
+        \textbf{\color{graytext}[Diagram placeholder]}\\[6pt]
+        \texttt{\small #2}}}%
+    }%
+    \caption{#3}%
+    \ifx&#1&\else\label{#1}\fi
+  \end{figure}%
+}
+
+\newcommand{\screenshot}[3][]{%
+  \begin{figure}[!htbp]
+    \centering
+    \IfFileExists{#2}{%
+      \reportfigbox{%
+        \adjustbox{max width=0.85\linewidth, max height=0.30\textheight, center}{%
+          \includegraphics[width=0.85\linewidth,keepaspectratio]{#2}%
+        }%
+      }%
+    }{%
+      \setlength{\fboxsep}{12pt}\setlength{\fboxrule}{0.8pt}%
+      \fbox{\parbox[c][4cm][c]{0.88\textwidth}{\centering
+        \textbf{\color{graytext}[Screenshot placeholder]}\\[6pt]
+        \texttt{\small #2}}}%
+    }%
+    \caption{#3}%
+    \ifx&#1&\else\label{#1}\fi
+  \end{figure}%
+}
+
+\newcommand{\logoimg}[3][3cm]{%
+  \IfFileExists{#2}{%
+    \includegraphics[width=#1,keepaspectratio]{#2}%
+  }{%
+    \setlength{\fboxsep}{4pt}\setlength{\fboxrule}{0.8pt}%
+    \fbox{\parbox[c][1.6cm][c]{#1}{\centering
+      \tiny\textbf{\color{graytext}[Logo]}\\[2pt]
+      \texttt{\tiny #3}}}%
+  }%
+}
+
+% ─── Test result helpers ─────────────────────────────────────────────────────
+\newcommand{\tpass}{\textcolor{passgreen}{\textbf{Pass}}}
+\newcommand{\tfail}{\textcolor{failred}{\textbf{Fail}}}
+
+% Fixed-width ragged-right column (use instead of a second Y in tabularx)
+\newcolumntype{Z}{>{\raggedright\arraybackslash}p{6.2cm}}
+
+% hyperref must be loaded late
+\usepackage{hyperref}
+\usepackage{bookmark}
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = blue,
+  urlcolor   = blue,
+  citecolor  = blue,
+  pdftitle   = {Final-Year Internship Report -- Collectra},
+  pdfauthor  = {Taha Bchir}
+}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\begin{document}
+% ─────────────────────────────────────────────────────────────────────────────
+
+% ══════════════════════════════ COVER PAGE ════════════════════════════════════
+
+\IfFileExists{Page de garde Stage Obligatoire de Fin d'Etudes Licence (1).pdf}{%
+  \includepdf[pages=1]{Page de garde Stage Obligatoire de Fin d'Etudes Licence (1).pdf}%
+}{%
+  \begin{titlepage}
+    \centering
+    \begin{minipage}[c]{0.42\textwidth}
+      \centering
+      \logoimg[4.5cm]{logos/university-logo.png}{Institution Logo}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[c]{0.42\textwidth}
+      \centering
+      \logoimg[4.5cm]{logos/CyberBridge-logo.png}{CyberBridge }
+    \end{minipage}
+
+    \vspace{0.9cm}
+    {\large Internship Report (Final-Year Internship Project) \quad|\quad Academic Year 2025--2026\par}
+    \vspace{0.4cm}
+    {\color{accentblue}\rule{\textwidth}{1.2pt}}
+    \vspace{0.4cm}
+    {\Huge\bfseries Collectra\par}
+    \vspace{0.25cm}
+    {\Large Debt Collection and Campaign Management Platform\par}
+    \vspace{0.4cm}
+    {\color{accentblue}\rule{\textwidth}{1.2pt}}
+
+    \vspace{0.8cm}
+
+    \textbf{Technologies Used}\\[0.4cm]
+    \logoimg[1.7cm]{logos/nextjs.png}{Next.js}      \quad
+    \logoimg[1.7cm]{logos/react.png}{React}          \quad
+    \logoimg[1.7cm]{logos/typescript.png}{TypeScript} \quad
+    \logoimg[1.7cm]{logos/postgresql.png}{PostgreSQL} \quad
+    \logoimg[1.7cm]{logos/hono.png}{Hono}            \quad
+    \logoimg[1.7cm]{logos/supabase.png}{Supabase}    \quad
+    \logoimg[1.7cm]{logos/prisma.png}{Prisma}        \quad
+    \logoimg[1.7cm]{logos/turborepo.png}{Turborepo}
+
+    \vspace{0.9cm}
+
+    \begin{flushleft}
+      \renewcommand{\arraystretch}{1.3}
+      \begin{tabular}{l l}
+        \textbf{Student:}       & Taha Bchir \\
+        \textbf{Institution:}   & \emph{[Your institution name]} \\
+        \textbf{Programme:}     & Bachelor in \emph{[Your programme]} \\
+        \textbf{Supervisor:}    & \emph{[Supervisor name and title]} \\
+        \textbf{Host Company:}  & CyberBridge , Wuppertal, Germany \\
+        \textbf{Company Tutor:} & \emph{[Company tutor name and title]} \\
+        \textbf{Academic Year:} & 2025--2026 \\
+      \end{tabular}
+    \end{flushleft}
+
+    \vfill
+    {\large \today\par}
+  \end{titlepage}
+}
+
+\pagenumbering{Roman}
+\setcounter{page}{1}
+
+% ══════════════════════════ ACKNOWLEDGEMENTS ══════════════════════════════════
+
+\chapter*{Acknowledgements}
+\phantomsection
+\addcontentsline{toc}{chapter}{Acknowledgements}
+
+I would like to express my sincere gratitude to all those who supported me throughout
+this internship and the preparation of this report.
+
+First, I would like to thank \textbf{CyberBridge} for welcoming me and offering the
+opportunity to work on a real production project.
+I am especially grateful to \emph{[company tutor name and title]} for the guidance,
+availability, and valuable feedback throughout the internship period.
+
+I would also like to thank my academic supervisor, \emph{[supervisor name and title]},
+for the continuous support, constructive advice, and time devoted to reviewing this work.
+
+Finally, I express my gratitude to the faculty of \emph{[institution name]} and to my
+colleagues for their encouragement and support.
+
+\clearpage
+
+% ══════════════════════════════ ABSTRACT ══════════════════════════════════════
+
+\chapter*{Abstract}
+\phantomsection
+\addcontentsline{toc}{chapter}{Abstract}
+
+This report presents the final-year internship project carried out at
+\textbf{CyberBridge } under the title \textbf{Collectra} --
+a web-based platform for debt collection management and customer reminder campaigns.
+
+Debt collection teams commonly rely on fragmented tools: spreadsheets for data
+storage, email threads for communication history, and general-purpose Customer Relationship Management systems
+that provide no lifecycle tracking for outstanding debts.
+Collectra addresses these gaps by bringing debt records, campaigns, team actions,
+and customer communication into a single, workspace-based Software as a Service environment.
+
+The platform delivers secure JSON Web Token-based authentication with Hypertext Transfer Protocol-only
+session cookies,
+strict workspace-level data isolation, role-based access control for managers and
+agents, a complete debt lifecycle from import through payment, time-limited secure
+personal customer links, Stripe-backed payment confirmation with idempotent
+verification, automated invoice generation and delivery via Brevo, campaign-level
+email tracking analytics, and an operational dashboard for managers.
+
+Development followed the Scrum agile methodology across four two-week sprints, with
+task tracking managed in Linear.
+The application is deployed on \textbf{Vercel} under the domain
+\texttt{collectra.xyz}, using a GitHub-based Continuous Integration and Continuous Deployment pipeline where changes are
+merged from the \texttt{develop} branch into \texttt{production} and published
+automatically.
+The technical stack is built on Next.js, React, TypeScript, Hono, PostgreSQL
+(Supabase), and Prisma Object-Relational Mapper, organized in a Turborepo monorepo.
+
+\medskip
+\noindent{\color{accentblue}\rule{2.8cm}{0.55pt}}\par\vspace{0.35em}
+\noindent\textbf{Keywords:}
+debt collection, Software as a Service, campaign management, JSON Web Token, Scrum, Next.js,
+TypeScript, PostgreSQL, Prisma, Supabase, Stripe, invoice generation, Vercel,
+Continuous Integration and Continuous Deployment, email tracking.
+
+\clearpage
+
+% ══════════════════════════ TABLE OF CONTENTS ═════════════════════════════════
+
+\hypersetup{linkcolor=black, urlcolor=black, citecolor=black}
+\tableofcontents
+\clearpage
+
+% ══════════════════════════ LIST OF FIGURES ═══════════════════════════════════
+
+\listoffigures
+\clearpage
+
+% ══════════════════════════ LIST OF TABLES ════════════════════════════════════
+
+\listoftables
+\clearpage
+\pagenumbering{arabic}
+\setcounter{page}{1}
+\hypersetup{linkcolor=blue, urlcolor=blue, citecolor=blue}
+
+% =============================================================================
+\chapter*{General Introduction}
+\phantomsection
+\addcontentsline{toc}{chapter}{General Introduction}
+% =============================================================================
+
+Debt collection is a critical business process for financial institutions, telecom
+operators, and service companies that manage large portfolios of unpaid invoices.
+Despite its importance, many collection teams still rely on fragmented tools:
+spreadsheets for data storage, email threads for communication history, and separate
+Customer Relationship Management systems that were never designed for debt lifecycle tracking.
+The consequences are predictable: poor traceability, weak team collaboration, and no
+single operational view of campaign progress.
+
+The \textbf{Collectra} project was developed during this internship at CyberBridge 
+specifically to address these gaps.
+Collectra is a Software as a Service web platform that brings debt data, campaigns, team activities,
+and customer communication into one secure, workspace-based environment.
+It replaces scattered tools with a single, role-aware application that supports the
+full debt lifecycle, from initial import to payment confirmation and invoice delivery.
+
+From a technical perspective, Collectra is built on a modern TypeScript-first monorepo.
+The frontend uses Next.js and React, the backend uses Hono with a validated OpenAPI
+contract and Zod schemas, and the database is managed with Prisma Object-Relational Mapper on PostgreSQL
+via Supabase.
+Development was organized with the Scrum agile framework and tracked in Linear over
+four two-week sprints.
+The platform is deployed on Vercel at \texttt{collectra.xyz} through an automated
+GitHub-based Continuous Integration and Continuous Deployment pipeline.
+
+The internship followed professional practices: version control with Git, code review through
+pull requests, task tracking in Linear, and automated deployments to a production domain.
+Each increment was demonstrated to CyberBridge stakeholders before being merged, which reduced
+the risk of building features that did not match real collection workflows.
+
+This report is organized as follows:
+
+\begin{itemize}
+  \item \textbf{Chapter 1 -- Company Presentation and Project Context:}
+        Host company, problem statement, analysis of existing solutions, and proposed solution.
+  \item \textbf{Chapter 2 -- Requirements and Specifications:}
+        Actors, functional and non-functional requirements, Scrum planning,
+        quality assurance, security architecture, general architecture, deployment infrastructure,
+        and end-to-end user journeys.
+  \item \textbf{Chapter 3 -- Sprint 1: Core Authentication and Workspace Setup:}
+        Authentication system, workspace management, and member invitation flow.
+  \item \textbf{Chapter 4 -- Sprint 2: Campaign and Debt Management:}
+        Campaign lifecycle, Comma-Separated Values import, debt status tracking, and customer personal links.
+  \item \textbf{Chapter 5 -- Sprint 3: Collaboration and Reporting:}
+        Action history, payment promise recording, and the operational manager dashboard.
+  \item \textbf{Chapter 6 -- Sprint 4: Payment, Invoicing, and Analytics Integration:}
+        Payment confirmation, invoice generation, email tracking, and final analytics integration.
+  \item \textbf{Chapter 7 -- Cross-Cutting Technical Topics:}
+        Email pipeline, payment flow, error handling, and platform-wide engineering practices.
+  \item \textbf{Appendices:}
+        Domain glossary, interface walkthrough with screenshots, Application Programming Interface reference,
+        and database schema.
+\end{itemize}
+
+% =============================================================================
+\chapter{Company Presentation and Project Context}
+% =============================================================================
+
+\section*{Introduction}
+\phantomsection
+\addcontentsline{toc}{section}{Introduction}
+
+This chapter presents the host company, the project context, the problem statement,
+an analysis of existing solutions, and the proposed Collectra platform.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Presentation of the Host Company}
+
+The internship was carried out at \textbf{CyberBridge }, a software company
+founded in 2019 in Wuppertal, Germany, by experienced IT professionals.
+CyberBridge builds tailored IT solutions and positions itself as a strategic partner
+from the initial concept through to successful product delivery.
+With certified expertise and broad industry experience, the company focuses on
+improving product quality and optimizing business processes for its clients.
+
+\begin{figure}[!htbp]
+  \centering
+  \logoimg[5cm]{images/cyberbridge.png}{CyberBridge}
+  \caption{CyberBridge  -- Company Logo}
+  \label{fig:CyberBridge-logo}
+\end{figure}
+
+CyberBridge  offers the following core services:
+\begin{itemize}
+  \item \textbf{Project Management:} structured delivery with planning tailored to each customer's needs;
+  \item \textbf{Enterprise Software Development:} modern, scalable systems that support business growth;
+  \item \textbf{Blockchain and AI:} enterprise-grade solutions for automation, transparency, and secure digital transformation;
+  \item \textbf{Requirements Engineering:} expert consulting to define software requirements clearly and completely;
+  \item \textbf{Software Quality:} testing and QA support following an International Software Testing Qualifications Board-certified process;
+  \item \textbf{UI/UX Design:} usability-focused design for both internal teams and end users.
+\end{itemize}
+
+During the internship, CyberBridge provided a real production-like development context,
+direct feedback from stakeholders, and access to team workflows and sprint planning
+in Linear.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Project Context}
+
+\subsection{Main Issue}
+
+Debt collection teams face a recurring set of operational challenges.
+Follow-up work is often fragmented across multiple tools: debt data is stored in
+spreadsheets, contact history is tracked in email threads, and reminder statuses are
+maintained manually.
+This makes it difficult to audit past actions, share information across team members,
+or monitor campaign progress in real time.
+
+The specific problems identified at the start of the project were:
+\begin{itemize}
+  \item scattered debt data without a single source of truth;
+  \item weak traceability of reminders, promises, and payments;
+  \item limited collaboration between agents and managers;
+  \item no unified view of campaign progress or debt lifecycle status;
+  \item no secure way for customers to consult their own debt information.
+\end{itemize}
+
+The central question is therefore: \emph{how can we build a secure, scalable platform
+that centralizes debt collection work while keeping data strictly isolated per workspace?}
+
+\subsection{Stakeholder Expectations}
+
+During requirements workshops at CyberBridge, three expectations guided the product direction.
+\textbf{Managers} needed a reliable overview of campaign progress, team activity, and payment
+outcomes without exporting spreadsheets.
+\textbf{Agents} needed fast daily operations: importing debts, updating statuses, generating
+customer links, and recording promises with minimal friction.
+\textbf{Customers} needed a simple, trustworthy page to understand their debt and complete
+payment without creating an account.
+These expectations translated directly into the sprint backlog and into non-functional
+requirements (security, traceability, and performance under bulk import).
+
+\subsection{Analysis of Existing Solutions}
+
+A study of available tools revealed the following limitations:
+\begin{itemize}
+  \item \textbf{Spreadsheets (Excel, Google Sheets):} flexible but difficult to audit,
+        with no role governance, no lifecycle tracking, and no secure customer access;
+  \item \textbf{Generic Customer Relationship Management tools (Salesforce, HubSpot):} designed for sales pipelines,
+        not debt status lifecycles; often too complex or costly for small collection teams;
+  \item \textbf{Manual link sharing :} no expiration control,
+        no authentication, and no audit trail.
+\end{itemize}
+
+\subsection{Overview of the Proposed Solution}
+
+The proposed solution is \textbf{Collectra}, a workspace-based Software as a Service platform that
+covers all five critical capabilities that existing tools only address partially,
+as shown in Table~\ref{tab:comparison}.
+
+Collectra offers:
+\begin{itemize}
+  \item secure authentication and role-based access control;
+  \item workspace-level data isolation for multi-team environments;
+  \item campaign creation and bulk Comma-Separated Values debt import;
+  \item a full debt lifecycle (imported $\to$ notified $\to$ promised $\to$ paid / overdue);
+  \item JSON Web Token-secured personal customer links with configurable expiration;
+  \item an operational dashboard for managers.
+\end{itemize}
+
+\begin{table}[H]
+  \centering
+  \small
+  \renewcommand{\arraystretch}{1.3}
+  \setlength{\tabcolsep}{6pt}
+  \begin{tabular}{l c c c}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Feature} & \textbf{Spreadsheets} & \textbf{Generic CRM}$^{\ast}$ & \textbf{Collectra} \\
+    \hline
+    Debt lifecycle tracking          & Partial & Partial & \textbf{Full} \\
+    \hline
+    Secure personal customer link    & No      & Limited & \textbf{Yes} \\
+    \hline
+    Workspace-level data isolation   & No      & Limited & \textbf{Yes} \\
+    \hline
+    Operational dashboard            & Limited & Yes     & \textbf{Yes} \\
+    \hline
+    Collection-team role governance  & No      & Limited & \textbf{Yes} \\
+    \hline
+  \end{tabular}
+  \caption{Comparison of Existing Solutions and Collectra}
+  \label{tab:comparison}
+\end{table}
+\noindent{\footnotesize $^{\ast}$\,Generic Customer Relationship Management platforms (e.g.\ Salesforce, HubSpot).}
+
+\subsection{Internship Timeline and Milestone Deliverables}
+
+The internship followed a four-sprint calendar aligned with CyberBridge planning rituals.
+Table~\ref{tab:internship-timeline} summarises the main milestones, review dates, and
+deliverables demonstrated to stakeholders.
+Each milestone ended with a Vercel preview deployment so non-technical reviewers could
+validate user journeys without installing the project locally.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|Z|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Period} & \textbf{Focus} & \textbf{Demonstrated Outcome} \\
+    \hline
+    Weeks 1--2 & Environment setup, backlog refinement, architecture sketch &
+    Monorepo bootstrap, Supabase project, first authentication prototype \\
+    \hline
+    Weeks 3--4 & Sprint~1 review &
+    Login, registration, workspace creation, member invitation with email acceptance \\
+    \hline
+    Weeks 5--6 & Sprint~2 review &
+    Campaign Create, Read, Update, Delete, Comma-Separated Values import, debt lifecycle, personal links \\
+    \hline
+    Weeks 7--8 & Sprint~3 review &
+    Action history, payment promises, manager dashboard, role-based access control hardening \\
+    \hline
+    Weeks 9--10 & Sprint~4 review &
+    Stripe checkout, idempotent verification, invoice access, Brevo tracking analytics \\
+    \hline
+    Weeks 11--12 & Stabilisation and documentation &
+    Production merge to \texttt{collectra.xyz}, OpenAPI publication, report and defense preparation \\
+    \hline
+  \end{tabularx}
+  \caption{Internship Timeline and Milestone Deliverables}
+  \label{tab:internship-timeline}
+\end{table}
+
+Beyond feature delivery, each sprint produced \textbf{traceable artefacts}: Linear issues
+linked to pull requests, Postman collections for Application Programming Interface regression,
+and annotated screenshots used in this report appendix.
+This traceability was essential when explaining design trade-offs during the final presentation,
+because every user story could be mapped to a concrete route, database table, and user interface screen.
+
+\section*{Conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Conclusion}
+
+This chapter introduced CyberBridge , described the operational problem in debt
+collection, analysed the limits of existing tools, and presented Collectra as the
+proposed solution.
+The central design challenge -- strict workspace isolation combined with a flexible
+debt lifecycle -- directly shaped the technical decisions described in the following
+chapters.
+
+\clearpage
+% =============================================================================
+\chapter{Requirements and Specifications}
+% =============================================================================
+
+\section*{Introduction}
+\phantomsection
+\addcontentsline{toc}{section}{Introduction}
+
+This chapter presents the project actors and requirements, the work environment and
+technology stack, the Scrum methodology and project planning, the product backlog,
+quality assurance and security architecture, the general technical architecture,
+and the deployment infrastructure of Collectra.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Collectra Platform Requirements}
+
+\subsection{Identification of the Actors}
+
+The Collectra platform involves four main actors:
+\begin{itemize}
+  \item \textbf{Owner / Manager:} responsible for workspace setup, team invitations,
+        campaign supervision, and dashboard monitoring;
+  \item \textbf{Agent:} performs daily debt follow-up, records actions and promises,
+      and generates customer personal links; agents may also create new workspaces and
+      will be assigned the Owner role for any workspace they create by default;
+  \item \textbf{Customer:} accesses personal debt information through a secure,
+        time-limited link without needing an account;
+  \item \textbf{System services:} the Supabase authentication provider and the
+        email notification service (Brevo).
+\end{itemize}
+
+\subsection{Functional Requirements}
+
+\begin{itemize}
+  \item Secure user authentication and session management;
+  \item Workspace creation and strict workspace-based data isolation;
+  \item Team invitation and role-based permission assignment;
+  \item Campaign creation, configuration, and lifecycle management;
+  \item Bulk Comma-Separated Values import for debt records;
+  \item Debt status tracking across a defined lifecycle;
+  \item Generation and management of JSON Web Token-secured customer personal links (48-hour expiration by default);
+  \item Customer debt consultation via personal link (no account required);
+  \item Stripe payment confirmation with idempotent verification;
+  \item Invoice generation and delivery after confirmed payment;
+  \item Dashboard indicators for campaign and debt monitoring;
+  \item Action history log for full traceability;
+  \item Campaign-level email tracking analytics.
+\end{itemize}
+
+\subsection{Non-Functional Requirements}
+
+\begin{itemize}
+  \item \textbf{Security:} JSON Web Tokens signed with Hash-based Message Authentication Code SHA-256, Hypertext Transfer Protocol-only cookies,
+        and route-level middleware checks for every protected endpoint;
+  \item \textbf{Maintainability:} modular monorepo architecture with shared packages
+        and a single Prisma schema as the source of truth;
+  \item \textbf{Performance:} efficient handling of bulk Comma-Separated Values imports with Prisma
+        transaction batching to avoid database timeouts;
+  \item \textbf{Reliability:} validated Application Programming Interface contracts via Zod, database-level constraints,
+        and idempotent payment confirmation logic;
+  \item \textbf{Usability:} clean dashboard workflow with a minimal learning curve,
+        validated through iterative stakeholder feedback during each sprint review.
+\end{itemize}
+
+Table~\ref{tab:nfr-metrics} translates these principles into measurable targets used during
+sprint reviews at CyberBridge.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.2cm}|Y|Z|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Category} & \textbf{Target} & \textbf{Verification Method} \\
+    \hline
+    Security & No cross-workspace data leak on forbidden routes &
+    Postman tests T1-10, T2-08, role-based access control scenarios \\
+    \hline
+    Performance & Comma-Separated Values import of 3\,000+ rows completes without timeout &
+    Preview deployment timing logs and chunked insert metrics \\
+    \hline
+    Reliability & Duplicate payment verification does not double-charge &
+    Sprint~4 idempotency tests and Stripe replay simulations \\
+    \hline
+    Usability & Core agent actions within three clicks from debt table &
+    Heuristic review during sprint demos \\
+    \hline
+  \end{tabularx}
+  \caption{Non-Functional Requirements -- Targets and Verification}
+  \label{tab:nfr-metrics}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Work Environment}
+
+\subsection{Technology Stack}
+
+Table~\ref{tab:techstack} summarises the technologies used in Collectra.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{2.6cm}|Y|Z|}
+    \hline
+    \rowcolor{accentblue!10}
+    Layer      & Technology              & Role \\
+    \hline
+    Frontend            & Next.js 14, React, TypeScript     & Pages, components, routing \\
+    \hline
+    Styling             & Tailwind CSS                     & User Interface layout and design system \\
+    \hline
+    Backend             & Hono, TypeScript, Zod            & Representational State Transfer Application Programming Interface, validation, OpenAPI \\
+    \hline
+    Database            & PostgreSQL via Supabase          & Persistent data storage \\
+    \hline
+    Object-Relational Mapper & Prisma                      & Schema management and queries \\
+    \hline
+    Authentication      & Supabase Auth                    & Sessions, JSON Web Token, email auth \\
+    \hline
+    Payments            & Stripe                           & Checkout sessions and webhooks \\
+    \hline
+    Email               & Brevo                            & Transactional email and tracking \\
+    \hline
+    Build tools         & pnpm, Turborepo                  & Monorepo management and builds \\
+    \hline
+    Deployment          & Vercel                           & Hosting and Continuous Integration and Continuous Deployment pipeline \\
+    \hline
+  \end{tabularx}
+  \caption{Collectra Technology Stack}
+  \label{tab:techstack}
+\end{table}
+
+\begin{figure}[!htbp]
+  \centering
+  \logoimg[1.65cm]{images/nextjs.jpg}{Next.js}      \quad
+  \logoimg[1.65cm]{images/React-icon.png}{React}          \quad
+  \logoimg[1.65cm]{images/Typescript_logo_2020..png}{TypeScript} \quad
+  \logoimg[1.65cm]{images/Tailwind_CSS_Logo.png}{Tailwind}    \quad
+  \logoimg[1.65cm]{images/hono-title.png}{Hono}            \quad
+  \logoimg[1.65cm]{images/supabase-logo-vector.png}{Supabase}    \quad
+  \logoimg[1.65cm]{images/images.png}{Prisma}        \quad
+  \logoimg[1.65cm]{images/turbo.png}{Turborepo}
+  \caption{Technology Logos Used in the Collectra Stack}
+  \label{fig:tech-logos}
+\end{figure}
+
+\subsection{Development Tools}
+
+\begin{itemize}
+  \item \textbf{Visual Studio Code:} main Integrated Development Environment for frontend and backend development;
+  \item \textbf{Git and GitHub:} version control and collaborative code management;
+  \item \textbf{Linear:} Scrum task management, sprint planning, and issue tracking;
+  \item \textbf{Postman / Swagger UI:} Application Programming Interface testing and endpoint validation;
+  \item \textbf{Supabase Studio:} database inspection and query testing.
+\end{itemize}
+
+\begin{figure}[!htbp]
+  \centering
+  \logoimg[1.65cm]{images/Visual_Studio_Code_1.35_icon.svg.png}{VS Code}    \quad
+  \logoimg[1.65cm]{images/git-icon-logo-png-transparent.png}{Git}            \quad
+  \logoimg[1.65cm]{images/25231.png}{GitHub}      \quad
+  \logoimg[1.65cm]{images/linear-logo-png_seeklogo-483920.png}{Linear}      \quad
+  \logoimg[1.65cm]{images/Postman_(software).png}{Postman}
+  \caption{Development and Collaboration Tools}
+  \label{fig:dev-tools}
+\end{figure}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Project Management with Scrum}
+
+\subsection{Methodology Choice}
+
+The project follows the Scrum agile framework.
+Scrum was chosen because it supports iterative delivery, allows priorities to be
+adjusted based on stakeholder feedback, and produces working software at the end of
+each sprint.
+Two-week sprint cycles made it possible to validate each feature set before moving
+forward to the next one.
+
+\subsection{Scrum Roles}
+
+\begin{itemize}
+  \item \textbf{Product Owner:} defines, orders, and maintains the product backlog based on business needs;
+  \item \textbf{Development Team:} implements backend and frontend features sprint by sprint;
+  \item \textbf{Scrum Master:} facilitates Scrum ceremonies and removes blockers.
+\end{itemize}
+
+Tasks were tracked in \textbf{Linear} using statuses (\textit{Backlog, In Progress,
+In Review, Done}), priority levels, complexity estimates, assignees, and sprint milestones.
+
+\subsection{Product Backlog}
+
+The product backlog lists all user stories sorted by business impact,
+as shown in Table~\ref{tab:backlog}.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|c|c|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{User Story} & \textbf{Priority} & \textbf{Complexity} \\
+    \hline
+    US-01 & As a manager or agent I want to create a workspace so that my team data is isolated.                        & High   & Medium \\
+    \hline
+    US-02 & As a manager I want to invite members so that agents can collaborate in the same workspace.               & High   & Medium \\
+    \hline
+    US-03 & As an agent I want to import a Comma-Separated Values file so that campaign debts are created in batch.                      & High   & High \\
+    \hline
+    US-04 & As an agent I want to view and update debt statuses so that follow-up stays up to date.                   & High   & Medium \\
+    \hline
+    US-05 & As an agent I want to generate a customer personal link so that the customer can access debt details.     & High   & Medium \\
+    \hline
+    US-06 & As a customer I want to open a secure link so that I can view my debt without creating an account.        & Medium & Low \\
+    \hline
+    US-07 & As a manager I want to view dashboard indicators so that I can monitor collection progress.               & Medium & Medium \\
+    \hline
+    US-08 & As a manager I want action history logs so that all operations are traceable.                              & Medium & Medium \\
+    \hline
+    US-09 & As an agent I want to record payment promises so that commitment dates are tracked.                        & Medium & Medium \\
+    \hline
+    US-10 & As a manager I want role-based permissions so that sensitive actions are protected.                        & High   & High \\
+    \hline
+  \end{tabularx}
+  \caption{Product Backlog for Collectra}
+  \label{tab:backlog}
+\end{table}
+
+\subsection{Sprint Overview}
+
+Table~\ref{tab:sprints} summarises the four sprints and their main deliverables.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|Z|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Sprint} & \textbf{Focus} & \textbf{Main Deliverables} \\
+    \hline
+    \rowcolor{sprint1col!14}
+    Sprint 1 & Authentication \& Workspace Setup    & Login, sign-up, workspace creation (manager or agent), member invitation \\
+    \hline
+    \rowcolor{sprint2col!14}
+    Sprint 2 & Campaign \& Debt Management           & Campaign Create, Read, Update, Delete, Comma-Separated Values import, debt lifecycle, customer personal links \\
+    \hline
+    \rowcolor{sprint3col!14}
+    Sprint 3 & Collaboration \& Reporting            & Action history, payment promises, manager dashboard, role-based access control \\
+    \hline
+    \rowcolor{sprint4col!14}
+    Sprint 4 & Payment, Invoicing \& Analytics       & Stripe verification, idempotent payment, invoice generation, email tracking analytics \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint Overview}
+  \label{tab:sprints}
+\end{table}
+
+\subsection{Scrum Ceremonies and Delivery Rhythm}
+
+Collectra was delivered through four consecutive two-week sprints.
+Each sprint opened with \textbf{sprint planning}, where user stories were selected from
+the product backlog, estimated, and assigned in Linear.
+\textbf{Daily coordination} was kept lightweight: short updates on progress, blockers,
+and integration risks, especially when backend contracts and frontend screens had to
+evolve together.
+At the end of each sprint, a \textbf{sprint review} demonstrated working features to
+CyberBridge stakeholders, and a \textbf{retrospective} captured process improvements for
+the next iteration (test data preparation, preview deployments, and clearer acceptance
+criteria for customer-facing flows).
+
+This rhythm made it possible to validate authentication, import performance, dashboard
+indicators, and payment confirmation incrementally instead of deferring integration
+risks to the final weeks of the internship.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Quality Assurance and Testing Strategy}
+\label{sec:qa}
+
+Quality assurance was integrated into every sprint rather than postponed to the end
+of the internship.
+The approach combined \textbf{functional tests} (documented in each sprint chapter),
+\textbf{contract validation} with Zod on the backend, and \textbf{manual exploratory
+testing} on Vercel preview deployments before merging to the production branch.
+
+\subsection{Testing Levels}
+
+\begin{itemize}
+  \item \textbf{Unit-level checks:} validation helpers, status-transition guards, and
+        payment verification utilities were exercised with representative inputs and edge cases;
+  \item \textbf{Integration tests:} Application Programming Interface endpoints were verified
+        with Postman collections and Swagger UI, focusing on authentication cookies, workspace
+        isolation, and import summaries;
+  \item \textbf{End-to-end flows:} login, workspace invitation, Comma-Separated Values import,
+        customer personal link access, Stripe checkout, and invoice retrieval were replayed on
+        preview environments after each sprint review;
+  \item \textbf{Regression discipline:} critical paths from earlier sprints were re-tested when
+        shared middleware or database schema changed.
+\end{itemize}
+
+\subsection{Test Data and Acceptance Criteria}
+
+Each sprint defined explicit acceptance criteria in Linear (expected status codes, visible
+user interface states, and database side effects).
+For imports, tests included files with delimiter variations, duplicate emails, invalid amounts,
+and large batches to confirm chunked inserts remained stable.
+For payments, tests covered duplicate verification calls to confirm idempotent confirmation.
+
+\subsection{Debt Status Lifecycle Model}
+
+Collectra models each debt as a finite state machine.
+Statuses are stored in the database as enumerated values and validated on every update.
+Table~\ref{tab:debt-status} lists the main states, their business meaning, and typical
+transitions performed by agents or automated customer actions.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{2.8cm}|Y|Z|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Status} & \textbf{Meaning} & \textbf{Typical Next States} \\
+    \hline
+    Imported   & Debt created from Comma-Separated Values or manual entry; not yet communicated &
+    Notified, Overdue \\
+    \hline
+    Notified   & Customer received a link or email; collection is active &
+    Promised, Paid, Overdue \\
+    \hline
+    Promised   & Customer or agent recorded a commitment date &
+    Paid, Overdue, Notified \\
+    \hline
+    Paid       & Payment confirmed (Stripe or controlled demo flow) &
+    Terminal state \\
+    \hline
+    Overdue    & Due date passed without payment; escalated follow-up &
+    Promised, Paid, Notified \\
+    \hline
+  \end{tabularx}
+  \caption{Debt Status Lifecycle -- States and Transitions}
+  \label{tab:debt-status}
+\end{table}
+
+The backend rejects illegal jumps (for example, \texttt{Paid} $\rightarrow$ \texttt{Imported})
+through a dedicated transition guard.
+This design prevents accidental data corruption when agents bulk-update rows or when
+webhooks arrive out of order.
+From a product perspective, managers can filter dashboards and exports by status, which
+makes operational meetings more concrete: teams discuss counts per state instead of
+ambiguous spreadsheet colours.
+
+\subsection{Defect Management}
+
+Tasks assigned by the supervisor were managed in Linear with priority levels and related details about the affected module (\texttt{apps/web}, \texttt{apps/api}, or shared packages). High-priority issues were completed first before moving to lower-priority tasks, while less important improvements were deferred to the backlog with clear priority labels.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Security Architecture}
+\label{sec:security}
+
+Security was treated as a cross-cutting concern from Sprint~1 onward.
+Collectra combines authentication, authorization, and tenant isolation at multiple layers.
+
+\subsection{Authentication and Session Model}
+
+Users authenticate through Supabase Auth.
+The backend issues a signed JSON Web Token stored in a \textbf{Hypertext Transfer Protocol-only}
+session cookie so client-side scripts cannot read it.
+Protected routes verify the token on every request before executing business logic.
+
+\subsection{Workspace Isolation and Role-Based Access Control}
+
+All operational data is scoped to a \texttt{workspaceId}.
+Middleware rejects cross-tenant access attempts with \texttt{403 Forbidden} even when a user
+is authenticated.
+Managers and agents receive different permissions: sensitive actions (invitations, campaign
+deletion, dashboard access) require the manager role.
+
+\subsection{Customer-Facing Security}
+
+Personal links rely on signed JSON Web Tokens with expiration.
+Public endpoints never expose internal identifiers without verification.
+Payment confirmation uses Stripe session identifiers, database-level locks, and idempotent
+verification to prevent duplicate charges.
+
+\subsection{Secrets and Deployment Hygiene}
+
+Database credentials, JSON Web Token secrets, Stripe keys, and Brevo credentials are injected
+as environment variables in Vercel.
+No secret is committed to Git.
+Preview deployments use separate configuration so test keys cannot affect production data.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{General Architecture of the Application}
+
+Collectra is structured as a \textbf{monorepo} managed with pnpm and Turborepo.
+It contains four main packages:
+\begin{itemize}
+  \item \texttt{apps/web} -- the Next.js frontend application;
+  \item \texttt{apps/api} -- the Hono backend Representational State Transfer Application Programming Interface;
+  \item \texttt{packages/db} -- the shared Prisma client and database schema;
+  \item \texttt{packages/types} -- shared TypeScript types and Zod validation schemas.
+\end{itemize}
+
+The logical architecture separates four main domains: authentication and session
+management, workspace and team management, campaign and debt management, and customer
+access.
+Each domain maps to a dedicated set of Application Programming Interface routes and frontend pages.
+All inter-domain communication passes through typed Zod-validated contracts, ensuring
+that the Application Programming Interface surface is consistent and that both frontend and
+backend always share the same type definitions.
+
+\subsection{Monorepo Structure and Code Organization}
+
+The monorepo is orchestrated with Turborepo task pipelines (\texttt{build}, \texttt{lint},
+\texttt{dev}) so unchanged packages are skipped during continuous integration.
+Shared types in \texttt{packages/types} prevent drift between the Next.js client and the Hono
+server: when a request schema changes, TypeScript compilation fails until both sides are updated.
+
+\begin{itemize}
+  \item \textbf{Frontend (\texttt{apps/web}):} route groups for authentication, workspace
+        dashboards, campaign screens, and customer-facing public pages;
+  \item \textbf{Backend (\texttt{apps/api}):} route modules grouped by domain (auth, workspaces,
+        campaigns, debts, public customer access, payments);
+  \item \textbf{Database (\texttt{packages/db}):} Prisma schema, migrations, and generated client;
+  \item \textbf{Shared contracts (\texttt{packages/types}):} Zod schemas reused for validation and
+        OpenAPI generation.
+\end{itemize}
+
+This layout reduced duplication and made refactors safer: a single schema change propagates to
+the Application Programming Interface contract, the database layer, and the user interface forms
+in one coordinated change set.
+
+\subsection{Data Persistence and Domain Entities}
+
+PostgreSQL stores all business entities with strict foreign keys between workspaces, campaigns,
+debts, promises, and history tables.
+Prisma enforces referential integrity and provides typed queries for dashboard aggregations and
+bulk imports.
+Customer-facing actions are persisted in history tables so managers can audit who changed a
+status, when a promise was recorded, and when a payment was confirmed.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Deployment and Continuous Integration / Continuous Deployment Pipeline}
+\label{sec:deployment}
+
+\subsection{Hosting Infrastructure}
+
+Collectra is deployed on \textbf{Vercel}, a cloud platform optimized for Next.js
+applications, under the custom domain \texttt{collectra.xyz}.
+The Supabase-managed PostgreSQL database runs on Supabase's cloud infrastructure,
+and all environment variables (database connection strings, JSON Web Token secrets, Stripe keys,
+Brevo application programming interface key) are configured as Vercel project environment variables and are never
+committed to the repository.
+
+\subsection{Git Branching Strategy}
+
+The project uses a two-branch Git workflow on GitHub:
+
+\begin{itemize}
+  \item \textbf{\texttt{develop}:} the active development branch where all feature
+        branches are merged after code review. This branch reflects the latest
+        integrated work-in-progress state.
+  \item \textbf{\texttt{production}:} the stable branch that drives live deployments.
+        A pull request from \texttt{develop} into \texttt{production} is opened at
+        the end of each sprint after all sprint tests pass.
+\end{itemize}
+
+\subsection{Automated Deployment Pipeline}
+
+Vercel is connected directly to the GitHub repository.
+Every merge into the \texttt{production} branch triggers an automatic Vercel build
+and deployment, as described in the following steps:
+
+\begin{enumerate}
+  \item Developer pushes feature work to a feature branch and opens a pull request into \texttt{develop}.
+  \item After review, the feature branch is merged into \texttt{develop}.
+  \item At sprint end, \texttt{develop} is merged into \texttt{production} via a pull request.
+  \item Vercel detects the push to \texttt{production}, runs the Turborepo build pipeline,
+        and publishes the updated application to \texttt{collectra.xyz} automatically.
+  \item Vercel also generates a unique preview Uniform Resource Locator for every pull request, enabling
+        stakeholder review before merging to production.
+\end{enumerate}
+
+This pipeline ensures that the live environment always reflects a tested, reviewed
+state, and that every deployment is traceable to a specific Git commit.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{End-to-End User Journeys}
+\label{sec:user-journeys}
+
+Beyond isolated screens, Collectra supports three repeatable journeys that structure the
+internship demonstrations and acceptance tests.
+
+\subsection{Manager Journey}
+
+A manager authenticates, creates or selects a workspace, invites agents, and configures campaigns.
+After agents import debts, the manager monitors progress from the dashboard, filters by campaign,
+and reviews action history for audit purposes.
+When payments occur, the manager verifies invoice availability and email tracking indicators.
+This journey validates workspace isolation, role-based access control, and reporting value.
+
+\subsection{Agent Journey}
+
+An agent authenticates, opens a workspace campaign, and works from the campaign debt table. Imports and updates use a transactional CSV importer and enqueue post-commit background jobs (for example, requesting Brevo to send emails). Brevo is the provider that sends those emails and any post-payment receipts — agents do not send emails or generate receipts directly. During calls agents record promises, update debt statuses, and may initiate a Stripe checkout (the system sets a `pendingStripeSessionId` lock); agents cannot perform public customer actions. Every state-changing action is logged to `CustomerActionHistory`. The interface keeps common tasks reachable in two or three clicks.
+
+\subsection{Customer Journey}
+
+A customer receives a signed link, opens the public debt page without an account, reviews the
+amount and due information, optionally submits a promise date, and may start Stripe Checkout.
+After payment, the customer is redirected to verification and can open the hosted invoice.
+This journey validates public Application Programming Interface endpoints, token expiration, and
+idempotent payment confirmation.
+
+\subsection{Journey Validation Matrix}
+
+Table~\ref{tab:journey-matrix} maps each journey to the sprint that introduced its core
+capabilities and the primary evidence used during acceptance reviews (screenshots, Postman
+collections, and live demos on \texttt{collectra.xyz}).
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|Y|c|Z|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Journey} & \textbf{Sprint} & \textbf{Validation Evidence} \\
+    \hline
+    Manager onboarding and supervision & 1, 3, 4 &
+    Workspace invitation flow, dashboard indicators, invoice and tracking overview \\
+    \hline
+    Agent daily collection work & 2, 3 &
+    Comma-Separated Values import, status filters, promise dialog, personal link generation \\
+    \hline
+    Customer self-service payment & 2, 4 &
+    Public debt page, Stripe checkout, verification polling, hosted invoice \\
+    \hline
+  \end{tabularx}
+  \caption{User Journey Validation Matrix}
+  \label{tab:journey-matrix}
+\end{table}
+
+These journeys were rehearsed before each sprint review so stakeholders could follow a coherent
+story rather than isolated features.
+For the defense, the same order (manager $\rightarrow$ agent $\rightarrow$ customer) provides a
+logical narrative that mirrors real collection operations.
+
+\section*{Conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Conclusion}
+
+This chapter defined the project actors and requirements, described the work
+environment and technology stack, introduced the Scrum methodology and project
+timeline, presented the general architecture, and detailed the Vercel-based
+deployment pipeline.
+The following chapters present each sprint in detail.
+
+\clearpage
+% =============================================================================
+\chapter{Sprint 1: Core Authentication and Workspace Setup}
+\label{chap:sprint1}
+% =============================================================================
+
+\section*{Introduction}
+\phantomsection
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 1 establishes the secure foundation of the Collectra platform.
+It covers user authentication, workspace creation, and the member invitation flow.
+These features are prerequisites for all subsequent sprints, as every resource in
+the system is scoped to a workspace and every action requires an authenticated session.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Sprint 1 Backlog}
+
+Table~\ref{tab:s1-backlog} lists the user stories selected for Sprint 1.
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|c|c|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{User Story} & \textbf{Priority} & \textbf{Complexity} \\
+    \hline
+    S1-01 & As a user I want to register with my email and password so that I can access the platform.    & High & Low \\
+    \hline
+    S1-02 & As a user I want to log in securely so that my session is protected by an Hypertext Transfer Protocol-only cookie.   & High & Low \\
+    \hline
+    S1-03 & As a manager or agent I want to create a workspace so that my team data is isolated.                & High & Medium \\
+    \hline
+    S1-04 & As a manager I want to invite team members by email so that agents can join my workspace.     & High & Medium \\
+    \hline
+    S1-05 & As an invited user I want to accept an invitation so that I can join the workspace.           & High & Medium \\
+    \hline
+    S1-06 & As a user I want to log out securely so that my session is properly closed.                   & Medium & Low \\
+    \hline
+    S1-07 & As a user I want to delete my account so that all my workspace and associated data are permanently removed. & High & Medium \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 1 Backlog}
+  \label{tab:s1-backlog}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Functional Specification}
+
+\subsection{Use Case Diagram}
+
+Figure~\ref{fig:uc-s1} shows the use case diagram for Sprint 1, covering registration,
+login, workspace creation, and the invitation flow.
+
+\diagram[fig:uc-s1]{Digrams/Collectra - Sprint 1.png}{Use Case Diagram -- Sprint 1}
+
+\subsection{Textual Description of Use Cases}
+
+\subsubsection{- User Registration}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & User Registration \\
+    \hline
+    Actor         & Manager, Agent \\
+    \hline
+    Precondition  & User has a valid email address and is not already registered. \\
+    \hline
+    Main Flow     & 1.\ User opens the registration page. \newline
+                    2.\ User enters name, email, and password. \newline
+                    3.\ System validates inputs via Zod schema. \newline
+                    4.\ System creates account via Supabase Auth. \newline
+                    5.\ User is redirected to workspace creation. \\
+    \hline
+    Postcondition & User account is created; session is active. \\
+    \hline
+    Alternative   & If the email already exists, system displays an error and prompts login. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- User Registration}
+  \label{tab:uc01}
+\end{table}
+
+\subsubsection{- Workspace Creation}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & Workspace Creation \\
+    \hline
+    Actor         & Manager, Agent \\
+    \hline
+    Precondition  & User is authenticated and does not yet belong to a workspace. \\
+    \hline
+    Main Flow     & 1.\ Manager navigates to workspace setup. \newline
+                    2.\ Manager enters workspace name and optional settings. \newline
+                    3.\ System creates the workspace and assigns the manager as Owner. \newline
+                    4.\ Manager is redirected to the workspace dashboard. \\
+    \hline
+    Postcondition & Workspace is created; manager holds the Owner role. \\
+    \hline
+    Alternative   & If the workspace name is already taken, system displays an error. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- Workspace Creation}
+  \label{tab:uc02}
+\end{table}
+
+\subsubsection{- Member Invitation}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & Member Invitation \\
+    \hline
+    Actor         & Manager \\
+    \hline
+    Precondition  & Manager is authenticated and owns or manages a workspace. \\
+    \hline
+    Main Flow     & 1.\ Manager opens the team management screen. \newline
+                    2.\ Manager enters the invitee's email and selects a role (Agent or Manager). \newline
+                    3.\ System generates a unique invitation token. \newline
+                    4.\ System sends an invitation email with a signed acceptance link. \newline
+                    5.\ Invitation appears in the list with status \textit{Pending}. \\
+    \hline
+    Postcondition & Invitation record is saved; invitee receives an email. \\
+    \hline
+    Alternative   & If the email is invalid or the user is already a member, an error is shown. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- Member Invitation}
+  \label{tab:uc03}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Design}
+
+\subsection{Class Diagram}
+
+Figure~\ref{fig:class-s1} shows the class diagram for Sprint 1, covering the
+\texttt{User}, \texttt{Workspace}, \texttt{WorkspaceMember}, and \texttt{Invitation} entities.
+
+\diagram[fig:class-s1]{Digrams/Class Diagram - Sprint 1.png}{Class Diagram -- Sprint 1}
+
+\subsection{Sequence Diagrams}
+
+Figures~\ref{fig:seq-auth}--\ref{fig:seq-accept} illustrate the authentication,
+invitation, and acceptance flows respectively.
+
+\diagram[fig:seq-auth]{Digrams/Authentication Flow.png}{Sequence Diagram -- Authentication Flow}
+\diagram[fig:seq-invite]{Digrams/Invite Member Flow.png}{Sequence Diagram -- Invite Member Flow}
+\diagram[fig:seq-accept]{Digrams/Accept Invitation Flow.png}{Sequence Diagram -- Accept Invitation Flow}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation}
+
+\subsection{Sprint 1 Interface}
+
+The Sprint 1 interface covers three main screens: authentication, workspace creation,
+and team management.
+Figures~\ref{fig:s1-login}--\ref{fig:s1-team} show these screens.
+
+\screenshot[fig:s1-login]{screenshots/login.PNG}{Login Screen}
+\screenshot[fig:s1-workspace]{screenshots/workspace ceration.PNG}{Workspace Creation Screen}
+\screenshot[fig:s1-team]{screenshots/invitaion page.PNG}{Team Management Screen}
+
+\subsection{Sprint 1 Business Logic}
+
+\subsubsection{Authentication}
+
+Authentication is handled by Supabase Auth using email and password.
+On a successful login, the backend sets an Hypertext Transfer Protocol-only session cookie containing the
+user's JSON Web Token.
+A Next.js middleware layer checks this cookie on every protected route and page,
+redirecting unauthenticated requests to the login screen.
+This approach prevents token theft via JavaScript and protects all workspace data
+behind a single, centrally managed guard.
+
+\subsubsection{Workspace Isolation}
+
+Every Application Programming Interface endpoint that accesses workspace resources validates a \texttt{workspaceId}
+guard before processing any data.
+The system verifies that the authenticated user is an active member of the requested
+workspace, ensuring that data from one workspace is never visible to users of another.
+
+\subsubsection{Invitation Flow}
+
+When a manager invites a user, the system:
+\begin{enumerate}
+  \item generates a unique, time-limited invitation token;
+  \item stores the invitation record with status \textit{Pending} in the database;
+  \item sends an email containing a signed acceptance link;
+  \item on acceptance, creates the workspace membership with the assigned role
+        and marks the invitation as \textit{Accepted}.
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Sprint 1 -- Test Results}
+
+Table~\ref{tab:test-s1} presents the functional tests executed at the end of Sprint 1.
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \footnotesize\reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|p{3.85cm}|p{1.8cm}|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{Test Description} & \textbf{Expected Result} & \textbf{Actual} \\
+    \hline
+    T1-01 & Register with valid email and password         & Account created, redirect to workspace setup & As expected \\
+    \hline
+    T1-02 & Register with an already-used email            & Error message displayed, no duplicate account & As expected \\
+    \hline
+    T1-03 & Login with correct credentials                 & Hypertext Transfer Protocol-only cookie set, redirect to dashboard   & As expected \\
+    \hline
+    T1-04 & Login with wrong password                      & Error message, no cookie set                  & As expected \\
+    \hline
+    T1-05 & Access protected page without session          & Redirect to login screen                      & As expected \\
+    \hline
+    T1-06 & Create workspace with a valid name             & Workspace created, Owner role assigned        & As expected \\
+    \hline
+    T1-07 & Invite a user by email with role Agent         & Invitation email sent, status set to Pending  & As expected \\
+    \hline
+    T1-08 & Accept invitation via signed link              & Membership created, redirect to workspace     & As expected \\
+    \hline
+    T1-09 & Log out from an active session                 & Cookie cleared, redirect to login             & As expected \\
+    \hline
+    T1-10 & Access another workspace without membership    & 403 Forbidden returned, no data exposed       & As expected \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 1 -- Functional Test Results}
+  \label{tab:test-s1}
+\end{table}
+
+\subsection{Sprint 1 Retrospective}
+
+The main success of Sprint~1 was establishing workspace isolation early, which simplified every
+later feature.
+The team improved estimation for invitation flows after discovering email template edge cases.
+For Sprint~2, we prepared standardized Comma-Separated Values samples and clarified status
+transition rules in the backlog before development started.
+
+From a process perspective, Sprint~1 validated the monorepo toolchain: Turborepo caching reduced
+local build times, and preview deployments allowed CyberBridge reviewers to test invitations without
+database access.
+Technical debt was intentionally limited to polish items (password reset messaging, clearer error
+copy) so Sprint~2 could focus on domain complexity.
+The retrospective action items recorded in Linear were: (i)~document middleware contract for
+workspace scoping, (ii)~add Postman tests for forbidden cross-workspace access, and
+(iii)~capture screenshots for the report appendix while flows were still fresh.
+
+\section*{Conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 1 delivered a fully tested authentication system, workspace creation, and
+member invitation workflow.
+The decision to enforce workspace isolation at the middleware level -- rather than
+in individual route handlers -- proved to be the key architectural choice that
+simplified all subsequent data access patterns.
+The next chapter presents Sprint 2, which extends the platform with campaign and
+debt management.
+
+\clearpage
+% =============================================================================
+\chapter{Sprint 2: Campaign and Debt Management}
+\label{chap:sprint2}
+% =============================================================================
+
+\section*{Introduction}
+\phantomsection
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 2 builds on the authenticated workspace foundation from Sprint 1.
+It introduces campaign management, bulk Comma-Separated Values debt import, debt status tracking across
+a defined lifecycle, and the generation of JSON Web Token-secured customer personal links.
+The most technically demanding aspect of this sprint was designing a status
+transition system that is strict enough to prevent invalid lifecycle jumps while
+remaining easy to extend in future sprints.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Sprint 2 Backlog}
+
+Table~\ref{tab:s2-backlog} lists the user stories selected for Sprint 2.
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|c|c|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{User Story} & \textbf{Priority} & \textbf{Complexity} \\
+    \hline
+    S2-01 & As a manager I want to create campaigns so that related debts are grouped logically. & High & Medium \\
+    \hline
+    S2-02 & As an agent I want to import debts from a Comma-Separated Values file so I can add many records at once. & High & High \\
+    \hline
+    S2-03 & As an agent I want the importer to handle common Comma-Separated Values variations and large files so imports are reliable and fast. & High & High \\
+    \hline
+    S2-04 & As an agent I want to view and filter debts by status and campaign so I can prioritise work. & High & Medium \\
+    \hline
+    S2-05 & As an agent I want the system to enforce correct status changes so debt lifecycles stay consistent. & High & Medium \\
+    \hline
+    S2-06 & As an agent I want to generate secure, time-limited customer links so customers can view and act on their debt without an account. & High & Medium \\
+    \hline
+    S2-07 & As an agent I want notification emails sent after import so customers receive outreach automatically. & Medium & Medium \\
+    \hline
+    S2-08 & As a customer I want to open a secure link to view my debt and make a promise or payment without registering. & Medium & Low \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 2 Backlog}
+  \label{tab:s2-backlog}
+\end{table}
+
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Functional Specification}
+
+\subsection{Use Case Diagram}
+
+Figure~\ref{fig:uc-s2} shows the use case diagram for Sprint 2.
+
+\diagram[fig:uc-s2]{Digrams/Use Case Diagram – Sprint 2.png}{Use Case Diagram -- Sprint 2}
+
+\subsection{Textual Description of Use Cases}
+
+\subsubsection{Campaign Creation}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & Campaign Creation \\
+    \hline
+    Actor         & Manager, Agent \\
+    \hline
+    Precondition  & User is authenticated and is a member of the workspace. \\
+    \hline
+    Main Flow     & 1.\ User navigates to the Campaigns section. \newline
+                    2.\ User clicks Create Campaign and fills in name and description. \newline
+                    3.\ System validates and saves the campaign record. \newline
+                    4.\ Campaign appears in the list with status \textit{Active}. \\
+    \hline
+    Postcondition & Campaign is created and ready to receive debt records. \\
+    \hline
+    Alternative   & If required fields are missing, system highlights the validation errors. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- Campaign Creation}
+  \label{tab:uc04}
+\end{table}
+
+\subsubsection{Comma-Separated Values Debt Import}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & Comma-Separated Values Debt Import \\
+    \hline
+    Actor         & Agent \\
+    \hline
+    Precondition  & A campaign exists; user has Agent or Manager role. \\
+    \hline
+    Main Flow     & 1.\ Agent opens the campaign and selects Import Comma-Separated Values. \newline
+                    2.\ Agent uploads a Comma-Separated Values file with debt records. \newline
+                    3.\ System parses, validates, and batch-inserts records into the database. \newline
+                    4.\ A summary of imported, skipped, and error rows is displayed. \\
+    \hline
+    Postcondition & Valid debt records are created with status \textit{Imported}. \\
+    \hline
+    Alternative   & Rows with missing or invalid fields are skipped and counted in the error report. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- Comma-Separated Values Debt Import}
+  \label{tab:uc05}
+\end{table}
+
+\subsubsection{Customer Personal Link Generation}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & Customer Personal Link Generation \\
+    \hline
+    Actor         & Agent \\
+    \hline
+    Precondition  & A debt record exists; user has Agent or Manager role. \\
+    \hline
+    Main Flow     & 1.\ Agent opens a debt record and clicks Generate Link. \newline
+                    2.\ System creates a signed JSON Web Token containing the debt ID and a 48-hour expiration timestamp. \newline
+                    3.\ System stores the link record and returns the personal Uniform Resource Locator. \newline
+                    4.\ Agent shares the link with the customer (email or phone). \\
+    \hline
+    Postcondition & A 48-hour personal link is generated and stored. \\
+    \hline
+    Alternative   & If an active link already exists for that debt, the system returns it instead of creating a new one. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- Customer Personal Link Generation}
+  \label{tab:uc06}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Design}
+
+\subsection{Class Diagram}
+
+Figure~\ref{fig:class-s2} shows the class diagram for Sprint 2, adding the
+\texttt{Campaign}, \texttt{Debt}, and \texttt{CustomerLink} entities.
+
+\diagram[fig:class-s2]{Digrams/class diagram for Sprint 2.png}{Class Diagram -- Sprint 2}
+
+\subsection{Sequence Diagrams}
+
+Figure~\ref{fig:seq-s2-1} shows the campaign and Comma-Separated Values import flow.
+Figure~\ref{fig:seq-s2-2} shows the customer personal link flow.
+
+\diagram[fig:seq-s2-1]{Digrams/Campaign CSV Import Flow.png}{Sequence Diagram -- Campaign and Comma-Separated Values Import Flow}
+\diagram[fig:seq-s2-2]{Digrams/Customer Personal Link Flow.png}{Sequence Diagram -- Customer Personal Link Flow}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation}
+
+\subsection{Sprint 2 Interface}
+
+The Sprint 2 interface covers the campaign list, the debt table with status filters,
+the Comma-Separated Values import dialog, and the customer personal link screen.
+
+\screenshot[fig:s2-campaigns]{screenshots/Campaign List – Sprint 2.PNG}{Campaign List -- Sprint 2}
+\screenshot[fig:s2-debts]{screenshots/Debt Table with Status Filters.PNG}{Debt Table with Status Filters -- Sprint 2}
+\screenshot[fig:s2-import]{screenshots/csv im.PNG}{Comma-Separated Values Import Dialog -- Sprint 2}
+\screenshot[fig:s2-link]{screenshots/DEBT.PNG}{Customer Personal Link Screen -- Sprint 2}
+
+\subsection{Sprint 2 Business Logic}
+
+\subsubsection{Debt Lifecycle}
+
+The debt lifecycle follows a strict sequence of status transitions:
+
+\begin{center}
+  \texttt{Imported} $\;\to\;$ \texttt{Notified} $\;\to\;$ \texttt{Promised}
+  $\;\to\;$ \texttt{Paid}
+\end{center}
+
+A debt may also move to \texttt{OVERDUE\_AFTER\_PROMISE} if the recorded due date or a promise date passes without a payment being confirmed.
+The backend enforces allowed transitions and prevents invalid jumps; this logic is implemented in the Debts and Overdue services (\texttt{apps/api/src/services/debts.ts}, \texttt{apps/api/src/services/overdue-debts.ts}).
+
+\subsubsection{Comma-Separated Values Import Logic}
+
+The Comma-Separated Values import endpoint implements a tolerant, production-ready importer:
+\begin{enumerate}
+  \item receives the file as a multipart/form-data upload;
+  \item detects the delimiter (comma, semicolon, or tab) and parses quoted values robustly;
+  \item resolves header aliases (for example \texttt{fullname}, \texttt{name}, \texttt{clientname} $\to$ full name; \texttt{montant}/\texttt{amount} $\to$ amount) and validates required columns (full name, email, phone, amount);
+  \item normalizes fields (email lowercasing, amount parsing) and maps textual status values using a canonical mapping (see \texttt{STATUS\_MAPPING} in \texttt{apps/api/src/services/campaigns.ts});
+  \item matches existing clients by case-insensitive email; for unseen emails the importer prepares a batch of pending clients and inserts them using \texttt{createMany} in chunks (safe chunk size used in code: 500);
+  \item inserts debts using \texttt{createMany} in chunked batches inside a transaction to avoid timeouts;
+  \item returns a detailed import summary (total rows, imported rows, skipped rows with reasons) and a list of per-debt notifications to attempt via Brevo.
+\end{enumerate}
+
+\subsubsection{JSON Web Token Customer Links}
+
+Personal links are implemented as signed JSON Web Tokens (Hash-based Message Authentication Code SHA-256). The token
+encodes the debt id in the \texttt{sub} claim and is signed using the server secret.
+The implementation issues tokens with a default expiry of 30 days (see
+\texttt{EXPIRY\_DAYS} in \texttt{apps/api/src/lib/customer-jwt.ts}). Token verification is
+stateless (no DB row required) and performed by \texttt{verifyCustomerToken} when the
+public link is accessed.
+
+Customer actions performed via the public link (link click, link open, promise
+creation, payment initiation) are recorded in \texttt{customerActionHistory} and Brevo
+event logs where applicable.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Sprint 2 -- Test Results}
+
+Table~\ref{tab:test-s2} presents the functional tests executed at the end of Sprint 2.
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \footnotesize\reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|p{3.85cm}|p{1.8cm}|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{Test Description} & \textbf{Expected Result} & \textbf{Actual} \\
+    \hline
+    T2-01 & Create campaign with valid name and description  & Campaign saved, status Active          & As expected \\
+    \hline
+    T2-02 & Create campaign with missing required fields     & Validation error displayed             & As expected \\
+    \hline
+    T2-03 & Import valid Comma-Separated Values with 50 debt records            & 50 records created, status Imported    & As expected \\
+    \hline
+    T2-04 & Import Comma-Separated Values with 2 invalid rows out of 10        & 8 records created, 2 counted as errors & As expected \\
+    \hline
+    T2-05 & Update debt status from Imported to Notified     & Status updated, action logged          & As expected \\
+    \hline
+    T2-06 & Attempt invalid status transition (Imported to Paid) & 400 Bad Request returned           & As expected \\
+    \hline
+    T2-07 & Generate customer personal link for a debt       & Signed Uniform Resource Locator returned, 30-day expiry set & As expected \\
+    \hline
+    T2-08 & Open valid personal link as customer             & Debt details displayed, no login required & As expected \\
+    \hline
+    T2-09 & Open expired personal link                       & 401 Unauthorized returned              & As expected \\
+    \hline
+    T2-10 & Generate link when one already exists            & Existing active link returned          & As expected \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 2 -- Functional Test Results}
+  \label{tab:test-s2}
+\end{table}
+
+\subsection{Sprint 2 Retrospective}
+
+Import performance and status-transition rules were the highest-risk topics.
+Chunked inserts and explicit transition guards proved sufficient for production-like files.
+The retrospective highlighted the need for better import error reporting in the user interface,
+which guided Sprint~3 dashboard and history priorities.
+
+Sprint~2 also confirmed that customer personal links must remain independent from internal
+workspace routing: public pages use a dedicated layout without navigation chrome, which
+reduces accidental exposure of manager features.
+Performance tests on preview environments showed that imports above three thousand rows remain
+acceptable when batched, but the user interface now surfaces progress indicators to manage agent
+expectations during long uploads.
+Action items for Sprint~3 included richer per-row error export, campaign-level filters on the debt
+table, and history entries whenever status changes occur in bulk.
+
+\section*{Conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 2 delivered a fully tested campaign and debt management module, including bulk
+Comma-Separated Values import, a strictly enforced debt status lifecycle, and 30-day JSON Web Token-secured
+customer personal links.
+The key design decision -- validating all status transitions server-side rather than
+relying on frontend state -- ensured data integrity throughout the lifecycle.
+The next chapter presents Sprint 3, which focuses on collaboration and reporting.
+
+% =============================================================================
+\clearpage
+% =============================================================================
+\chapter{Sprint 3: Audit Trail, Payment Promises, and Manager Dashboard}
+\label{chap:sprint3}
+% =============================================================================
+
+\section*{Introduction}
+\phantomsection
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 3 focuses on giving managers full operational visibility and control over
+the platform.
+It adds action history tracking for complete auditability, payment promise recording
+to extend the debt lifecycle, the manager dashboard for real-time collection
+monitoring, and role-based permission enforcement to protect sensitive operations.
+The central design challenge was aggregating debt data across campaigns efficiently
+without introducing N+1 query patterns on the dashboard endpoint.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Sprint 3 Backlog}
+
+Table~\ref{tab:s3-backlog} lists the user stories selected for Sprint 3.
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|c|c|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{User Story} & \textbf{Priority} & \textbf{Complexity} \\
+    \hline
+    S3-01 & As an agent I want to record a payment promise so that the commitment date is tracked.        & Medium & Medium \\
+    \hline
+    S3-02 & As a manager I want to view a full action history so that all operations are traceable.       & Medium & Medium \\
+    \hline
+    S3-03 & As a manager I want dashboard indicators so that I can monitor overall collection progress.   & Medium & Medium \\
+    \hline
+    S3-04 & As a manager I want to filter the dashboard by campaign so that I can compare performance.    & Medium & Medium \\
+    \hline
+    S3-05 & As a manager I want role-based permissions enforced on sensitive actions.                     & High   & High \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 3 Backlog}
+  \label{tab:s3-backlog}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Functional Specification}
+
+\subsection{Use Case Diagram}
+
+Figure~\ref{fig:uc-s3} shows the use case diagram for Sprint 3.
+
+\diagram[fig:uc-s3]{DiagramsV2/Use Case Diagram – Sprint 3.png}{Use Case Diagram -- Sprint 3}
+
+\subsection{Textual Description of Use Cases}
+
+\subsubsection{UC-07: Record Payment Promise}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & UC-07: Record Payment Promise \\
+    \hline
+    Actor         & Agent \\
+    \hline
+    Precondition  & Debt exists with status \textit{Notified} or \textit{Imported}. \\
+    \hline
+    Main Flow     & 1.\ Agent opens the debt record. \newline
+                    2.\ Agent selects Record Promise and enters the promised payment date. \newline
+                    3.\ System saves the promise and transitions debt status to \textit{Promised}. \newline
+                    4.\ Action is written to the history log. \\
+    \hline
+    Postcondition & Promise is recorded; debt status is \textit{Promised}. \\
+    \hline
+    Alternative   & If the promise date is already past, system immediately flags debt as \textit{Overdue}. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- UC-07: Record Payment Promise}
+  \label{tab:uc07}
+\end{table}
+
+\subsubsection{UC-08: Manager Dashboard}
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.1cm}|Y|}
+    \hline
+    Use Case      & UC-08: Manager Dashboard \\
+    \hline
+    Actor         & Manager \\
+    \hline
+    Precondition  & Manager is authenticated and the workspace has at least one campaign. \\
+    \hline
+    Main Flow     & 1.\ Manager opens the Dashboard section. \newline
+                    2.\ System aggregates debt counts by status per campaign. \newline
+                    3.\ Dashboard displays key indicators: total, paid, promised, overdue. \newline
+                    4.\ Manager can filter by campaign or date range. \\
+    \hline
+    Postcondition & Manager has a real-time aggregated view of collection progress. \\
+    \hline
+    Alternative   & If no data exists, dashboard shows an empty state with onboarding guidance. \\
+    \hline
+  \end{tabularx}
+  \caption{Use Case Description -- UC-08: Manager Dashboard}
+  \label{tab:uc08}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Design}
+
+\subsection{Class Diagram}
+
+Figure~\ref{fig:class-s3} shows the Sprint 3 class diagram, adding the
+\texttt{PaymentPromise} and \texttt{CustomerActionHistory} entities.
+
+\diagram[fig:class-s3]{DiagramsV2/Sprint 3 class diagram.png}{Class Diagram -- Sprint 3}
+
+\subsection{Sequence Diagrams}
+
+Figure~\ref{fig:seq-s3-1} shows the payment promise recording flow.
+Figure~\ref{fig:seq-s3-2} shows the dashboard data aggregation flow.
+
+\diagram[fig:seq-s3-1]{DiagramsV2/Sequence Diagram – Payment Promise Flow.png}{Sequence Diagram -- Payment Promise Flow}
+\diagram[fig:seq-s3-2]{DiagramsV2/Sequence Diagram – Dashboard Data Aggregation.png}{Sequence Diagram -- Dashboard Data Aggregation}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation}
+
+\subsection{Sprint 3 Interface}
+
+Sprint 3 adds three main screens: a payment promise dialog, an action history table,
+and the manager dashboard with key performance indicators.
+
+\screenshot[fig:s3-promise]{screenshots/PROMISE.PNG}{Payment Promise Dialog -- Sprint 3}
+\screenshot[fig:s3-history]{screenshots/TRAKING.PNG}{Action History Table -- Sprint 3}
+\screenshot[fig:s3-dashboard]{screenshots/OVERVIEW.PNG}{Dashboard -- Sprint 3}
+
+\subsection{Sprint 3 Business Logic}
+
+\subsubsection{Action History}
+
+Every significant operation -- status update, promise recorded, link generated,
+member invited -- is written to a \texttt{CustomerActionHistory} table.
+Each entry stores the user ID, workspace ID, action type, target entity ID, and a
+timestamp.
+The history is exposed as a paginated, chronological table on the history screen,
+giving managers a complete audit trail of all workspace activity.
+
+\subsubsection{Dashboard Aggregation}
+
+Dashboard queries are computed server-side using Prisma \texttt{groupBy} queries.
+Debt records are grouped by campaign and status, returning counts for each combination.
+The frontend renders these counts as summary indicator cards and a per-campaign
+status breakdown.
+Using \texttt{groupBy} at the database level avoids fetching individual records and
+eliminates N+1 query patterns that would degrade performance on large campaigns.
+
+\subsubsection{Role-Based Permission Enforcement}
+
+Sensitive actions -- deleting a campaign, modifying workspace settings, changing
+member roles -- are protected by a role guard middleware.
+The guard reads the requesting user's workspace role from the database and rejects
+the request with \texttt{403 Forbidden} if the role is insufficient.
+Agents who attempt Manager-only operations receive a clear error response without
+any data leak.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Sprint 3 -- Test Results}
+
+Table~\ref{tab:test-s3} presents the functional tests executed at the end of Sprint 3.
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \footnotesize\reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|p{3.85cm}|p{1.8cm}|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{Test Description} & \textbf{Expected Result} & \textbf{Actual} \\
+    \hline
+    T3-01 & Record a promise with a future date on a Notified debt  & Status set to Promised, action logged       & As expected \\
+    \hline
+    T3-02 & Record a promise with a past date                       & Status immediately set to Overdue           & As expected \\
+    \hline
+    T3-03 & View action history as manager                          & Paginated chronological list displayed      & As expected \\
+    \hline
+    T3-04 & Open dashboard with active campaign data                & KPI cards show correct debt counts          & As expected \\
+    \hline
+    T3-05 & Filter dashboard by specific campaign                   & Counts update to selected campaign only     & As expected \\
+    \hline
+    T3-06 & Agent attempts to delete a campaign                     & 403 Forbidden, campaign unchanged           & As expected \\
+    \hline
+    T3-07 & Agent attempts to change a member's role               & 403 Forbidden, role unchanged               & As expected \\
+    \hline
+    T3-08 & Manager deletes a campaign (authorized action)          & Campaign removed, history entry created     & As expected \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 3 -- Functional Test Results}
+  \label{tab:test-s3}
+\end{table}
+
+\subsection{Sprint 3 Retrospective}
+
+Dashboard aggregation and role-based access control required close coordination between
+database queries and route guards.
+The team standardized manager-only middleware checks to avoid duplicating permission logic in
+each handler.
+Stakeholder feedback during the review led to clearer campaign filters and more readable
+history entries for non-technical users.
+
+Sprint~3 demonstrated that auditability features change user behaviour: agents record promises
+more consistently when the history timeline is visible during calls.
+The dashboard also became the default sprint-review screen for managers, which influenced
+Sprint~4 priorities (payment totals, invoice shortcuts, email tracking cards).
+Remaining risks before payment integration were stale dashboard caches after bulk imports;
+the team mitigated this by invalidating aggregation queries when import jobs complete.
+
+\section*{Conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 3 delivered action history logging, payment promise tracking, the manager
+dashboard, and role-based permission enforcement.
+The use of server-side \texttt{groupBy} aggregation was the key performance decision
+that kept the dashboard responsive even on workspaces with large debt portfolios.
+The following chapter presents Sprint 4, which completes the platform with payment
+confirmation, invoice generation, and email tracking analytics.
+
+\clearpage
+% =============================================================================
+\chapter{Sprint 4: Payment Confirmation, Invoicing, and Analytics Integration}
+\label{chap:sprint4}
+% =============================================================================
+
+\section*{Introduction}
+\phantomsection
+\addcontentsline{toc}{section}{Introduction}
+
+Sprint 4 consolidates the final operational flow from customer payment to invoice
+delivery while integrating advanced email-tracking analytics.
+Its objective is to guarantee that every paid debt is confirmed safely, reflected in
+the platform state, and followed by invoice availability and auditable communication
+events.
+The most critical design challenge was hardening the Stripe payment return path to
+prevent duplicate charges while keeping customer feedback responsive during webhook
+processing delays.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Sprint 4 Backlog}
+
+\noindent\textit{Note: Sprint 4 tasks are expressed at the implementation level
+rather than as user stories, reflecting the integration and hardening nature of
+this sprint where the features involve system-to-system flows (Stripe, Brevo)
+rather than direct user-facing actions.}
+
+\medskip
+
+Table~\ref{tab:s4-backlog} lists the tasks for Sprint 4.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|c|c|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{Task} & \textbf{Priority} & \textbf{Complexity} \\
+    \hline
+    S4-01 & Implement Stripe checkout session creation from secure public debt links.                 & High   & Medium \\
+    \hline
+    S4-02 & Add post-payment verification endpoint and frontend polling after Stripe redirect.        & High   & High \\
+    \hline
+    S4-03 & Enforce idempotent payment confirmation and duplicate session prevention.                 & High   & High \\
+    \hline
+    S4-04 & Generate and expose invoices only after confirmed debt payment.                           & High   & Medium \\
+    \hline
+    S4-05 & Send payment receipt email with invoice access link through Brevo.                        & Medium & Medium \\
+    \hline
+    S4-06 & Persist and aggregate email-tracking events (sent, clicked, spam-like signals).           & High   & Medium \\
+    \hline
+    S4-07 & Finalize manager statistics view and campaign-level tracking synchronization.             & Medium & Medium \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 4 Backlog}
+  \label{tab:s4-backlog}
+\end{table}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Functional Specification}
+
+\subsection{Use Case Diagram}
+
+Figure~\ref{fig:uc-s4} shows the Sprint 4 use case diagram for payment confirmation,
+invoice access, and tracking analytics.
+
+\diagram[fig:uc-s4]{DiagramsV2/Use Case Diagram – Sprint 4.png}{Use Case Diagram -- Sprint 4 Payment and Invoice Flow}
+
+\subsection{Textual Description of Use Cases}
+
+Sprint 4 introduces two final user-facing use cases:
+\begin{itemize}
+  \item \textbf{UC-09: Confirm Debt Payment and Issue Invoice} -- the system confirms payment
+    (webhook and/or explicit verification), marks the debt as paid, generates an invoice number,
+    and allows secure invoice access through the public token;
+  \item \textbf{UC-10: Monitor Communication and Campaign Tracking} -- managers consult campaign
+    email statistics and synchronized tracking indicators (sent, clicked, spam-like events) to
+    supervise collection effectiveness.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Design}
+
+\subsection{Class Diagram}
+
+Figure~\ref{fig:class-s4} shows the Sprint 4 class diagram, integrating payment and
+invoice-related fields (invoice number, pending Stripe session lock) together with
+tracking entities used by analytics endpoints.
+
+\diagram[fig:class-s4]{DiagramsV2/Class Diagram – Sprint 4.png}{Class Diagram -- Sprint 4 Payment, Invoice, and Tracking Layer}
+
+\subsection{Sequence Diagrams}
+
+\diagram[fig:seq-s4-1]{DiagramsV2/Sequence Diagram – Stripe Verification and Payment Confirmation.png}{Sequence Diagram -- Stripe Verification and Payment Confirmation}
+\diagram[fig:seq-s4-2]{DiagramsV2/Invoice Access.png}{Sequence Diagram -- Invoice Access}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Implementation}
+
+\subsection{Sprint 4 Interface}
+
+Sprint 4 introduces post-payment customer feedback, invoice access, and enhanced
+manager tracking cards synchronized with backend event ingestion.
+
+\screenshot[fig:s4-dashboard-final]{screenshots/PAYMENT.PNG}{Payment and Tracking Overview -- Sprint 4}
+\screenshot[fig:s4-empty-state]{screenshots/invoice page.png}{Invoice and Analytics Areas -- Sprint 4}
+
+\subsection{Sprint 4 Business Logic}
+
+\subsubsection{Payment Confirmation and Idempotency}
+
+The payment pipeline was hardened to prevent duplicate charges and stale frontend states.
+After Stripe redirection, the client calls a verification endpoint and polls until the
+database confirms the debt as \texttt{PAID}.
+Server-side confirmation is idempotent: repeated webhook or verification calls do not
+duplicate state transitions.
+
+The backend enforces the following safeguards:
+\begin{itemize}
+  \item a \texttt{pendingStripeSessionId} lock to block concurrent checkout sessions;
+  \item strict eligibility checks before payment start (status and promise-date rules);
+  \item idempotent confirmation that updates debt status only once.
+\end{itemize}
+
+This prevents duplicate payment initiation and keeps User Interface state aligned with persisted backend data.
+
+\subsubsection{Invoice Generation and Delivery}
+
+Invoice generation occurs only after confirmed payment.
+When the debt transitions to \texttt{PAID}, the service creates or reuses a stable
+invoice number, exposes a secure public invoice endpoint, and redirects users to the
+hosted invoice or printable Portable Document Format representation.
+
+Invoice email is sent as a post-confirmation side effect through Brevo,
+ensuring payment state remains the primary source of truth even if email delivery fails.
+
+\subsubsection{Email Tracking and Manager Analytics Synchronization}
+
+Campaign import and communication flows now persist normalized tracking actions
+(\texttt{EMAIL\_SENT}, \texttt{LINK\_CLICKED}, and mapped provider events) into action history.
+Manager endpoints aggregate these events into operational metrics and refresh them in near real time.
+
+The final dashboard therefore combines:
+\begin{itemize}
+  \item debt lifecycle indicators;
+  \item payment and invoice completion visibility;
+  \item communication performance metrics for campaign follow-up decisions.
+\end{itemize}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{Sprint 4 -- Test Results}
+
+Table~\ref{tab:test-s4} presents the functional tests executed at the end of Sprint 4.
+
+\begin{table}[H]
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \footnotesize\reporttablesetup
+  \begin{tabularx}{\textwidth}{|c|Y|p{3.85cm}|p{1.8cm}|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{ID} & \textbf{Test Description} & \textbf{Expected Result} & \textbf{Actual} \\
+    \hline
+    T4-01 & Create Stripe checkout session for an eligible debt       & Session Uniform Resource Locator returned, lock set on debt    & As expected \\
+    \hline
+    T4-02 & Create second checkout session while lock is active       & 409 Conflict, duplicate session blocked   & As expected \\
+    \hline
+    T4-03 & Verify payment after successful Stripe redirect            & Debt status set to PAID, lock cleared     & As expected \\
+    \hline
+    T4-04 & Call verify-payment endpoint twice (idempotency check)    & Second call returns PAID without re-processing & As expected \\
+    \hline
+    T4-05 & Access invoice endpoint after confirmed payment            & Invoice page displayed or Portable Document Format accessible  & As expected \\
+    \hline
+    T4-06 & Access invoice endpoint before payment confirmation        & 403 Forbidden, no invoice served          & As expected \\
+    \hline
+    T4-07 & Payment receipt email sent via Brevo after confirmation   & Email received with invoice link          & As expected \\
+    \hline
+    T4-08 & Tracking pixel triggered on customer page open            & EMAIL\_SENT event persisted in history    & As expected \\
+    \hline
+    T4-09 & Manager views campaign email statistics                   & Aggregated sent/clicked counts displayed  & As expected \\
+    \hline
+    T4-10 & Sync Brevo provider events via sync endpoint              & New events merged into action history     & As expected \\
+    \hline
+  \end{tabularx}
+  \caption{Sprint 4 -- Functional Test Results}
+  \label{tab:test-s4}
+\end{table}
+
+\subsection{Sprint 4 Retrospective}
+
+Payment idempotency and invoice side effects were the most sensitive topics.
+Testing focused on duplicate verification calls and email failures after successful payment.
+The retrospective emphasized maintaining payment state as the source of truth while treating
+notifications as best-effort operations.
+
+Stripe test mode and controlled demo confirmation allowed end-to-end rehearsals without
+touching live card data.
+Invoice generation was simplified to a stable public route so support staff can resend links
+without re-running payment.
+Analytics cards for Brevo events were scoped as diagnostic aids rather than billing systems,
+which kept the scope realistic for a twelve-week internship.
+The final retrospective concluded that Collectra is deployable as a minimum viable product for
+small collection teams, with future work on advanced dunning rules and multi-currency support.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\section{Integrated Final Architecture}
+
+Figures~\ref{fig:class-arch} and~\ref{fig:seq-arch} present the overall technical
+architecture diagrams shows
+the fully integrated class diagram combining all entities and relationships across
+all four sprints.
+
+\diagram[fig:seq-arch]{DiagramsV2/over all use case digram.png}{Use Case Diagram -- Overall Technical Architecture}
+
+\diagram[fig:class-arch]{DiagramsV2/Class Diagram – Overall Technical Architecture.png}{Class Diagram -- Overall Technical Architecture}
+
+
+
+\section*{Conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Conclusion}
+
+Sprint 4 delivered a complete and hardened post-payment workflow: Stripe verification,
+idempotent payment confirmation, secure invoice generation, and invoice email delivery.
+It also finalized communication tracking integration for manager analytics,
+resulting in an end-to-end operational flow from customer action to auditable reporting.
+The idempotent confirmation design -- using a database-level session lock combined
+with a polling verification endpoint -- was the most technically demanding solution
+of the project and directly addresses the risk of double-charging customers.
+
+\clearpage
+% =============================================================================
+\chapter{Cross-Cutting Technical Topics}
+\label{chap:crosscutting}
+% =============================================================================
+
+\section*{Introduction}
+\phantomsection
+\addcontentsline{toc}{section}{Introduction}
+
+While sprint chapters follow delivery order, several mechanisms span the entire platform.
+This chapter summarises the email pipeline, payment and invoice flow, error handling philosophy,
+and operational practices that support maintainability in production.
+
+\section{Email and Notification Pipeline}
+
+Collectra uses Brevo for transactional email and event tracking.
+When agents trigger customer communications, the platform records outbound messages and
+synchronises provider events (\texttt{EMAIL\_SENT}, \texttt{LINK\_CLICKED}, opens) into
+action history for manager review.
+The design keeps email diagnostics separate from core debt state: a failed provider callback
+does not corrupt payment status, but the event log helps support teams investigate delivery issues.
+
+\section{Payment, Invoice, and Customer Return Flow}
+
+The customer journey on a personal link follows a controlled sequence:
+view debt details, optionally submit a promise-to-pay date, start Stripe Checkout, return to
+a verification endpoint, and access a hosted invoice once payment is confirmed.
+Server-side locks prevent parallel checkout sessions for the same debt.
+Verification is idempotent: repeated calls after success return the same final state without
+duplicate charges or duplicate history entries.
+
+\section{Error Handling and User Feedback}
+
+Application Programming Interface errors return structured JSON payloads with stable error codes.
+The frontend maps these codes to actionable messages (invalid import row, expired link,
+forbidden workspace access).
+For long-running imports, the backend returns per-row skip reasons so agents can correct files
+instead of failing the entire batch silently.
+
+\section{Performance Considerations}
+
+Large Comma-Separated Values files are processed in chunks inside database transactions.
+Dashboard indicators rely on aggregation queries rather than per-debt loops.
+Preview deployments on Vercel allowed measuring import duration and dashboard load time before
+promoting changes to production.
+
+\section{Documentation and Knowledge Transfer}
+
+OpenAPI documentation is generated from Zod schemas, keeping the contract close to runtime
+validation.
+Sprint reviews at CyberBridge served as living documentation: each demo explained assumptions,
+limitations, and follow-up tasks recorded in Linear for continuity after the internship.
+
+\section{Observability and Operational Monitoring}
+
+Although full observability stacks were out of scope, the team adopted lightweight practices
+suitable for a Vercel-hosted monorepo.
+Build logs and deployment previews on Vercel provide the first line of diagnosis when a merge
+fails.
+Application Programming Interface routes log structured errors server-side (validation code,
+workspace identifier, route name) without leaking secrets to clients.
+For payment flows, verification endpoints return explicit states (\texttt{pending},
+\texttt{confirmed}, \texttt{failed}) so the frontend can stop polling deterministically.
+This approach supported internship-scale operations while leaving room to integrate tools such as
+Sentry or Logtail in a future iteration.
+
+\section{Data Protection and Privacy Considerations}
+
+Collectra stores personal data (customer emails, debt amounts, communication history).
+Workspace isolation ensures agents never access another tenant's records.
+Customer links are time-limited and signed; expired tokens return \texttt{TOKEN\_EXPIRED} without
+revealing whether the identifier ever existed.
+Hypertext Transfer Protocol-only cookies protect session tokens from cross-site scripting in the
+browser.
+These measures align with common Software as a Service expectations and were reviewed with the
+company tutor during Sprint~4.
+
+\section{Future Evolution Roadmap}
+
+Table~\ref{tab:roadmap} lists enhancements discussed during retrospectives but intentionally
+deferred to keep the internship deliverable focused.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|Y|c|Z|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Enhancement} & \textbf{Priority} & \textbf{Rationale} \\
+    \hline
+    Multi-currency Stripe support & Medium & Required for international clients \\
+    \hline
+    Fine-grained agent permissions per campaign & Medium & Larger teams need delegation \\
+    \hline
+    Exportable compliance reports (Portable Document Format / Excel) & High & Manager audits \\
+    \hline
+    Webhook signature hardening dashboard & Low & Operational security polish \\
+    \hline
+  \end{tabularx}
+  \caption{Collectra Evolution Roadmap (Post-Internship)}
+  \label{tab:roadmap}
+\end{table}
+
+\section*{Conclusion}
+\phantomsection
+\addcontentsline{toc}{section}{Conclusion}
+
+These cross-cutting topics complement the sprint-by-sprint narrative.
+They highlight how authentication, imports, payments, and communications remain coherent when
+implemented as platform-wide rules rather than isolated features.
+
+% =============================================================================
+\chapter*{General Conclusion}
+\phantomsection
+\addcontentsline{toc}{chapter}{General Conclusion}
+% =============================================================================
+
+This report presented the full design and implementation of \textbf{Collectra}, a
+web platform for debt collection and campaign management, developed during a
+final-year internship at CyberBridge .
+
+\textbf{Summary of achievements.}
+The project successfully delivered a complete, production-ready Software as a Service application
+across four Scrum sprints.
+Sprint 1 established the authentication system and workspace infrastructure.
+Sprint 2 introduced campaign management, bulk Comma-Separated Values import, a full debt lifecycle,
+and JSON Web Token-secured customer personal links.
+Sprint 3 added action history logging, payment promise recording, and the operational
+manager dashboard.
+Sprint 4 completed the payment-to-invoice pipeline with Stripe verification,
+idempotent confirmation, secure invoice access, and synchronized campaign
+tracking analytics.
+The platform is live on Vercel at \texttt{collectra.xyz}, deployed automatically
+via a GitHub-based Continuous Integration and Continuous Deployment pipeline.
+
+\textbf{Non-functional requirements validation.}
+Looking back at the requirements defined in Chapter~2, all five non-functional
+requirements were met:
+\begin{itemize}
+  \item \textbf{Security:} JSON Web Tokens are signed with Hash-based Message Authentication Code SHA-256, stored in
+        Hypertext Transfer Protocol-only cookies, and verified by middleware on every protected route.
+        Workspace isolation is enforced at every layer, from database queries to
+        Application Programming Interface middleware to frontend navigation.
+  \item \textbf{Maintainability:} the monorepo structure with a single shared
+        Prisma schema and shared Zod types means that any model change propagates
+        consistently across frontend and backend without manual synchronization.
+  \item \textbf{Performance:} the Comma-Separated Values import uses Prisma transaction batching to
+        avoid per-row round trips, and the dashboard uses \texttt{groupBy}
+        aggregation to prevent N+1 queries on large campaign data sets.
+  \item \textbf{Reliability:} Zod validates every Application Programming Interface input at runtime, and the
+        idempotent payment confirmation logic prevents duplicate state transitions
+        regardless of how many times the verify endpoint is called.
+  \item \textbf{Usability:} iterative sprint reviews with CyberBridge stakeholders
+        confirmed that the workflow from campaign creation to payment confirmation
+        requires minimal training for new collection agents.
+\end{itemize}
+
+\textbf{Technical contributions.}
+From a technical perspective, the project demonstrates a full-stack TypeScript
+monorepo architecture combining Next.js, Hono, Prisma, and Supabase in a
+production-grade setup.
+The use of Zod for both runtime validation and OpenAPI schema generation, combined
+with workspace-level data isolation enforced at every layer, shows how security and
+maintainability can be built in from the very start of a project.
+The final implementation also demonstrates robust financial-flow design through
+duplicate-session prevention, idempotent confirmation logic, and post-transaction
+invoice and email side effects.
+
+\textbf{Challenges encountered.}
+The main challenges faced during the project were:
+\begin{itemize}
+  \item designing a flexible but strict debt status transition system that prevents
+        invalid lifecycle jumps while remaining easy to extend;
+  \item handling large Comma-Separated Values files efficiently without overloading the database
+        or causing request timeouts;
+  \item securing the Stripe payment return path to avoid duplicate payments while
+        keeping customer feedback responsive during webhook delays;
+  \item ensuring correct workspace isolation at every layer of the application,
+        from database queries to Application Programming Interface middleware to frontend navigation.
+\end{itemize}
+Each challenge was resolved through careful schema design, server-side validation,
+and iterative testing with real data.
+
+\textbf{Personal learning outcomes.}
+This internship provided hands-on experience in full-stack TypeScript development,
+agile project management with Scrum, and professional software delivery in a real
+company context.
+It deepened my understanding of authentication flows, role-based access control,
+JSON Web Token-based security, real-world relational data modeling, and production deployment
+with Vercel and GitHub Continuous Integration and Continuous Deployment pipelines.
+
+\enlargethispage{2\baselineskip}
+\textbf{Perspectives and future work.}
+Several improvements could extend the Collectra platform in the future:
+\begin{itemize}
+  \item integration with SMS or WhatsApp for direct, automated customer notifications;
+  \item a scheduled background job for automatic overdue debt detection;
+  \item campaign report export in Portable Document Format or Excel format;
+  \item a mobile-responsive redesign or dedicated mobile application;
+  \item advanced analytics and collection performance reporting for managers.
+\end{itemize}
+
+In conclusion, Collectra meets all the objectives set at the beginning of the
+internship.
+It provides collection teams with a secure, structured, and easy-to-use platform
+that replaces fragmented tools with a single, purpose-built solution for debt
+management.
+
+% =============================================================================
+\renewcommand{\bibname}{Reference List}
+\clearpage
+\phantomsection
+\addcontentsline{toc}{chapter}{\bibname}
+% =============================================================================
+
+\begin{thebibliography}{99}
+
+  \bibitem{scrumguide}
+    Schwaber, K.\ and Sutherland, J.\ (2020).
+    \textit{The Scrum Guide -- The Definitive Guide to Scrum: The Rules of the Game}.
+    Scrum.org.
+    Available at: \url{https://scrumguides.org}
+
+  \bibitem{nextjs}
+    Vercel.
+    \textit{Next.js Documentation}.
+    Available at: \url{https://nextjs.org/docs}
+    (Accessed: 2026)
+
+  \bibitem{react}
+    Meta Open Source.
+    \textit{React Documentation}.
+    Available at: \url{https://react.dev}
+    (Accessed: 2026)
+
+  \bibitem{typescript}
+    Microsoft.
+    \textit{TypeScript Documentation}.
+    Available at: \url{https://www.typescriptlang.org/docs}
+    (Accessed: 2026)
+
+  \bibitem{prisma}
+    Prisma.
+    \textit{Prisma Object-Relational Mapper Documentation}.
+    Available at: \url{https://www.prisma.io/docs}
+    (Accessed: 2026)
+
+  \bibitem{supabase}
+    Supabase, Inc.
+    \textit{Supabase Documentation}.
+    Available at: \url{https://supabase.com/docs}
+    (Accessed: 2026)
+
+  \bibitem{hono}
+    Hono.
+    \textit{Hono -- Ultrafast Web Framework for the Edges}.
+    Available at: \url{https://hono.dev/docs}
+    (Accessed: 2026)
+
+  \bibitem{turborepo}
+    Vercel.
+    \textit{Turborepo Documentation}.
+    Available at: \url{https://turbo.build/repo/docs}
+    (Accessed: 2026)
+
+  \bibitem{tailwind}
+    Tailwind Labs.
+    \textit{Tailwind CSS Documentation}.
+    Available at: \url{https://tailwindcss.com/docs}
+    (Accessed: 2026)
+
+  \bibitem{stripe}
+    Stripe, Inc.
+    \textit{Stripe API Reference}.
+    Available at: \url{https://stripe.com/docs/api}
+    (Accessed: 2026)
+
+  \bibitem{brevo}
+    Brevo (formerly Sendinblue).
+    \textit{Brevo API Documentation}.
+    Available at: \url{https://developers.brevo.com}
+    (Accessed: 2026)
+
+  \bibitem{vercel}
+    Vercel.
+    \textit{Vercel Deployment Documentation}.
+    Available at: \url{https://vercel.com/docs}
+    (Accessed: 2026)
+
+  \bibitem{jwt}
+    Jones, M., Bradley, J., and Sakimura, N.\ (2015).
+    \textit{JSON Web Token -- Introduction}.
+    RFC 7519. IETF.
+    Available at: \url{https://datatracker.ietf.org/doc/html/rfc7519}
+
+  \bibitem{openapi}
+    OpenAPI Initiative.\ (2023).
+    \textit{OpenAPI Specification v3.1.0}.
+    Available at: \url{https://spec.openapis.org/oas/v3.1.0}
+
+  \bibitem{zod}
+    Colinhacks.
+    \textit{Zod -- TypeScript-first Schema Validation}.
+    Available at: \url{https://zod.dev}
+    (Accessed: 2026)
+
+\end{thebibliography}
+
+% =============================================================================
+\appendix
+% =============================================================================
+
+\chapter{Domain Glossary}
+\label{app:glossary}
+
+This glossary defines recurring business and technical terms used in the report.
+
+\begin{description}[style=nextline, leftmargin=3.2cm, labelwidth=2.8cm, itemsep=8pt]
+  \item[Workspace] Isolated tenant environment containing campaigns, debts, members, and history.
+  \item[Campaign] Collection operation grouping debts that share communication and reporting context.
+  \item[Debt] Individual amount owed by a customer, with lifecycle status and payment metadata.
+  \item[Personal link] Time-limited, signed Uniform Resource Locator allowing a customer to view or act on a debt without an account.
+  \item[Promise to pay] Customer commitment date recorded by an agent or submitted through the public link.
+  \item[Action history] Chronological log of operational events (status updates, promises, payments, tracking).
+  \item[Idempotent confirmation] Payment verification that yields the same final state when executed multiple times.
+  \item[Import summary] Structured result of a Comma-Separated Values upload (imported, skipped, error reasons).
+  \item[Manager dashboard] Aggregated indicators (counts by status, campaign filters) for supervision.
+  \item[Preview deployment] Temporary Vercel build used to validate a pull request before production merge.
+  \item[Representational State Transfer (REST)] Architectural style used by the Hono Application Programming Interface; resources are addressed by nouns (\texttt{/debts}, \texttt{/campaigns}) and manipulated with standard HTTP verbs.
+  \item[Zod schema] TypeScript-first validation definition shared between backend handlers and OpenAPI generation.
+  \item[Stripe Checkout] Hosted payment page redirecting customers to a secure card entry flow without storing card data in Collectra.
+  \item[Webhook] Server-to-server callback (Stripe, Brevo) notifying Collectra of external events.
+  \item[Tenant] Synonym for workspace in multi-tenant Software as a Service terminology.
+  \item[Dunning] Systematic process of communicating with customers to recover overdue debts.
+  \item[Hypertext Transfer Protocol-only (HTTP-only) cookie] Session cookie not accessible to JavaScript, mitigating cross-site scripting token theft.
+\end{description}
+
+\chapter{Application Interface Walkthrough}
+\label{app:screenshots}
+
+This appendix presents a screen-by-screen walkthrough of the Collectra user interface.
+Each subsection explains the purpose of the screen, the primary user actions, and how the
+screen connects to the backend modules described in the sprint chapters.
+Figures are reproduced here at appendix scale for quick visual reference during the defense.
+
+\section{Sprint 1 -- Authentication and Workspace}
+
+\subsection{Login Screen}
+The login screen is the entry point for managers and agents.
+It validates credentials through Supabase Auth and, on success, receives a signed JSON Web Token
+stored in a Hypertext Transfer Protocol-only cookie.
+From a usability perspective, the layout keeps the form minimal (email, password, navigation to
+registration) so first-time users are not distracted by workspace features they cannot access yet.
+
+\screenshot[fig:appx-s1-login]{screenshots/login.PNG}{Login Screen -- Appendix View}
+
+\subsection{Workspace Creation}
+After authentication, a user without membership is guided to create or join a workspace.
+Workspace creation defines the tenant boundary used for all later campaigns, debts, and history.
+The creator receives the manager role automatically, which is required for invitations and
+dashboard access in later sprints.
+
+\screenshot[fig:appx-s1-workspace]{screenshots/workspace ceration.PNG}{Workspace Creation -- Appendix View}
+
+\subsection{Team Management and Invitations}
+The team screen lists current members and pending invitations.
+Managers can invite agents by email and assign roles before the invitee accepts.
+This screen demonstrates the role-based access control foundation implemented in Sprint~1.
+
+\screenshot[fig:appx-s1-team]{screenshots/invitaion page.PNG}{Team Management -- Appendix View}
+
+\section{Sprint 2 -- Campaign and Debt Management}
+
+Sprint~2 screens introduce the operational core of Collectra: structuring work into campaigns,
+loading debts at scale, and exposing customer-facing links.
+Agents spend most of their time in the debt table; managers periodically review campaign lists
+to balance workload across teams.
+The following figures highlight filtering, import feedback, and the minimal public link layout
+optimised for mobile customers.
+
+\subsection{Campaign List}
+The campaign list is the operational home for agents and managers inside a workspace.
+Each row summarizes campaign metadata and provides entry points to debt tables and import tools.
+The layout prioritizes quick navigation because agents switch campaigns frequently during a workday.
+
+\screenshot[fig:appx-s2-campaigns]{screenshots/cam list.PNG}{Campaign List -- Appendix View}
+
+\subsection{Debt Table with Status Filters}
+The debt table is the core working surface for collection agents.
+Status filters align with the lifecycle model (imported, notified, promised, paid, overdue).
+Agents update statuses, open detail drawers, and generate customer links without leaving the table.
+
+\screenshot[fig:appx-s2-debts]{screenshots/Debt Table with Status Filters.PNG}{Debt Table -- Appendix View}
+
+\subsection{Comma-Separated Values Import Dialog}
+The import dialog accepts bulk files and displays a structured summary after upload.
+Agents can see how many rows were imported, skipped, or rejected with reasons.
+This screen validates the tolerant parser and chunked insert strategy described in Chapter~4.
+
+\screenshot[fig:appx-s2-import]{screenshots/csv im.PNG}{Import Dialog -- Appendix View}
+
+\subsection{Customer Personal Link Screen}
+Agents generate time-limited personal links from the debt context.
+The screen shows link status and expiration so agents can confirm the customer received a valid
+Uniform Resource Locator before closing the case.
+The same flow underpins email campaigns tracked in Sprint~4.
+
+\screenshot[fig:appx-s2-link]{screenshots/DEBT.PNG}{Personal Link Screen -- Appendix View}
+
+\section{Sprint 3 -- Collaboration and Reporting}
+
+Sprint~3 shifts the product from transactional updates to supervisory visibility.
+Managers need trustworthy aggregates; agents need an audit trail that survives staff turnover.
+The screens below show how promises, history, and dashboards interlock: every promise creates
+history, and dashboard totals react to status changes without manual refresh hacks.
+
+\subsection{Payment Promise Dialog}
+Agents record promise-to-pay dates when a customer commits to a future payment.
+The dialog writes to \texttt{PaymentPromise} and updates debt status according to business rules.
+Managers later see the promise in history and dashboard indicators.
+
+\screenshot[fig:appx-s3-promise]{screenshots/PROMISE.PNG}{Payment Promise Dialog -- Appendix View}
+
+\subsection{Action History Table}
+The history table provides chronological traceability across the workspace.
+Each row corresponds to a business event (status change, promise, payment, tracking signal).
+This screen answers audit questions that spreadsheets cannot handle reliably.
+
+\screenshot[fig:appx-s3-history]{screenshots/TRAKING.PNG}{Action History -- Appendix View}
+
+\subsection{Manager Dashboard}
+The dashboard aggregates counts by debt status and supports campaign filtering.
+It is manager-only and relies on server-side aggregation to stay responsive on large portfolios.
+Stakeholders used this screen during sprint reviews to validate reporting value.
+
+\screenshot[fig:appx-s3-dashboard]{screenshots/OVERVIEW.PNG}{Dashboard -- Appendix View}
+
+\section{Sprint 4 -- Payment, Invoicing, and Analytics}
+
+Sprint~4 closes the business loop: a notified debt can become a paid debt with provable invoice
+artefacts.
+The user interface emphasises clarity after checkout---customers must understand verification
+states, while managers need confidence that analytics reflect real provider events.
+These screens were validated with Stripe test cards and Brevo sandbox credentials.
+
+\subsection{Payment and Tracking Overview}
+Sprint~4 extends the manager view with payment-oriented indicators and communication metrics.
+The overview connects collection progress with email engagement signals synchronized from Brevo.
+It supports operational decisions such as prioritizing campaigns with low open rates.
+
+\screenshot[fig:appx-s4-dashboard]{screenshots/PAYMENT.PNG}{Payment Overview -- Appendix View}
+
+\subsection{Invoice and Analytics Areas}
+The invoice area becomes available after confirmed payment.
+Customers can access a hosted invoice; managers can verify that payment, history, and tracking
+states remain consistent.
+Empty or low-activity states are handled explicitly so users understand when analytics are not yet available.
+
+\screenshot[fig:appx-s4-empty]{screenshots/invoice page.png}{Invoice -- Appendix View}
+
+\section{Guidance for Additional Screenshots}
+
+To further enrich this appendix, you may add images under \texttt{screenshots/} or
+\texttt{scrennshots/} and reference them with the \texttt{\textbackslash screenshot} macro.
+Recommended captures include the registration page, the Stripe checkout redirect screen,
+the invoice Portable Document Format view, and the campaign email statistics panel.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Application Programming Interface Endpoint Reference}
+\label{app:api}
+
+Table~\ref{tab:api-endpoints} lists all main Collectra Representational State Transfer Application Programming Interface endpoints.
+Endpoints under the \texttt{/public/} prefix do not require authentication and are
+accessible via a signed JSON Web Token embedded in the Uniform Resource Locator.
+
+The endpoints are grouped below by domain to mirror the backend route modules in
+\texttt{apps/api}.
+Authentication routes establish the session cookie; workspace routes enforce tenant
+boundaries; campaign and debt routes support agent operations; public routes serve
+customers through signed tokens only.
+
+\subsection{Authentication and Workspace Endpoints}
+
+These routes manage registration, login, workspace provisioning, invitations, and membership.
+All authenticated calls expect a valid Supabase-issued JSON Web Token carried in a
+Hypertext Transfer Protocol-only cookie.
+
+\subsection{Campaign, Debt, and Public Customer Endpoints}
+
+Campaign routes cover Create, Read, Update, Delete operations, Comma-Separated Values import, and email statistics.
+Debt routes expose lifecycle updates, personal link generation, and promise recording.
+Public routes never trust client-supplied workspace identifiers: the signed token is the sole
+authorization mechanism for customer-facing actions.
+
+\subsection{Representational State Transfer Endpoint Catalogue}
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}%
+\begin{longtable}{|p{1.2cm}|p{4.95cm}|p{2.25cm}|p{5.05cm}|}
+  \hline
+  \rowcolor{accentblue!10}
+  \textbf{Method} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \hline
+  \endfirsthead
+  \hline
+  \rowcolor{accentblue!10}
+  \textbf{Method} & \textbf{Path} & \textbf{Auth} & \textbf{Description} \\
+  \hline
+  \endhead
+  POST  & \texttt{/auth/register}                    & No             & Register a new user \\
+  \hline
+  POST  & \texttt{/auth/login}                       & No             & Login, receive session cookie \\
+  \hline
+  POST  & \texttt{/auth/logout}                      & Yes            & Logout and clear session \\
+  \hline
+  POST  & \texttt{/workspaces}                       & Yes            & Create a workspace \\
+  \hline
+  GET   & \texttt{/workspaces/:id}                   & Yes            & Get workspace details \\
+  \hline
+  POST  & \texttt{/workspaces/:id/invitations}       & Yes (Manager)  & Invite a team member \\
+  \hline
+  PATCH & \texttt{/workspaces/:id/members/:uid}      & Yes (Manager)  & Update a member's role \\
+  \hline
+  POST  & \texttt{/invitations/:token/accept}        & No             & Accept an invitation \\
+  \hline
+  POST  & \texttt{/workspaces/:id/campaigns}         & Yes            & Create a campaign \\
+  \hline
+  GET   & \texttt{/workspaces/:id/campaigns}         & Yes            & List campaigns \\
+  \hline
+  PATCH & \texttt{/campaigns/:id}                    & Yes (Manager)  & Update campaign settings \\
+  \hline
+  DELETE & \texttt{/campaigns/:id}                   & Yes (Manager)  & Delete a campaign \\
+  \hline
+  POST  & \texttt{/campaigns/:id/import}             & Yes            & Import debts via Comma-Separated Values \\
+  \hline
+  GET   & \texttt{/campaigns/:id/email-stats}        & Yes            & Get campaign email tracking statistics \\
+  \hline
+  POST  & \texttt{/campaigns/:id/brevo-logs/sync}    & Yes            & Synchronize Brevo provider events \\
+  \hline
+  GET   & \texttt{/campaigns/:id/debts}              & Yes            & List debts with filters \\
+  \hline
+  GET   & \texttt{/debts/:id}                        & Yes            & Get debt details \\
+  \hline
+  PATCH & \texttt{/debts/:id/status}                 & Yes            & Update debt status \\
+  \hline
+  POST  & \texttt{/debts/:id/links}                  & Yes            & Generate customer personal link \\
+  \hline
+  GET   & \texttt{/debts/:id/links}                  & Yes            & List links for a debt \\
+  \hline
+  GET   & \texttt{/public/debts/:token}              & No             & Customer views debt via secure token \\
+  \hline
+  POST  & \texttt{/public/debts/:token/promise}      & No             & Customer submits promise-to-pay date \\
+  \hline
+  POST  & \texttt{/public/debts/:token/demo-payment} & No             & Confirm demo payment (development only)$^{\dagger}$ \\
+  \hline
+  POST  & \texttt{/public/debts/:token/stripe/checkout-session} & No & Create Stripe Checkout session \\
+  \hline
+  GET   & \texttt{/public/debts/:token/verify-payment} & No           & Verify Stripe payment after redirect \\
+  \hline
+  GET   & \texttt{/public/debts/:token/invoice}      & No             & Open hosted invoice / printable Portable Document Format \\
+  \hline
+  GET   & \texttt{/public/debts/:token/track-click}  & No             & Track customer click and redirect \\
+  \hline
+  POST  & \texttt{/public/debts/:token/track-open}   & No             & Track customer page open event \\
+  \hline
+  GET   & \texttt{/public/debts/:debtId/open.gif}    & No             & Email open tracking pixel endpoint \\
+  \hline
+  POST  & \texttt{/debts/:id/promises}               & Yes            & Record payment promise \\
+  \hline
+  GET   & \texttt{/workspaces/:id/history}           & Yes            & Get workspace action history \\
+  \hline
+  GET   & \texttt{/workspaces/:id/dashboard}         & Yes (Manager)  & Get dashboard indicators \\
+  \hline
+  \caption{Collectra Application Programming Interface Endpoint Reference}
+  \label{tab:api-endpoints}
+\end{longtable}
+}
+\noindent{\footnotesize $^{\dagger}$\,The \texttt{/demo-payment} endpoint simulates payment confirmation in
+the development and staging environment. It is disabled and not reachable in the
+production deployment (\texttt{collectra.xyz}).}
+
+\subsection{Standard Error Response Format}
+
+When validation or authorization fails, the Application Programming Interface returns a
+JSON object with a stable \texttt{code}, a human-readable \texttt{message}, and optional
+\texttt{details} for field-level errors (notably during Comma-Separated Values import).
+Table~\ref{tab:api-errors} summarises the most frequent codes observed during sprint testing.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \begin{tabularx}{\textwidth}{|p{3.2cm}|c|Y|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Code} & \textbf{HTTP} & \textbf{Typical Cause} \\
+    \hline
+    \texttt{UNAUTHORIZED}        & 401 & Missing or expired session cookie \\
+    \hline
+    \texttt{FORBIDDEN}           & 403 & Authenticated but wrong workspace or role \\
+    \hline
+    \texttt{NOT\_FOUND}          & 404 & Unknown campaign, debt, or invitation token \\
+    \hline
+    \texttt{VALIDATION\_ERROR}   & 400 & Zod schema rejection on request body \\
+    \hline
+    \texttt{INVALID\_TRANSITION} & 409 & Illegal debt status change \\
+    \hline
+    \texttt{TOKEN\_EXPIRED}      & 410 & Customer personal link past expiration \\
+    \hline
+    \texttt{IMPORT\_PARTIAL}     & 207 & Comma-Separated Values processed with skipped rows (summary returned) \\
+    \hline
+  \end{tabularx}
+  \caption{Common Collectra Application Programming Interface Error Codes}
+  \label{tab:api-errors}
+\end{table}
+
+Front-end forms map these codes to inline messages so agents can correct inputs without
+reading server logs.
+During the internship, maintaining a shared error catalogue in Linear reduced duplicate
+bug reports when the same validation rule appeared on both the import dialog and the
+debt status modal.
+
+% ─────────────────────────────────────────────────────────────────────────────
+\chapter{Database Schema}
+\label{app:schema}
+
+Figure~\ref{fig:db-schema} shows the Entity-Relationship diagram for the Collectra
+database.
+
+\diagram[fig:db-schema]{Digrams/database.png}{Collectra Database Schema -- Entity-Relationship Diagram}
+
+The main tables and their roles are:
+\begin{itemize}
+  \item \texttt{User} -- authenticated user accounts managed through Supabase Auth;
+  \item \texttt{Workspace} -- isolated tenant environments, each with its own data;
+  \item \texttt{WorkspaceMember} -- junction table linking users to workspaces with an assigned role;
+  \item \texttt{Invitation} -- pending or accepted membership invitations;
+  \item \texttt{Campaign} -- debt collection campaigns scoped to a workspace;
+  \item \texttt{Debt} -- individual debt records linked to a campaign and debtor;
+  \item \texttt{PaymentPromise} -- recorded payment commitment dates for debts;
+  \item \texttt{CustomerActionHistory} -- timeline of operational actions (status updates, promises, payments, tracking events);
+  \item \texttt{BrevoEventLog} -- provider-level email event logs used for diagnostics and synchronization.
+\end{itemize}
+
+\subsection{Entity Attribute Reference}
+
+Table~\ref{tab:entity-workspace} and Table~\ref{tab:entity-debt} document the principal
+attributes stored in PostgreSQL.
+Foreign keys enforce referential integrity at the database layer; Prisma migrations
+version every schema change applied during the internship.
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \footnotesize
+  \begin{tabularx}{\textwidth}{|p{5.5cm}|Y|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Entity / Field} & \textbf{Description} \\
+    \hline
+    Workspace.\allowbreak\texttt{id} & Universally unique identifier; root of tenant isolation \\
+    \hline
+    Workspace.\allowbreak\texttt{name} & Display name chosen at creation; unique per platform policy \\
+    \hline
+    WorkspaceMember.\allowbreak\texttt{role} & \texttt{MANAGER} or \texttt{AGENT}; drives middleware checks \\
+    \hline
+    Invitation.\allowbreak\texttt{token} & Signed token embedded in acceptance email link \\
+    \hline
+    Invitation.\allowbreak\texttt{status} & \texttt{PENDING}, \texttt{ACCEPTED}, or \texttt{EXPIRED} \\
+    \hline
+    Campaign.\allowbreak\texttt{workspaceId} & Foreign key; cascades logically with workspace deletion rules \\
+    \hline
+    Campaign.\allowbreak\texttt{title} & Human-readable label shown in agent navigation \\
+    \hline
+  \end{tabularx}
+  \caption{Workspace and Campaign Entities -- Key Attributes}
+  \label{tab:entity-workspace}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \reporttablesetup
+  \footnotesize
+  \begin{tabularx}{\textwidth}{|p{5.5cm}|Y|}
+    \hline
+    \rowcolor{accentblue!10}
+    \textbf{Entity / Field} & \textbf{Description} \\
+    \hline
+    Debt.\allowbreak\texttt{amount} & Decimal amount owed; validated on import and public view \\
+    \hline
+    Debt.\allowbreak\texttt{status} & Lifecycle state (see Table~\ref{tab:debt-status}) \\
+    \hline
+    Debt.\allowbreak\texttt{dueDate} & Used for overdue detection and dashboard filters \\
+    \hline
+    Debt.\allowbreak\texttt{customerEmail} & Contact channel; deduplicated within campaign on import \\
+    \hline
+    PaymentPromise.\allowbreak\texttt{promisedAt} & Date committed by customer or agent \\
+    \hline
+    CustomerActionHistory.\allowbreak\texttt{actionType} & Normalised event type for audit timeline \\
+    \hline
+    CustomerActionHistory.\allowbreak\texttt{metadata} & JSON payload (previous status, payment session id, etc.) \\
+    \hline
+    BrevoEventLog.\allowbreak\texttt{eventType} & Provider event (\texttt{EMAIL\_SENT}, \texttt{LINK\_CLICKED}, \ldots) \\
+    \hline
+  \end{tabularx}
+  \caption{Debt, Promise, History, and Tracking Entities -- Key Attributes}
+  \label{tab:entity-debt}
+\end{table}
+
+\subsection{Indexing and Query Patterns}
+
+Dashboard queries aggregate counts grouped by \texttt{status} and \texttt{campaignId}.
+Imports batch-insert debts inside transactions to keep partial failures recoverable.
+Personal links index \texttt{token} hashes for constant-time lookup on public routes.
+These choices were validated on preview deployments with datasets exceeding five thousand
+debts per workspace.
+
+\end{document}

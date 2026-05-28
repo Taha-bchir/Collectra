@@ -1,0 +1,167 @@
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{Acknowledgements}{1}{section*.2}%
+\contentsline {chapter}{Abstract}{2}{section*.4}%
+\contentsline {chapter}{General Introduction}{11}{section*.9}%
+\contentsline {section}{Introduction}{12}{section*.10}%
+\contentsline {section}{\numberline {0.1}Presentation of the Host Company}{12}{section.0.1}%
+\contentsline {section}{\numberline {0.2}Project Context}{13}{section.0.2}%
+\contentsline {subsection}{\numberline {0.2.1}Main Issue}{13}{subsection.0.2.1}%
+\contentsline {subsection}{\numberline {0.2.2}Stakeholder Expectations}{13}{subsection.0.2.2}%
+\contentsline {subsection}{\numberline {0.2.3}Analysis of Existing Solutions}{13}{subsection.0.2.3}%
+\contentsline {subsection}{\numberline {0.2.4}Overview of the Proposed Solution}{14}{subsection.0.2.4}%
+\contentsline {subsection}{\numberline {0.2.5}Internship Timeline and Milestone Deliverables}{14}{subsection.0.2.5}%
+\contentsline {section}{Conclusion}{15}{section*.13}%
+\contentsline {chapter}{\numberline {1}Requirements and Specifications}{16}{chapter.1}%
+\contentsline {section}{Introduction}{16}{section*.14}%
+\contentsline {section}{\numberline {1.1}Collectra Platform Requirements}{16}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}Identification of the Actors}{16}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Functional Requirements}{16}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}Non-Functional Requirements}{17}{subsection.1.1.3}%
+\contentsline {section}{\numberline {1.2}Work Environment}{18}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Technology Stack}{18}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Development Tools}{18}{subsection.1.2.2}%
+\contentsline {section}{\numberline {1.3}Project Management with Scrum}{19}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Methodology Choice}{19}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Scrum Roles}{19}{subsection.1.3.2}%
+\contentsline {subsection}{\numberline {1.3.3}Product Backlog}{19}{subsection.1.3.3}%
+\contentsline {subsection}{\numberline {1.3.4}Sprint Overview}{20}{subsection.1.3.4}%
+\contentsline {subsection}{\numberline {1.3.5}Scrum Ceremonies and Delivery Rhythm}{20}{subsection.1.3.5}%
+\contentsline {section}{\numberline {1.4}Quality Assurance and Testing Strategy}{20}{section.1.4}%
+\contentsline {subsection}{\numberline {1.4.1}Testing Levels}{21}{subsection.1.4.1}%
+\contentsline {subsection}{\numberline {1.4.2}Test Data and Acceptance Criteria}{21}{subsection.1.4.2}%
+\contentsline {subsection}{\numberline {1.4.3}Debt Status Lifecycle Model}{21}{subsection.1.4.3}%
+\contentsline {subsection}{\numberline {1.4.4}Defect Management}{22}{subsection.1.4.4}%
+\contentsline {section}{\numberline {1.5}Security Architecture}{22}{section.1.5}%
+\contentsline {subsection}{\numberline {1.5.1}Authentication and Session Model}{22}{subsection.1.5.1}%
+\contentsline {subsection}{\numberline {1.5.2}Workspace Isolation and Role-Based Access Control}{22}{subsection.1.5.2}%
+\contentsline {subsection}{\numberline {1.5.3}Customer-Facing Security}{22}{subsection.1.5.3}%
+\contentsline {subsection}{\numberline {1.5.4}Secrets and Deployment Hygiene}{22}{subsection.1.5.4}%
+\contentsline {section}{\numberline {1.6}General Architecture of the Application}{23}{section.1.6}%
+\contentsline {subsection}{\numberline {1.6.1}Monorepo Structure and Code Organization}{23}{subsection.1.6.1}%
+\contentsline {subsection}{\numberline {1.6.2}Data Persistence and Domain Entities}{24}{subsection.1.6.2}%
+\contentsline {section}{\numberline {1.7}Deployment and Continuous Integration / Continuous Deployment Pipeline}{24}{section.1.7}%
+\contentsline {subsection}{\numberline {1.7.1}Hosting Infrastructure}{24}{subsection.1.7.1}%
+\contentsline {subsection}{\numberline {1.7.2}Git Branching Strategy}{24}{subsection.1.7.2}%
+\contentsline {subsection}{\numberline {1.7.3}Automated Deployment Pipeline}{24}{subsection.1.7.3}%
+\contentsline {section}{\numberline {1.8}End-to-End User Journeys}{25}{section.1.8}%
+\contentsline {subsection}{\numberline {1.8.1}Manager Journey}{25}{subsection.1.8.1}%
+\contentsline {subsection}{\numberline {1.8.2}Agent Journey}{25}{subsection.1.8.2}%
+\contentsline {subsection}{\numberline {1.8.3}Customer Journey}{25}{subsection.1.8.3}%
+\contentsline {subsection}{\numberline {1.8.4}Journey Validation Matrix}{25}{subsection.1.8.4}%
+\contentsline {section}{Conclusion}{26}{section*.17}%
+\contentsline {chapter}{\numberline {2}Sprint 1: Core Authentication and Workspace Setup}{27}{chapter.2}%
+\contentsline {section}{Introduction}{27}{section*.18}%
+\contentsline {section}{\numberline {2.1}Sprint 1 Backlog}{27}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Functional Specification}{27}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Use Case Diagram}{27}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Textual Description of Use Cases}{28}{subsection.2.2.2}%
+\contentsline {subsubsection}{- User Registration}{28}{subsubsection*.20}%
+\contentsline {subsubsection}{- Workspace Creation}{28}{subsubsection*.21}%
+\contentsline {subsubsection}{- Member Invitation}{28}{subsubsection*.22}%
+\contentsline {section}{\numberline {2.3}Design}{29}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Class Diagram}{29}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Sequence Diagrams}{29}{subsection.2.3.2}%
+\contentsline {section}{\numberline {2.4}Implementation}{31}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Sprint 1 Interface}{31}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Sprint 1 Business Logic}{32}{subsection.2.4.2}%
+\contentsline {subsubsection}{Authentication}{32}{subsubsection*.30}%
+\contentsline {subsubsection}{Workspace Isolation}{32}{subsubsection*.31}%
+\contentsline {subsubsection}{Invitation Flow}{32}{subsubsection*.32}%
+\contentsline {subsection}{\numberline {2.4.3}Sprint 1 -- Test Results}{32}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.4}Sprint 1 Retrospective}{33}{subsection.2.4.4}%
+\contentsline {section}{Conclusion}{34}{section*.34}%
+\contentsline {chapter}{\numberline {3}Sprint 2: Campaign and Debt Management}{35}{chapter.3}%
+\contentsline {section}{Introduction}{35}{section*.35}%
+\contentsline {section}{\numberline {3.1}Sprint 2 Backlog}{35}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Functional Specification}{36}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Use Case Diagram}{36}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}Textual Description of Use Cases}{36}{subsection.3.2.2}%
+\contentsline {subsubsection}{Campaign Creation}{36}{subsubsection*.38}%
+\contentsline {subsubsection}{Comma-Separated Values Debt Import}{36}{subsubsection*.39}%
+\contentsline {subsubsection}{Customer Personal Link Generation}{37}{subsubsection*.40}%
+\contentsline {section}{\numberline {3.3}Design}{37}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Class Diagram}{37}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}Sequence Diagrams}{38}{subsection.3.3.2}%
+\contentsline {section}{\numberline {3.4}Implementation}{38}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Sprint 2 Interface}{38}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Sprint 2 Business Logic}{40}{subsection.3.4.2}%
+\contentsline {subsubsection}{Debt Lifecycle}{40}{subsubsection*.49}%
+\contentsline {subsection}{\numberline {3.4.3}Sprint 2 -- Test Results}{40}{subsection.3.4.3}%
+\contentsline {subsection}{\numberline {3.4.4}Sprint 2 Retrospective}{42}{subsection.3.4.4}%
+\contentsline {section}{Conclusion}{42}{section*.51}%
+\contentsline {chapter}{\numberline {4}Sprint 3: Audit Trail, Payment Promises, and Manager Dashboard}{43}{chapter.4}%
+\contentsline {section}{Introduction}{43}{section*.52}%
+\contentsline {section}{\numberline {4.1}Sprint 3 Backlog}{43}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Functional Specification}{43}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Use Case Diagram}{43}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Textual Description of Use Cases}{44}{subsection.4.2.2}%
+\contentsline {subsubsection}{UC-07: Record Payment Promise}{44}{subsubsection*.55}%
+\contentsline {subsubsection}{UC-08: Manager Dashboard}{44}{subsubsection*.56}%
+\contentsline {section}{\numberline {4.3}Design}{45}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Class Diagram}{45}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Sequence Diagrams}{45}{subsection.4.3.2}%
+\contentsline {section}{\numberline {4.4}Implementation}{46}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Sprint 3 Interface}{46}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Sprint 3 Business Logic}{47}{subsection.4.4.2}%
+\contentsline {subsubsection}{Action History}{47}{subsubsection*.63}%
+\contentsline {subsubsection}{Dashboard Aggregation}{47}{subsubsection*.64}%
+\contentsline {subsubsection}{Role-Based Permission Enforcement}{47}{subsubsection*.65}%
+\contentsline {subsection}{\numberline {4.4.3}Sprint 3 -- Test Results}{47}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.4}Sprint 3 Retrospective}{48}{subsection.4.4.4}%
+\contentsline {section}{Conclusion}{48}{section*.66}%
+\contentsline {section}{\numberline {4.5}Functional Specification}{49}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Use Case Diagram}{49}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Textual Description of Use Cases}{49}{subsection.4.5.2}%
+\contentsline {section}{\numberline {4.6}Design}{50}{section.4.6}%
+\contentsline {subsection}{\numberline {4.6.1}Class Diagram}{50}{subsection.4.6.1}%
+\contentsline {subsection}{\numberline {4.6.2}Sequence Diagrams}{50}{subsection.4.6.2}%
+\contentsline {section}{\numberline {4.7}Implementation}{51}{section.4.7}%
+\contentsline {subsection}{\numberline {4.7.1}Sprint 4 Interface}{51}{subsection.4.7.1}%
+\contentsline {subsection}{\numberline {4.7.2}Sprint 4 Business Logic}{52}{subsection.4.7.2}%
+\contentsline {subsubsection}{Payment Confirmation and Idempotency}{52}{subsubsection*.74}%
+\contentsline {subsubsection}{Invoice Generation and Delivery}{52}{subsubsection*.75}%
+\contentsline {subsubsection}{Email Tracking and Manager Analytics Synchronization}{52}{subsubsection*.76}%
+\contentsline {subsection}{\numberline {4.7.3}Sprint 4 -- Test Results}{52}{subsection.4.7.3}%
+\contentsline {subsection}{\numberline {4.7.4}Sprint 4 Retrospective}{53}{subsection.4.7.4}%
+\contentsline {section}{\numberline {4.8}Integrated Final Architecture}{53}{section.4.8}%
+\contentsline {section}{Conclusion}{54}{section*.80}%
+\contentsline {chapter}{\numberline {5}Cross-Cutting Technical Topics}{55}{chapter.5}%
+\contentsline {section}{Introduction}{55}{section*.81}%
+\contentsline {section}{\numberline {5.1}Email and Notification Pipeline}{55}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Payment, Invoice, and Customer Return Flow}{55}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Error Handling and User Feedback}{55}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Performance Considerations}{55}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Documentation and Knowledge Transfer}{56}{section.5.5}%
+\contentsline {section}{\numberline {5.6}Observability and Operational Monitoring}{56}{section.5.6}%
+\contentsline {section}{\numberline {5.7}Data Protection and Privacy Considerations}{56}{section.5.7}%
+\contentsline {section}{\numberline {5.8}Future Evolution Roadmap}{56}{section.5.8}%
+\contentsline {section}{Conclusion}{56}{table.caption.82}%
+\contentsline {chapter}{General Conclusion}{58}{section*.84}%
+\contentsline {chapter}{References}{61}{section*.86}%
+\contentsline {chapter}{\numberline {A}Domain Glossary}{63}{chapter.A}%
+\contentsline {chapter}{\numberline {B}Application Interface Walkthrough}{65}{chapter.B}%
+\contentsline {section}{\numberline {B.1}Sprint 1 -- Authentication and Workspace}{65}{section.B.1}%
+\contentsline {subsection}{\numberline {B.1.1}Login Screen}{65}{subsection.B.1.1}%
+\contentsline {subsection}{\numberline {B.1.2}Workspace Creation}{65}{subsection.B.1.2}%
+\contentsline {subsection}{\numberline {B.1.3}Team Management and Invitations}{66}{subsection.B.1.3}%
+\contentsline {section}{\numberline {B.2}Sprint 2 -- Campaign and Debt Management}{66}{section.B.2}%
+\contentsline {subsection}{\numberline {B.2.1}Campaign List}{66}{subsection.B.2.1}%
+\contentsline {subsection}{\numberline {B.2.2}Debt Table with Status Filters}{67}{subsection.B.2.2}%
+\contentsline {subsection}{\numberline {B.2.3}Comma-Separated Values Import Dialog}{67}{subsection.B.2.3}%
+\contentsline {subsection}{\numberline {B.2.4}Customer Personal Link Screen}{68}{subsection.B.2.4}%
+\contentsline {section}{\numberline {B.3}Sprint 3 -- Collaboration and Reporting}{68}{section.B.3}%
+\contentsline {subsection}{\numberline {B.3.1}Payment Promise Dialog}{68}{subsection.B.3.1}%
+\contentsline {subsection}{\numberline {B.3.2}Action History Table}{69}{subsection.B.3.2}%
+\contentsline {subsection}{\numberline {B.3.3}Manager Dashboard}{69}{subsection.B.3.3}%
+\contentsline {section}{\numberline {B.4}Sprint 4 -- Payment, Invoicing, and Analytics}{70}{section.B.4}%
+\contentsline {subsection}{\numberline {B.4.1}Payment and Tracking Overview}{70}{subsection.B.4.1}%
+\contentsline {subsection}{\numberline {B.4.2}Invoice and Analytics Areas}{70}{subsection.B.4.2}%
+\contentsline {section}{\numberline {B.5}Guidance for Additional Screenshots}{71}{section.B.5}%
+\contentsline {chapter}{\numberline {C}Application Programming Interface Endpoint Reference}{72}{chapter.C}%
+\contentsline {subsection}{\numberline {C.0.1}Authentication and Workspace Endpoints}{72}{subsection.C.0.1}%
+\contentsline {subsection}{\numberline {C.0.2}Campaign, Debt, and Public Customer Endpoints}{72}{subsection.C.0.2}%
+\contentsline {subsection}{\numberline {C.0.3}Representational State Transfer Endpoint Catalogue}{72}{subsection.C.0.3}%
+\contentsline {subsection}{\numberline {C.0.4}Standard Error Response Format}{73}{subsection.C.0.4}%
+\contentsline {chapter}{\numberline {D}Database Schema}{74}{chapter.D}%
+\contentsline {subsection}{\numberline {D.0.1}Entity Attribute Reference}{74}{subsection.D.0.1}%
+\contentsline {subsection}{\numberline {D.0.2}Indexing and Query Patterns}{75}{subsection.D.0.2}%

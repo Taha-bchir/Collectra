@@ -1,0 +1,41 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {1.1}{\ignorespaces Comparison of Existing Solutions and Collectra}}{5}{table.caption.12}%
+\contentsline {table}{\numberline {1.2}{\ignorespaces Internship Timeline and Milestone Deliverables}}{6}{table.caption.13}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Non-Functional Requirements -- Targets and Verification}}{9}{table.caption.16}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Collectra Technology Stack}}{10}{table.caption.17}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Product Backlog for Collectra}}{12}{table.caption.20}%
+\contentsline {table}{\numberline {2.4}{\ignorespaces Sprint Overview}}{13}{table.caption.21}%
+\contentsline {table}{\numberline {2.5}{\ignorespaces Debt Status Lifecycle -- States and Transitions}}{14}{table.caption.22}%
+\contentsline {table}{\numberline {2.6}{\ignorespaces User Journey Validation Matrix}}{19}{table.caption.23}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Sprint 1 Backlog}}{20}{table.caption.26}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Use Case Description -- User Registration}}{21}{table.caption.29}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Use Case Description -- Workspace Creation}}{22}{table.caption.31}%
+\contentsline {table}{\numberline {3.4}{\ignorespaces Use Case Description -- Member Invitation}}{22}{table.caption.33}%
+\contentsline {table}{\numberline {3.5}{\ignorespaces Sprint 1 -- Functional Test Results}}{26}{table.caption.44}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Sprint 2 Backlog}}{28}{table.caption.47}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Use Case Description -- Campaign Creation}}{29}{table.caption.50}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Use Case Description -- Comma-Separated Values Debt Import}}{30}{table.caption.52}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Use Case Description -- Customer Personal Link Generation}}{30}{table.caption.54}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Sprint 2 -- Functional Test Results}}{35}{table.caption.65}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Sprint 3 Backlog}}{37}{table.caption.68}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Use Case Description -- UC-07: Record Payment Promise}}{38}{table.caption.71}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Use Case Description -- UC-08: Manager Dashboard}}{39}{table.caption.73}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Sprint 3 -- Functional Test Results}}{42}{table.caption.83}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Sprint 4 Backlog}}{45}{table.caption.86}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Sprint 4 -- Functional Test Results}}{49}{table.caption.96}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {7.1}{\ignorespaces Collectra Evolution Roadmap (Post-Internship)}}{52}{table.caption.101}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {C.1}{\ignorespaces Collectra Application Programming Interface Endpoint Reference}}{66}{table.C.1}%
+\contentsline {table}{\numberline {C.2}{\ignorespaces Common Collectra Application Programming Interface Error Codes}}{67}{table.caption.119}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {D.1}{\ignorespaces Workspace and Campaign Entities -- Key Attributes}}{69}{table.caption.121}%
+\contentsline {table}{\numberline {D.2}{\ignorespaces Debt, Promise, History, and Tracking Entities -- Key Attributes}}{69}{table.caption.122}%

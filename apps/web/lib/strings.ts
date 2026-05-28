@@ -7,6 +7,7 @@ export const strings: Record<string, string> = {
   nav_home: 'Home',
   nav_dashboard: 'Dashboard',
   nav_account_settings: 'Account Settings',
+  nav_support: 'Support',
   nav_login: 'Login',
   nav_get_started: 'Get Started',
   footer_privacy_policy: 'Privacy Policy',
@@ -53,6 +54,38 @@ export const strings: Record<string, string> = {
     'Overview of debts, collection status, and recent activity. Use this dashboard to prioritize recovery actions and track success.',
   dashboard_redirect_login: 'Redirecting to login...',
   dashboard_log_out: 'Log out',
+
+  // Support
+  support_title: 'Support assistant',
+  support_description:
+    'Ask about campaigns, imports, payments, or account settings. The assistant gives quick answers and points you to the right place in the app.',
+  support_intro_title: 'How can I help?',
+  support_intro_description:
+    'This is a simple in-app assistant. It answers common Collectra questions and suggests the next screen to open.',
+  support_input_placeholder: 'Try asking about CSV imports, payment links, or account settings...',
+  support_send: 'Send',
+  support_reset: 'Reset chat',
+  support_welcome:
+    'Hi, I am the Collectra support assistant. Ask me about dashboards, campaigns, payment links, CSV imports, or account settings.',
+  support_fallback:
+    'I do not have a confident answer for that yet. Try asking about campaigns, payments, CSV imports, the overview dashboard, or account settings.',
+  support_quick_actions: 'Quick actions',
+  support_related_links: 'Helpful links',
+  support_question_csv: 'How do I import a CSV?',
+  support_question_payments: 'How do I send payment links?',
+  support_question_account: 'How do I change my account settings?',
+  support_question_overview: 'Where do I see dashboard stats?',
+  support_answer_csv:
+    'Open Campaigns, create or select a campaign, then use the CSV import flow. Make sure the headers match the template and review the preview before confirming.',
+  support_answer_payments:
+    'Open the campaign or customer view, select the debts you want to recover, and send a payment link from the available campaign actions.',
+  support_answer_account:
+    'Go to Settings, then Account. That is where you can update your personal information and manage password changes.',
+  support_answer_overview:
+    'Open Overview to see recovery metrics, recent campaigns, and a summary of payment activity across the workspace.',
+  support_link_overview: 'Open Overview',
+  support_link_campaigns: 'Open Campaigns',
+  support_link_account: 'Open Account Settings',
 
   // Auth – login
   auth_login_title: 'Sign in to your account',

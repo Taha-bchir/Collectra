@@ -36,6 +36,7 @@ import {
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu'
 import { Settings, Sun, Moon, Monitor } from 'lucide-react'
+import { SupportWidget } from '@/features/support/components/support-widget'
 
 /**
  * Dashboard Layout
@@ -332,6 +333,7 @@ export default function DashboardLayout({
                     <main className="flex flex-1 flex-col overflow-hidden">
                         {children}
                     </main>
+                            <SupportWidget />
                 </SidebarInset>
             </SidebarProvider>
         </div>
