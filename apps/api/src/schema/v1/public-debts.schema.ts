@@ -16,6 +16,7 @@ const promisedDateInputSchema = z.union([
 const PublicDebtViewSchema = z.object({
   debtId: z.string().uuid(),
   amount: z.number(),
+  currency: z.string(),
   dueDate: z.string().datetime(),
   promiseDate: z.string().datetime().nullable().optional(),
   status: z.nativeEnum(DebtStatus),

@@ -47,7 +47,7 @@ Before you begin, ensure you have the following installed:
 
 ```bash
 git clone <repository-url>
-cd saas-boilerplate-next-hono
+cd Collectra
 ```
 
 ### 2. Install Dependencies
@@ -184,6 +184,20 @@ NEXT_PUBLIC_DEFAULT_THEME=system
 
 # Default Signup Role
 NEXT_PUBLIC_DEFAULT_SIGNUP_ROLE=USER
+
+# Payments
+NEXT_PUBLIC_ENABLE_STRIPE_PAYMENT=true
+NEXT_PUBLIC_ENABLE_DEMO_PAYMENT=false
+```
+
+#### Stripe Payment Configuration
+
+Add these to the API environment when you want real Stripe payments enabled:
+
+```env
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_CURRENCY=usd
 ```
 
 ## Database Setup

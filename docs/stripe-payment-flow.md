@@ -1,15 +1,15 @@
-# Stripe Payment Flow - Detailed Technical Explanation
+# Stripe Checkout Flow
 
-This document explains the exact Stripe payment lifecycle implemented in Collectra, with a strong focus on how the debt amount is extracted and converted for Stripe.
+This document explains the current Stripe payment lifecycle implemented in Collectra, with a strong focus on how the debt amount is extracted and converted for Stripe.
 
 ## 1. High-Level Flow
 
 1. Customer opens the public debt page with a signed token (`/client/view?token=...`).
 2. Frontend fetches debt details from API.
-3. Customer submits a promise date.
-4. Backend updates debt status to `PROMISE_TO_PAY`.
+3. Customer may optionally submit a promise date.
+4. Backend stores the promise date when it is provided.
 5. Customer clicks **Pay now securely**.
-6. Frontend calls API to create a Stripe Checkout session.
+6. Frontend calls API to create a Stripe Checkout session for the unpaid debt.
 7. Backend extracts debt amount from DB and sends Stripe Checkout session request.
 8. Frontend redirects browser to Stripe Checkout URL.
 9. Customer pays on Stripe-hosted page.
@@ -25,12 +25,13 @@ The public flow is token-based (no user login required).
 
 This method is the root of all later operations: promise creation and Stripe checkout session creation.
 
-## 3. Promise Date Requirement Before Payment
+## 3. Promise Date Is Optional For Stripe Payment
 
-Stripe payment is intentionally gated by debt status.
+Stripe checkout no longer depends on the promise-date flow.
 
-- UI shows Stripe payment button only when debt status is `PROMISE_TO_PAY`.
-- Backend enforces the same condition in `createStripeCheckoutSessionByCustomerToken`.
+- UI shows Stripe payment button for any debt that is not `PAID`.
+- Backend allows `createStripeCheckoutSessionByCustomerToken` as long as the debt is unpaid and the amount is valid.
+- The promise date remains a separate action for reminders and the fake/demo payment flow.
 
 ### Promise Date Validation Logic
 
@@ -41,6 +42,8 @@ In `createPromiseByCustomerToken`:
 - Due date comparison uses end-of-day UTC (`23:59:59.999`).
 
 This avoids timezone errors where selecting "today" could be mistakenly treated as "past".
+
+The payment path does not repeat this gate for Stripe checkout. Only the fake/demo payment path still requires `PROMISE_TO_PAY` and an arrived promise date.
 
 ## 4. How Debt Amount Is Extracted
 
@@ -68,7 +71,7 @@ if (!Number.isFinite(amount) || amount <= 0) {
 
 Stripe `unit_amount` must be in the **smallest currency unit** (for USD: cents).
 
-Implementation:
+Amount conversion:
 
 ```ts
 const unitAmount = Math.round(amount * 100)
@@ -142,7 +145,8 @@ If API fails:
 - error toast displayed
 - inline feedback shown
 
-The page shows payment section only when status is `PROMISE_TO_PAY`.
+The page shows the payment section for any debt that is not `PAID`.
+The promise date card remains available as an optional action.
 
 ## 9. Webhook Confirmation (Source of Truth)
 
@@ -181,7 +185,7 @@ This provides auditable payment history.
 
 ### Promise request returns 400
 
-Payment section may never appear because debt never reaches `PROMISE_TO_PAY`.
+The promise-date action can fail validation, but Stripe checkout still works for unpaid debts that do not rely on a promise date.
 
 ### Session creation fails
 
@@ -190,8 +194,8 @@ Frontend shows error and does not redirect to Stripe.
 Common causes:
 
 - `STRIPE_SECRET_KEY` missing/invalid
-- debt not in `PROMISE_TO_PAY`
 - invalid debt amount
+- Stripe could not build a checkout session for the current debt currency
 
 ### Webhook fails
 

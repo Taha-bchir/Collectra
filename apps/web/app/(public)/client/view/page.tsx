@@ -34,8 +34,13 @@ function formatDate(value: string) {
   }
 }
 
-function formatAmount(value: number) {
-  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function formatAmount(value: number, currency: string) {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: (currency || 'USD').toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
 }
 
 function toDateInputValue(value: Date) {
@@ -383,7 +388,7 @@ function ClientDebtViewContent() {
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount</p>
                     <div className="mt-2 font-semibold text-lg flex items-center gap-2">
                       <CircleDollarSign className="h-5 w-5 text-muted-foreground" />
-                      {formatAmount(debt.amount)}
+                      {formatAmount(debt.amount, debt.currency)}
                     </div>
                   </CardContent>
                 </Card>

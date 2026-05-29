@@ -1,4 +1,4 @@
-# CSV Import — How It Works
+# CSV Import Flow
 
 **Feature:** Campaign creation via CSV file upload  
 **Endpoint:** `POST /api/v1/campaigns/import-csv`  

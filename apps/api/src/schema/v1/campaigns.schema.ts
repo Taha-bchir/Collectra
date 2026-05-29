@@ -25,6 +25,7 @@ const CampaignSummarySchema = z.object({
 const CampaignDebtDetailSchema = z.object({
   id: z.string().uuid(),
   amount: z.number(),
+  currency: z.string(),
   dueDate: z.string().datetime(),
   promiseDate: z.string().datetime().nullable().optional(),
   status: z.nativeEnum(DebtStatus),
@@ -93,6 +94,10 @@ export const importCampaignCsvSchema = createRoute({
             dueDate: z.string().trim().min(1).openapi({
               example: '2026-04-30',
               description: 'Campaign due date applied to all imported customers (YYYY-MM-DD)',
+            }),
+            currency: z.string().trim().min(3).max(3).openapi({
+              example: 'usd',
+              description: 'Currency applied to all imported debts and Stripe payments',
             }),
             description: z.string().max(500).optional(),
             // Accept runtime File objects while preserving binary OpenAPI docs.

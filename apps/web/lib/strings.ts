@@ -58,33 +58,39 @@ export const strings: Record<string, string> = {
   // Support
   support_title: 'Support assistant',
   support_description:
-    'Ask about campaigns, imports, payments, or account settings. The assistant gives quick answers and points you to the right place in the app.',
+    'Ask about campaigns, imports, Stripe invoices, payments, or account settings. The assistant gives quick answers and points you to the right place in the app.',
   support_intro_title: 'How can I help?',
   support_intro_description:
     'This is a simple in-app assistant. It answers common Collectra questions and suggests the next screen to open.',
-  support_input_placeholder: 'Try asking about CSV imports, payment links, or account settings...',
+  support_input_placeholder: 'Try asking about CSV imports, Stripe invoices, payment links, or account settings...',
   support_send: 'Send',
   support_reset: 'Reset chat',
   support_welcome:
-    'Hi, I am the Collectra support assistant. Ask me about dashboards, campaigns, payment links, CSV imports, or account settings.',
+    'Hi, I am the Collectra support assistant. Ask me about dashboards, campaigns, Stripe invoices, payment links, CSV imports, or account settings.',
   support_fallback:
-    'I do not have a confident answer for that yet. Try asking about campaigns, payments, CSV imports, the overview dashboard, or account settings.',
+    'I do not have a confident answer for that yet. Try asking about campaigns, payments, Stripe invoices, CSV imports, the overview dashboard, or account settings.',
   support_quick_actions: 'Quick actions',
   support_related_links: 'Helpful links',
   support_question_csv: 'How do I import a CSV?',
   support_question_payments: 'How do I send payment links?',
+  support_question_invoice: 'How do Stripe invoices work?',
   support_question_account: 'How do I change my account settings?',
   support_question_overview: 'Where do I see dashboard stats?',
   support_answer_csv:
-    'Open Campaigns, create or select a campaign, then use the CSV import flow. Make sure the headers match the template and review the preview before confirming.',
+    'Download the CSV template first from Campaigns, fill in the required columns, then use the CSV import flow. Review the preview before confirming.',
   support_answer_payments:
-    'Open the campaign or customer view, select the debts you want to recover, and send a payment link from the available campaign actions.',
+    'Open the campaign or customer view, select the debts you want to recover, and send a payment link from the available campaign actions. Customers can pay immediately without a promise date.',
+  support_answer_invoice:
+    'Collectra now uses Stripe-hosted invoices for paid debts. Once a debt is paid, the public invoice link redirects to the Stripe invoice page.',
   support_answer_account:
     'Go to Settings, then Account. That is where you can update your personal information and manage password changes.',
   support_answer_overview:
     'Open Overview to see recovery metrics, recent campaigns, and a summary of payment activity across the workspace.',
+  support_answer_campaigns:
+    'Open Campaigns to import CSVs, manage debts, and trigger payment actions for your recovery workflow.',
   support_link_overview: 'Open Overview',
   support_link_campaigns: 'Open Campaigns',
+  support_link_payments: 'Open Payment Workflows',
   support_link_account: 'Open Account Settings',
 
   // Auth – login

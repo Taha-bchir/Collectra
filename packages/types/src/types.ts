@@ -61,6 +61,7 @@ export type DebtRecordRow = {
   campaignId: string
   clientId: string
   amount: string
+  currency: string
   dueDate: string
   status: 'IMPORTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
   promiseDate: string | null

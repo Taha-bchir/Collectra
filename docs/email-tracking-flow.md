@@ -1,4 +1,4 @@
-# Email Tracking: How It Works
+# Email Tracking Flow
 
 This document explains the current tracking flow in Collectra and includes key code snippets.
 

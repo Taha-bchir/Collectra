@@ -6,6 +6,7 @@ const DebtSchema = z.object({
   campaignId: z.string().uuid(),
   clientId: z.string().uuid(),
   amount: z.number(),
+  currency: z.string(),
   dueDate: z.string().datetime(),
   status: z.nativeEnum(DebtStatus),
   promiseDate: z.string().datetime().nullable().optional(),
@@ -69,6 +70,7 @@ export const createDebtSchema = createRoute({
             campaignId: z.string().uuid(),
             clientId: z.string().uuid(),
             amount: z.number().positive(),
+            currency: z.string().trim().min(3).max(3).optional(),
             dueDate: z.string().datetime(),
             status: z.nativeEnum(DebtStatus).optional().default('IMPORTED'),
             promiseDate: z.string().datetime().optional().nullable(),
@@ -138,6 +140,7 @@ export const updateDebtSchema = createRoute({
         'application/json': {
           schema: z.object({
             amount: z.number().positive().optional(),
+            currency: z.string().trim().min(3).max(3).optional(),
             dueDate: z.string().datetime().optional(),
             status: z.nativeEnum(DebtStatus).optional(),
             promiseDate: z.string().datetime().nullable().optional(),

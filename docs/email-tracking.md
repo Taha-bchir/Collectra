@@ -1,8 +1,8 @@
-# Email Tracking Implementation (Campaign CSV Flow)
+# Email Tracking Overview
 
 ## Overview
 
-This document explains how email tracking is implemented for campaign CSV imports, how statistics are calculated, and where each part lives in the codebase.
+This document explains how email tracking works for campaign CSV imports, how statistics are calculated, and where each part lives in the codebase.
 
 Current pipeline:
 
@@ -381,7 +381,7 @@ Detailed behavior:
 ## Notes and Current Limitations
 
 - Existing campaigns imported before persistence was added may show low/zero sent stats.
-- `opened` and `clicked` currently come from the same action source (`LINK_CLICKED`) in this implementation.
+- `opened` and `clicked` currently come from the same action source (`LINK_CLICKED`) in the current flow.
 - If you later add distinct open/click event ingestion, update aggregation to split them.
 
 Recommended next improvements:

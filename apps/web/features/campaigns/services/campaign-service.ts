@@ -10,6 +10,7 @@ export type ImportCampaignCsvPayload = {
   file: File
   campaignName: string
   dueDate: string
+  currency: string
   description?: string
 }
 
@@ -151,6 +152,7 @@ export async function importCampaignCsv(payload: ImportCampaignCsvPayload): Prom
   formData.append('file', payload.file)
   formData.append('campaignName', payload.campaignName.trim())
   formData.append('dueDate', payload.dueDate)
+  formData.append('currency', payload.currency.trim().toLowerCase())
 
   if (payload.description?.trim()) {
     formData.append('description', payload.description.trim())

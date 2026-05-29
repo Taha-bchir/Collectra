@@ -38,7 +38,7 @@ Two public tracking paths exist:
 - Pixel/open path: records open-like provider interaction data.
 - Click redirect path: records click event server-side before redirecting user to the client page.
 
-Important implementation detail:
+Important current behavior:
 - Click tracking was moved to server redirect to avoid inflated counts from client page auto-triggers.
 
 ## 5. Provider Webhook Ingestion

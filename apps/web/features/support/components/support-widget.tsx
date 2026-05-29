@@ -24,8 +24,8 @@ export function SupportWidget() {
       ) : null}
 
       {isOpen ? (
-        <div className="fixed inset-0 z-50 bg-black/25 sm:bg-transparent">
-          <div className="absolute bottom-4 right-4 flex h-[min(72vh,620px)] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-background shadow-2xl sm:bottom-6 sm:right-6 sm:w-[400px]">
+        <div className="pointer-events-none fixed inset-0 z-50 bg-black/25 sm:bg-transparent">
+          <div className="pointer-events-auto absolute bottom-4 right-4 flex h-[min(76vh,680px)] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border/70 bg-background shadow-2xl sm:bottom-6 sm:right-6 sm:w-110 lg:w-120">
             <div className="flex items-center justify-between border-b border-border/60 bg-card px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">

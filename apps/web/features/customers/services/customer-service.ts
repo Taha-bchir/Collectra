@@ -37,6 +37,7 @@ export type CustomerListItem = {
     campaignId: string
     campaignName: string
     amount: number
+    currency: string
     dueDate: string
     promiseDate: string | null
     status: DebtStatus
@@ -124,6 +125,7 @@ export type CustomerDetails = {
     campaignId: string
     campaignName: string
     amount: number
+    currency: string
     dueDate: string
     promiseDate: string | null
     status: DebtStatus

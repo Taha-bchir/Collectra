@@ -220,6 +220,7 @@ export class CustomersService {
         clientId: true,
         campaignId: true,
         amount: true,
+        currency: true,
         dueDate: true,
         promiseDate: true,
         status: true,
@@ -271,6 +272,7 @@ export class CustomersService {
           campaignId: debt.campaignId,
           campaignName: debt.campaign.name,
           amount: debt.amount.toNumber(),
+          currency: debt.currency,
           dueDate: debt.dueDate,
           promiseDate: debt.promiseDate,
           status: debt.status,
@@ -341,6 +343,7 @@ export class CustomersService {
                 name: true,
               },
             },
+            currency: true,
             paymentPromises: {
               orderBy: {
                 createdAt: 'desc',
@@ -373,6 +376,7 @@ export class CustomersService {
         campaignId: debt.campaignId,
         campaignName: debt.campaign.name,
         amount: debt.amount.toNumber(),
+        currency: debt.currency,
         dueDate: debt.dueDate,
         promiseDate: debt.promiseDate,
         status: debt.status,

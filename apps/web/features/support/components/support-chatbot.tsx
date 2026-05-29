@@ -29,6 +29,7 @@ type BotReply = {
 const quickQuestions = [
   strings.support_question_csv,
   strings.support_question_payments,
+  strings.support_question_invoice,
   strings.support_question_account,
 ]
 
@@ -41,6 +42,10 @@ function getSuggestedActions(message: string): ChatAction[] | undefined {
 
   if (/payment link|payment links|pay link|send payment|recover/.test(normalized)) {
     return [{ label: strings.support_link_campaigns, href: "/campaigns" }]
+  }
+
+  if (/stripe invoice|invoice|hosted invoice/.test(normalized)) {
+    return [{ label: strings.support_link_payments, href: "/campaigns" }]
   }
 
   if (/account|settings|password|profile|email/.test(normalized)) {
@@ -68,6 +73,13 @@ function getBotReply(message: string): BotReply {
     return {
       text: strings.support_answer_payments,
       actions: [{ label: strings.support_link_campaigns, href: "/campaigns" }],
+    }
+  }
+
+  if (/stripe invoice|invoice|hosted invoice/.test(normalized)) {
+    return {
+      text: strings.support_answer_invoice,
+      actions: [{ label: strings.support_link_payments, href: "/campaigns" }],
     }
   }
 
@@ -184,8 +196,8 @@ export function SupportChatbot() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-4 px-4 py-4 sm:px-5">
+      <ScrollArea className="h-full min-h-0 flex-1">
+        <div className="space-y-4 px-4 py-4 pb-6 sm:px-5">
           {messages.map((message) => (
             <div
               key={message.id}
@@ -198,13 +210,13 @@ export function SupportChatbot() {
               ) : null}
 
               <div
-                className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-6 shadow-sm ${
+                className={`max-w-[90%] rounded-2xl px-3.5 py-2.5 text-sm leading-6 shadow-sm ${
                   message.role === "user"
                     ? "rounded-br-md bg-primary text-primary-foreground"
                     : "border border-border/60 bg-muted/40 text-foreground"
                 }`}
               >
-                <p className="whitespace-pre-wrap">{message.text}</p>
+                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.text}</p>
 
                 {message.actions?.length ? (
                   <div className="mt-2 flex flex-wrap gap-2">

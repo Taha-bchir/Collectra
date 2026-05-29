@@ -19,7 +19,6 @@ import type { Env } from '../../../types/index.js'
 import { withRouteTryCatch } from '../../../utils/route-helpers.js'
 import { logger } from '../../../utils/logger.js'
 import { getStripeClient } from '../../../lib/stripe.js'
-import { resolvePublicWebUrl } from '../../../utils/public-url.js'
 
 const handler = new OpenAPIHono<Env>()
 const TRANSPARENT_GIF_BASE64 =
@@ -57,6 +56,7 @@ handler.openapi(
       data: {
         debtId: debt.id,
         amount: debt.amount.toNumber(),
+        currency: debt.currency,
         dueDate: debt.dueDate.toISOString(),
         promiseDate: debt.promiseDate ? debt.promiseDate.toISOString() : null,
         status: debt.status,
@@ -194,17 +194,55 @@ handler.openapi(
       })
     }
 
-    const stripeInvoice = await createOrReuseStripeInvoiceForDebt(debt)
+    const paymentConfirmation = await c.get('prisma').customerActionHistory.findFirst({
+      where: {
+        debtId: debt.id,
+        actionType: 'PAYMENT_CONFIRMED',
+      },
+      orderBy: { timestamp: 'desc' },
+      select: { metadata: true },
+    })
 
-    if (!stripeInvoice) {
-      throw new HTTPException(503, {
-        message: 'Stripe invoice is not available',
-      })
+    const storedInvoice = paymentConfirmation?.metadata as
+      | {
+          stripe?: {
+            invoice?: {
+              hostedInvoiceUrl?: string | null
+              invoicePdfUrl?: string | null
+              invoiceId?: string | null
+            } | null
+          } | null
+        }
+      | null
+
+    const invoiceUrl =
+      storedInvoice?.stripe?.invoice?.hostedInvoiceUrl ?? storedInvoice?.stripe?.invoice?.invoicePdfUrl ?? null
+
+    if (invoiceUrl) {
+      c.header('Cache-Control', 'no-store')
+      return c.redirect(invoiceUrl, 302)
     }
 
-    const invoiceUrl = stripeInvoice.hostedInvoiceUrl ?? stripeInvoice.invoicePdfUrl
-
     if (!invoiceUrl) {
+      try {
+        const stripeInvoice = await createOrReuseStripeInvoiceForDebt(debt)
+        const fallbackInvoiceUrl = stripeInvoice?.hostedInvoiceUrl ?? stripeInvoice?.invoicePdfUrl ?? null
+
+        if (fallbackInvoiceUrl) {
+          c.header('Cache-Control', 'no-store')
+          return c.redirect(fallbackInvoiceUrl, 302)
+        }
+      } catch (error) {
+        logger.warn(
+          {
+            debtId: debt.id,
+            error: error instanceof Error ? error.message : String(error),
+            scope: 'publicDebts.getInvoiceByToken.stripeFallback',
+          },
+          'Stripe invoice creation failed while opening the public invoice',
+        )
+      }
+
       throw new HTTPException(503, {
         message: 'Stripe invoice URL is not available',
       })

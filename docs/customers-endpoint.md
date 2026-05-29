@@ -1,7 +1,7 @@
-# Customers Endpoint Logic: Before vs After
+# Customers Endpoint Behavior
 
 ## Scope
-This document compares the logical behavior of `GET /api/v1/customers` before and after the update implemented on 2026-04-08.
+This document describes the current logical behavior of `GET /api/v1/customers` and how the response is composed.
 
 ## 1) Endpoint Contract
 

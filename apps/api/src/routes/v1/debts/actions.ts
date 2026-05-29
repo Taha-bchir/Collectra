@@ -25,6 +25,7 @@ const toApiDebt = (debt: DebtRouteEntity) => ({
   campaignId: debt.campaignId,
   clientId: debt.clientId,
   amount: debt.amount.toNumber(),
+  currency: debt.currency,
   dueDate: debt.dueDate.toISOString(),
   status: debt.status,
   promiseDate: debt.promiseDate?.toISOString() ?? null,
@@ -65,6 +66,7 @@ handler.openapi(createDebtSchema, withRouteTryCatch('debts.create', async (c) =>
     campaignId: payload.campaignId,
     clientId: payload.clientId,
     amount: payload.amount,
+    currency: payload.currency,
     status: payload.status,
     dueDate: new Date(payload.dueDate),
   };
@@ -97,6 +99,9 @@ handler.openapi(updateDebtSchema, withRouteTryCatch('debts.update', async (c) =>
   const updateInput: Parameters<DebtsService['update']>[2] = {};
   if (payload.amount !== undefined) {
     updateInput.amount = payload.amount;
+  }
+  if (payload.currency !== undefined) {
+    updateInput.currency = payload.currency;
   }
   if (payload.status !== undefined) {
     updateInput.status = payload.status;

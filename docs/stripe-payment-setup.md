@@ -1,4 +1,4 @@
-# Stripe Payment Setup (Public Debt Link Flow)
+# Stripe Checkout Setup
 
 This setup adds real Stripe Checkout payments to the public debt page and confirms payments via Stripe webhooks.
 
@@ -36,12 +36,14 @@ This setup adds real Stripe Checkout payments to the public debt page and confir
 ## 4) Payment Flow
 
 1. Debtor opens personal link: `/client/view?token=...`
-2. Debtor sets promise date (status becomes `PROMISE_TO_PAY`).
+2. Debtor may set a promise date if they want to commit to a future payment date.
 3. Debtor clicks `Pay now securely`.
-4. API creates Stripe Checkout session: `POST /api/v1/public/debts/{token}/stripe/checkout-session`.
+4. API creates Stripe Checkout session for any unpaid debt: `POST /api/v1/public/debts/{token}/stripe/checkout-session`.
 5. Debtor completes payment on Stripe-hosted page.
 6. Stripe sends `checkout.session.completed` webhook.
 7. API marks debt as `PAID`, closes active promises as `KEPT`, and logs `PAYMENT_CONFIRMED` in customer action history.
+
+Only the fake/demo payment path still requires `PROMISE_TO_PAY` and an arrived promise date.
 
 ## 5) Notes
 

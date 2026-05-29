@@ -61,8 +61,13 @@ function formatDateTime(value: string | null) {
   return new Date(value).toLocaleString()
 }
 
-function formatAmount(value: number) {
-  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+function formatAmount(value: number, currency: string) {
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: (currency || 'USD').toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
 }
 
 function getDebtBadgeVariant(status: TrackingDisplayStatus) {
@@ -513,7 +518,7 @@ export function CustomerTrackingView({ campaigns, campaignId: routeCampaignId = 
                           <p className="text-muted-foreground">{row.customer.phone || '-'}</p>
                         </div>
                       </TableCell>
-                      <TableCell>{formatAmount(row.debt.amount)}</TableCell>
+                      <TableCell>{formatAmount(row.debt.amount, row.debt.currency)}</TableCell>
                       <TableCell className="hidden md:table-cell">{formatDate(row.debt.dueDate)}</TableCell>
                       <TableCell className="hidden whitespace-nowrap sm:table-cell">
                         {row.debt.linkOpenCount > 0 ? (

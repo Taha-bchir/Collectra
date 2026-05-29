@@ -21,3 +21,8 @@ export function getStripeClient() {
 export function getStripeCurrency() {
   return (env.STRIPE_CURRENCY ?? 'usd').toLowerCase()
 }
+
+export function normalizeStripeCurrency(value?: string | null) {
+  const normalized = (value ?? '').trim().toLowerCase()
+  return normalized.length > 0 ? normalized : getStripeCurrency()
+}

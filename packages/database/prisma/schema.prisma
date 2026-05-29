@@ -166,6 +166,7 @@ model DebtRecord {
   campaignId             String     @db.Uuid
   clientId               String     @db.Uuid
   amount                 Decimal
+  currency               String     @default("usd") @db.VarChar(3)
   dueDate                DateTime
   status                 DebtStatus @default(UNPAID)
   promiseDate            DateTime?

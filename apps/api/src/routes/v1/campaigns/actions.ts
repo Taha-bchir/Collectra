@@ -119,6 +119,7 @@ handler.openapi(
         debts: campaign.debts.map((debt) => ({
           id: debt.id,
           amount: debt.amount,
+          currency: debt.currency,
           dueDate: debt.dueDate.toISOString(),
           promiseDate: debt.promiseDate ? debt.promiseDate.toISOString() : null,
           status: debt.status,
@@ -297,6 +298,7 @@ handler.openapi(
 
     const campaignNameValue = body.campaignName
     const dueDateValue = body.dueDate
+    const currencyValue = body.currency
     const descriptionValue = body.description
 
     const campaignName = typeof campaignNameValue === 'string' ? campaignNameValue.trim() : ''
@@ -320,10 +322,15 @@ handler.openapi(
         ? descriptionValue
         : undefined
 
+    const currency = typeof currencyValue === 'string' && currencyValue.trim().length > 0
+      ? currencyValue
+      : 'usd'
+
     const service = new CampaignsService(c.get('prisma'))
     const result = await service.importFromCsv(workspaceId, {
       campaignName,
       dueDate,
+      currency,
       description,
       fileName: file.name,
       csvText,

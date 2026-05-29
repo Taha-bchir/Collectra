@@ -11,6 +11,7 @@ import type {
 } from '@repo/types'
 import { HTTPException } from 'hono/http-exception'
 import { randomUUID } from 'node:crypto'
+import { normalizeStripeCurrency } from '../lib/stripe.js'
 import { logger } from '../utils/logger.js'
 import { BrevoEmailService } from './brevo-email.js'
 import { logBrevoEvent } from './brevo-event-logs.js'
@@ -134,6 +135,7 @@ export class CampaignsService {
       select: {
         id: true,
         amount: true,
+        currency: true,
         dueDate: true,
         status: true,
         promiseDate: true,
@@ -181,6 +183,7 @@ export class CampaignsService {
         return {
           id: debt.id,
           amount: Number(debt.amount),
+          currency: debt.currency,
           dueDate: debt.dueDate,
           promiseDate: debt.promiseDate,
           status: debt.status,
@@ -316,6 +319,7 @@ export class CampaignsService {
 
     const campaignName =
       input.campaignName.trim()
+    const importCurrency = normalizeStripeCurrency(input.currency)
 
     const importResult = await this.prisma.$transaction(
       async (tx) => {
@@ -466,6 +470,7 @@ export class CampaignsService {
             campaignId: campaign.id,
             clientId,
             amount: row.amount,
+            currency: importCurrency,
             dueDate: row.dueDate,
             status: row.status,
           })

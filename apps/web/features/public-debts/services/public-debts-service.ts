@@ -5,6 +5,7 @@ import { ApiError } from '@/lib/api-client'
 export type PublicDebtView = {
   debtId: string
   amount: number
+  currency: string
   dueDate: string
   promiseDate?: string | null
   status: 'IMPORTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'

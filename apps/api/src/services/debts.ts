@@ -5,7 +5,7 @@ import { env } from '../config/env.js'
 import { logBrevoEvent } from './brevo-event-logs.js'
 import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
-import { getStripeClient, getStripeCurrency } from '../lib/stripe.js'
+import { getStripeClient, normalizeStripeCurrency } from '../lib/stripe.js'
 import { resolvePublicWebUrl } from '../utils/public-url.js'
 import { parsePromisedDateInput, utcCalendarDayStart } from '../utils/calendar.js'
 import { transitionDebtToOverdue } from './overdue-debts.js'
@@ -44,6 +44,7 @@ export type StripeInvoiceDetails = {
 export type DebtInvoiceSource = {
   id: string
   amount: { toNumber(): number }
+  currency: string
   dueDate: Date
   status: DebtStatus
   invoiceNumber: string | null
@@ -60,8 +61,8 @@ export type DebtInvoiceSource = {
   }
 }
 
-function getStripeInvoiceIdempotencyKey(debtId: string) {
-  return `collectra:stripe-invoice:${debtId}`
+function getStripeInvoiceIdempotencyKey(debtId: string, currency: string) {
+  return `collectra:stripe-invoice:${debtId}:${currency}`
 }
 
 function isDeletedStripeResource(value: unknown): boolean {
@@ -70,6 +71,10 @@ function isDeletedStripeResource(value: unknown): boolean {
   }
 
   return (value as { deleted?: unknown }).deleted === true
+}
+
+async function refreshStripeInvoice(stripe: StripeClient, invoiceId: string) {
+  return stripe.invoices.retrieve(invoiceId)
 }
 
 async function getOrCreateStripeCustomer(
@@ -111,6 +116,7 @@ async function findStripeInvoiceForDebt(
   stripe: StripeClient,
   customers: StripeCustomer[],
   debtId: string,
+  currency: string,
 ): Promise<StripeInvoice | null> {
   for (const customer of customers) {
     const invoices = await stripe.invoices.list({
@@ -118,7 +124,10 @@ async function findStripeInvoiceForDebt(
       limit: 100,
     })
 
-    const existingInvoice = invoices.data.find((invoice) => invoice.metadata?.debtId === debtId)
+    const existingInvoice = invoices.data.find(
+      (invoice) =>
+        invoice.metadata?.debtId === debtId && normalizeStripeCurrency(invoice.currency) === currency,
+    )
     if (existingInvoice) {
       return existingInvoice
     }
@@ -134,7 +143,7 @@ async function addDebtAmountToStripeInvoice(
   debt: DebtInvoiceSource,
 ): Promise<StripeInvoiceItem> {
   const amount = debt.amount.toNumber()
-  const currency = getStripeCurrency()
+  const currency = normalizeStripeCurrency(debt.currency)
 
   return stripe.invoiceItems.create(
     {
@@ -161,6 +170,7 @@ export async function createOrReuseStripeInvoiceForDebt(
 ): Promise<StripeInvoiceDetails | null> {
   const stripe = getStripeClient()
   const amount = debt.amount.toNumber()
+  const currency = normalizeStripeCurrency(debt.currency)
 
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new HTTPException(400, {
@@ -189,7 +199,7 @@ export async function createOrReuseStripeInvoiceForDebt(
     })
   }
 
-  const existingInvoice = await findStripeInvoiceForDebt(stripe, customers, debt.id)
+  const existingInvoice = await findStripeInvoiceForDebt(stripe, customers, debt.id, currency)
   if (existingInvoice) {
     const invoiceNumber = existingInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id)
 
@@ -210,30 +220,35 @@ export async function createOrReuseStripeInvoiceForDebt(
               paid_out_of_band: true,
             })
 
+      const refreshedInvoice = await refreshStripeInvoice(stripe, paidInvoice.id)
+
       return {
-        invoiceId: paidInvoice.id,
-        invoiceNumber: paidInvoice.number ?? invoiceNumber,
-        hostedInvoiceUrl: paidInvoice.hosted_invoice_url ?? null,
-        invoicePdfUrl: paidInvoice.invoice_pdf ?? null,
-        customerId: paidInvoice.customer as string,
+        invoiceId: refreshedInvoice.id,
+        invoiceNumber: refreshedInvoice.number ?? invoiceNumber,
+        hostedInvoiceUrl: refreshedInvoice.hosted_invoice_url ?? null,
+        invoicePdfUrl: refreshedInvoice.invoice_pdf ?? null,
+        customerId: refreshedInvoice.customer as string,
       }
     }
 
+    const refreshedInvoice = await refreshStripeInvoice(stripe, existingInvoice.id)
+
     return {
-      invoiceId: existingInvoice.id,
-      invoiceNumber,
-      hostedInvoiceUrl: existingInvoice.hosted_invoice_url ?? null,
-      invoicePdfUrl: existingInvoice.invoice_pdf ?? null,
-      customerId: existingInvoice.customer as string,
+      invoiceId: refreshedInvoice.id,
+      invoiceNumber: refreshedInvoice.number ?? invoiceNumber,
+      hostedInvoiceUrl: refreshedInvoice.hosted_invoice_url ?? null,
+      invoicePdfUrl: refreshedInvoice.invoice_pdf ?? null,
+      customerId: refreshedInvoice.customer as string,
     }
   }
 
   const createdInvoice = await stripe.invoices.create(
     {
       customer: customer.id,
+      currency,
       collection_method: 'send_invoice',
       auto_advance: false,
-      days_until_due: 0,
+      days_until_due: 1,
       pending_invoice_items_behavior: 'exclude',
       metadata: {
         debtId: debt.id,
@@ -243,7 +258,7 @@ export async function createOrReuseStripeInvoiceForDebt(
       },
     },
     {
-      idempotencyKey: getStripeInvoiceIdempotencyKey(debt.id),
+      idempotencyKey: getStripeInvoiceIdempotencyKey(debt.id, currency),
     },
   )
 
@@ -259,11 +274,13 @@ export async function createOrReuseStripeInvoiceForDebt(
           paid_out_of_band: true,
         })
 
+  const refreshedInvoice = await refreshStripeInvoice(stripe, paidInvoice.id)
+
   return {
-    invoiceId: paidInvoice.id,
-    invoiceNumber: paidInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id),
-    hostedInvoiceUrl: paidInvoice.hosted_invoice_url ?? null,
-    invoicePdfUrl: paidInvoice.invoice_pdf ?? null,
+    invoiceId: refreshedInvoice.id,
+    invoiceNumber: refreshedInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id),
+    hostedInvoiceUrl: refreshedInvoice.hosted_invoice_url ?? null,
+    invoicePdfUrl: refreshedInvoice.invoice_pdf ?? null,
     customerId: customer.id,
   }
 }
@@ -424,6 +441,7 @@ export type CreateDebtInput = {
   campaignId: string
   clientId: string
   amount: number
+  currency?: string
   dueDate: Date
   status?: DebtStatus
   promiseDate?: Date | null
@@ -431,6 +449,7 @@ export type CreateDebtInput = {
 
 export type UpdateDebtInput = Partial<{
   amount: number
+  currency: string
   dueDate: Date
   status: DebtStatus
   promiseDate?: Date | null
@@ -804,29 +823,10 @@ export class DebtsService {
       pendingStripeSessionId?: string | null
     }
 
-    if (debt.status !== 'PROMISE_TO_PAY') {
+    if (debt.status === 'PAID') {
       throw new HTTPException(400, {
-        message: 'This debt is overdue and can no longer be paid online',
+        message: 'This debt has already been paid',
       })
-    }
-
-    // Validate payment is allowed on/after promise date
-    if (debt.promiseDate) {
-      const promiseDateStart = new Date(
-        Date.UTC(
-          debt.promiseDate.getUTCFullYear(),
-          debt.promiseDate.getUTCMonth(),
-          debt.promiseDate.getUTCDate(),
-        ),
-      )
-      const todayStart = new Date()
-      todayStart.setUTCHours(0, 0, 0, 0)
-
-      if (todayStart < promiseDateStart) {
-        throw new HTTPException(400, {
-          message: `Payment is not available until ${debt.promiseDate.toISOString().split('T')[0]}`,
-        })
-      }
     }
 
     const amount = debt.amount.toNumber()
@@ -837,7 +837,7 @@ export class DebtsService {
     }
 
     const stripe = getStripeClient()
-    const currency = getStripeCurrency()
+    const currency = normalizeStripeCurrency(debt.currency)
     const unitAmount = Math.round(amount * 100)
 
     if (debt.pendingStripeSessionId) {
@@ -1156,7 +1156,12 @@ export class DebtsService {
       throw new HTTPException(403, { message: 'Client not in your workspace' })
     }
 
-    return this.prisma.debtRecord.create({ data })
+    return this.prisma.debtRecord.create({
+      data: {
+        ...data,
+        currency: normalizeStripeCurrency(data.currency),
+      },
+    })
   }
 
   async update(workspaceId: string, id: string, data: UpdateDebtInput) {
@@ -1173,7 +1178,16 @@ export class DebtsService {
 
     return this.prisma.debtRecord.update({
       where: { id },
-      data: clearReminder ? { ...data, prePromiseDueReminderSentFor: null } : data,
+      data: clearReminder
+        ? {
+            ...data,
+            ...(data.currency ? { currency: normalizeStripeCurrency(data.currency) } : {}),
+            prePromiseDueReminderSentFor: null,
+          }
+        : {
+            ...data,
+            ...(data.currency ? { currency: normalizeStripeCurrency(data.currency) } : {}),
+          },
       include: { client: true },
     })
   }

@@ -13,6 +13,7 @@ export type CampaignSummary<TDate = string> = {
 export type CampaignDebtDetail<TDate = string, TDebtStatus = string> = {
     id: string;
     amount: number;
+    currency: string;
     dueDate: TDate;
     promiseDate?: TDate | null;
     status: TDebtStatus;
@@ -62,6 +63,7 @@ export type CampaignImportResult<TDate = string, TDebtStatus = string> = {
 export type CampaignCsvImportInput = {
     campaignName: string;
     dueDate: Date;
+    currency: string;
     description?: string;
     fileName?: string;
     csvText: string;

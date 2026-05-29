@@ -1,7 +1,7 @@
 'use client'
 
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, CalendarDays, Layers3, Loader2, PlusCircle, Upload } from 'lucide-react'
+import { ArrowRight, CalendarDays, Download, Layers3, Loader2, PlusCircle, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -22,6 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -35,6 +36,8 @@ import { previewCampaignCsv, type CsvPreviewResult } from '@/features/campaigns/
 import { CustomerTrackingView } from './customer-tracking-view'
 
 const CREATE_CAMPAIGN_DRAFT_STORAGE_KEY = 'collectra:create-campaign-draft'
+const DEFAULT_IMPORT_CURRENCY = 'usd'
+const IMPORT_CURRENCY_OPTIONS = ['usd', 'eur', 'gbp', 'mad']
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
@@ -88,6 +91,7 @@ export function CampaignsView({
   const [campaignName, setCampaignName] = useState('')
   const [description, setDescription] = useState('')
   const [importDueDate, setImportDueDate] = useState('')
+  const [importCurrency, setImportCurrency] = useState(DEFAULT_IMPORT_CURRENCY)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<CsvPreviewResult | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
@@ -144,10 +148,15 @@ export function CampaignsView({
     }
 
     try {
-      const parsed = JSON.parse(raw) as { campaignName?: string; description?: string; importDueDate?: string }
+      const parsed = JSON.parse(raw) as { campaignName?: string; description?: string; importDueDate?: string; importCurrency?: string }
       setCampaignName(parsed.campaignName ?? '')
       setDescription(parsed.description ?? '')
       setImportDueDate(parsed.importDueDate ?? '')
+      setImportCurrency(
+        parsed.importCurrency && IMPORT_CURRENCY_OPTIONS.includes(parsed.importCurrency)
+          ? parsed.importCurrency
+          : DEFAULT_IMPORT_CURRENCY,
+      )
     } catch {
       window.localStorage.removeItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)
     }
@@ -158,7 +167,7 @@ export function CampaignsView({
       return
     }
 
-    const hasDraft = Boolean(campaignName.trim() || description.trim() || importDueDate)
+    const hasDraft = Boolean(campaignName.trim() || description.trim() || importDueDate || importCurrency !== DEFAULT_IMPORT_CURRENCY)
     if (!hasDraft) {
       window.localStorage.removeItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)
       return
@@ -170,9 +179,10 @@ export function CampaignsView({
         campaignName,
         description,
         importDueDate,
+        importCurrency,
       }),
     )
-  }, [campaignName, description, importDueDate, showCreateSection])
+  }, [campaignName, description, importCurrency, importDueDate, showCreateSection])
 
   const handleFileChange = useCallback(async (nextFile: File | null) => {
     const requestId = previewRequestIdRef.current + 1
@@ -261,6 +271,7 @@ export function CampaignsView({
         file,
         campaignName,
         dueDate: importDueDate,
+        currency: importCurrency,
         description,
       })
 
@@ -314,7 +325,7 @@ export function CampaignsView({
     } finally {
       setImporting(false)
     }
-  }, [campaignName, description, file, importDueDate, preview, router, minDueDate])
+  }, [campaignName, description, file, importCurrency, importDueDate, preview, router, minDueDate])
 
   const handleConfirmImport = useCallback(async (event: MouseEvent<HTMLButtonElement>) => {
     // Keep dialog open by default; close only after a successful import.
@@ -427,7 +438,23 @@ export function CampaignsView({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Need the right CSV format?</p>
+                  <p className="text-xs text-muted-foreground">
+                    Download the template first. Required columns: fullName, email, phone, and amount.
+                  </p>
+                </div>
+
+                <Button asChild variant="secondary" className="shrink-0">
+                  <a href="/templates/campaign-import-template.csv" download>
+                    <Download className="mr-2 h-4 w-4" />
+                    Download CSV template
+                  </a>
+                </Button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Campaign name</label>
                   <Input
@@ -470,6 +497,21 @@ export function CampaignsView({
                       />
                     </PopoverContent>
                   </Popover>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Currency</label>
+                  <Select value={importCurrency} onValueChange={setImportCurrency} disabled={importing}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {IMPORT_CURRENCY_OPTIONS.map((currency) => (
+                        <SelectItem key={currency} value={currency}>
+                          {currency.toUpperCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">CSV file</label>
@@ -616,6 +658,9 @@ export function CampaignsView({
                     </p>
                     <p>
                       Due date: <span className="font-medium">{importDueDate || '(Missing)'}</span>
+                    </p>
+                    <p>
+                      Currency: <span className="font-medium">{importCurrency.toUpperCase()}</span>
                     </p>
                     <p>
                       Preview: <span className="font-medium">{preview?.validRows ?? 0} valid</span> /{' '}

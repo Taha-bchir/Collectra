@@ -1,7 +1,7 @@
-# Customers Endpoint Changes (2026-04-08)
+# Customers Endpoint Contract
 
-## Goal implemented
-Add a tenant-scoped customers list endpoint that supports pagination and filters and returns customer + debt summary in one response.
+## Goal
+Tenant-scoped customers list endpoint that supports pagination and filters and returns customer + debt summary in one response.
 
 ## API contract updates
 

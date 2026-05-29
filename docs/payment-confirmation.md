@@ -1,4 +1,4 @@
-# Debt Payment Confirmation Before Invoice (2026-05-13)
+# Payment Confirmation and Invoice Access
 
 This document explains how Collectra verifies that a debt is truly paid before:
 
@@ -33,7 +33,7 @@ A debt is marked as `PAID` only inside payment confirmation flows in `DebtsServi
 
 Checks before payment confirmation:
 
-1. Debt must be `PROMISE_TO_PAY` or `OVERDUE_AFTER_PROMISE`.
+1. Debt must be `PROMISE_TO_PAY`.
 2. If promise date exists, today must be on/after promise date.
 
 Then inside a DB transaction:
@@ -86,8 +86,9 @@ Invoice route behavior (`/{token}/invoice`):
 
 1. Verify token and load debt.
 2. Require `debt.status === 'PAID'`.
-3. Create/reuse Stripe invoice.
-4. Redirect to hosted invoice URL or PDF URL.
+3. Read the latest payment-confirmation Stripe invoice metadata when available.
+4. Create/reuse Stripe invoice only if the stored metadata does not already contain a Stripe URL.
+5. Redirect to hosted invoice URL or PDF URL.
 
 Even if someone has a valid token, invoice cannot be opened before payment confirmation.
 

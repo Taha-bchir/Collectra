@@ -1,6 +1,6 @@
-# Payment and Invoice Flow - Detailed Technical Explanation
+# Payment and Invoice Flow
 
-This document explains the full customer payment lifecycle in Collectra, with a focus on the invoice path and the exact code that controls each step.
+This document explains the current customer payment lifecycle in Collectra, with a focus on the invoice path and the exact code that controls each step.
 
 The goal of the flow is not only to let a customer pay a debt, but also to make the payment path safe, idempotent, traceable, and immediately useful after payment by generating and emailing an invoice.
 
@@ -11,9 +11,9 @@ The public payment flow starts when a customer opens a secure link and ends when
 1. The customer opens the public debt page using a signed token link.
 2. The frontend loads the debt data from the public API.
 3. The customer may create a promise-to-pay date.
-4. The backend validates the promise date and stores it.
+4. The backend validates and stores the promise date when provided.
 5. The customer starts a payment.
-6. The backend either creates a Stripe Checkout session or confirms a fake/demo payment.
+6. The backend either creates a Stripe Checkout session for any unpaid debt or confirms a fake/demo payment.
 7. The system prevents duplicate checkout sessions while one payment is already pending.
 8. Payment confirmation is verified either by Stripe webhook or by an explicit verify call that can query Stripe directly.
 9. The debt status becomes `PAID`.
@@ -46,23 +46,23 @@ The token is the root authorization mechanism for the public flow:
 
 This means every public action depends on the token being valid and unexpired.
 
-## 4. Promise-To-Pay Gate
+## 4. Promise-Date Flow Versus Stripe Checkout
 
-Payment is not allowed until the debt is in `PROMISE_TO_PAY` status.
+The promise-date action is now separate from Stripe checkout.
 
-This gate is enforced both in the UI and on the server.
+Stripe checkout is available for any unpaid debt with a valid amount. The promise-date requirement still applies to the fake/demo payment path and to promise-based reminder logic.
 
 ### Server-side validation
 
 In [apps/api/src/services/debts.ts](../apps/api/src/services/debts.ts), `createPromiseByCustomerToken()` normalizes the submitted promise date to UTC day boundaries, then checks that it is not in the past and not after the due date.
 
-The same date boundary logic is repeated in the payment paths so the customer cannot bypass the UI by calling the API directly.
+The Stripe checkout path does not repeat this gate. Only the fake/demo payment path still requires `PROMISE_TO_PAY` and a promise date that has already arrived.
 
 ### Why this matters
 
-- It prevents payment before the agreed promise date.
+- It keeps promise-date entry validated and timezone-safe.
 - It avoids timezone bugs by comparing UTC day boundaries.
-- It keeps the public UI and backend policy aligned.
+- It preserves the separate fake/demo payment gate without blocking real Stripe checkout.
 
 ## 5. Fake Payment Confirmation Path
 
@@ -107,10 +107,11 @@ Location:
 
 Before the session is created, the backend checks:
 
-- the debt is in `PROMISE_TO_PAY`
+- the debt is not already `PAID`
 - there is no existing `pendingStripeSessionId`
-- the promise date has already arrived
 - the amount is valid and greater than zero
+
+Promise date is optional for Stripe checkout. It stays relevant for fake/demo payments and promise-based reminders.
 
 ### Duplicate checkout prevention
 
@@ -219,8 +220,8 @@ The invoice is served by `GET /{token}/invoice` in [apps/api/src/routes/v1/publi
 
 1. Resolve the debt from the token.
 2. Reject the request unless the debt status is `PAID`.
-3. Load the last `PAYMENT_CONFIRMED` action from `customerActionHistory`.
-4. Create or reuse the Stripe invoice for the debt.
+3. Read the latest payment-confirmation Stripe invoice metadata when available.
+4. Create or reuse the Stripe invoice for the debt if the stored metadata does not already contain a Stripe URL.
 5. Redirect the customer to the Stripe hosted invoice URL or PDF URL.
 
 ### What the invoice shows
@@ -236,7 +237,7 @@ The Stripe invoice includes:
 
 ### Why this endpoint matters
 
-It is the same invoice that the customer can open after payment, and it is also the destination of the new email download button.
+It is the same Stripe-hosted invoice that the customer can open after payment, and it is also the destination of the invoice email button.
 
 ## 11. Invoice Email Generation
 
@@ -329,7 +330,7 @@ The invoice and duplicate-prevention behavior depends on two new fields in [pack
 
 ### Payment before promise date
 
-The server blocks the request with HTTP 400.
+The fake/demo payment path blocks the request with HTTP 400. Stripe checkout does not use the promise-date gate.
 
 ### Duplicate checkout attempt
 
@@ -376,6 +377,6 @@ The payment flow is designed around three ideas:
 
 - the database is the source of truth for debt status
 - Stripe is the source of truth for payment completion
-- the invoice is a first-class output that is available both on the web and by email
+- the invoice is a first-class Stripe-hosted output that is available both on the web and by email
 
 The result is a payment system that is safer against duplicates, clearer for customers, and easier to trace in code.
