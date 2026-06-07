@@ -2,8 +2,8 @@
 
 import type React from "react"
 
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
+import { CollectraLogo } from "@/components/common/collectra-logo"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
@@ -100,14 +100,7 @@ function LoginPageContent() {
         {/* Logo */}
         <div className="mb-8 flex justify-center xl:hidden">
           <Link href="/" aria-label="Go to home page">
-            <Image
-              src="/logo-collectra-02.png"
-              alt="Collectra logo"
-              width={56}
-              height={56}
-              className="h-14 w-auto object-contain"
-              priority
-            />
+            <CollectraLogo width={56} height={56} className="h-14 w-auto object-contain" priority />
           </Link>
         </div>
 
@@ -218,13 +211,7 @@ function LoginPageContent() {
         >
           <div className="absolute inset-0 bg-black/70" />
           <Link href="/" aria-label="Go to home page" className="relative z-10">
-            <Image
-              src="/logo-collectra-02.png"
-              alt="Collectra logo"
-              width={220}
-              height={220}
-              className="h-40 w-auto object-contain"
-            />
+            <CollectraLogo width={220} height={220} className="h-40 w-auto object-contain" />
           </Link>
         </div>
       </div>

@@ -343,7 +343,6 @@ export class CustomersService {
                 name: true,
               },
             },
-            currency: true,
             paymentPromises: {
               orderBy: {
                 createdAt: 'desc',

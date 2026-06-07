@@ -153,9 +153,8 @@ export function CampaignsView({
       setDescription(parsed.description ?? '')
       setImportDueDate(parsed.importDueDate ?? '')
       setImportCurrency(
-        parsed.importCurrency && IMPORT_CURRENCY_OPTIONS.includes(parsed.importCurrency)
-          ? parsed.importCurrency
-          : DEFAULT_IMPORT_CURRENCY,
+        IMPORT_CURRENCY_OPTIONS.find((option) => option === parsed.importCurrency) ??
+          DEFAULT_IMPORT_CURRENCY,
       )
     } catch {
       window.localStorage.removeItem(CREATE_CAMPAIGN_DRAFT_STORAGE_KEY)

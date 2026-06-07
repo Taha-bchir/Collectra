@@ -1,7 +1,7 @@
 "use client"
 
 import type * as React from "react"
-import Image from "next/image"
+import { CollectraLogo } from "@/components/common/collectra-logo"
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -287,14 +287,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 className={`flex items-center gap-3 ${sidebarState === "collapsed" ? "justify-center w-full" : ""}`}
                 title={sidebarState === "collapsed" ? strings.app_name : undefined}
               >
-                <Image
-                  src="/logo-collectra-02.png"
-                  alt="Collectra logo"
-                  width={40}
-                  height={40}
-                  className="h-10 w-10 shrink-0 object-contain"
-                  priority
-                />
+                <CollectraLogo width={40} height={40} className="h-10 w-10 shrink-0 object-contain" priority />
                 {sidebarState !== "collapsed" && (
                   <div className="grid flex-1 min-w-0 text-left text-sm leading-tight">
                     <span className="truncate font-semibold text-sidebar-foreground">{strings.app_name}</span>

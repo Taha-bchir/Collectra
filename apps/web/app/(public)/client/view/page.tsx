@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Calendar as CalendarIcon, CircleDollarSign, Download, ExternalLink, Loader2, UserRound } from 'lucide-react'
-import Image from 'next/image'
+import { CollectraLogo } from '@/components/common/collectra-logo'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { toast } from 'sonner'
@@ -595,13 +595,7 @@ function ClientDebtViewContent() {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                          <Image
-                            src="/logo-collectra-02.png"
-                            alt="Collectra"
-                            width={120}
-                            height={32}
-                            className="h-8 w-auto"
-                          />
+                          <CollectraLogo width={120} height={32} className="h-8 w-auto" />
                           <Badge variant="secondary">Paid</Badge>
                         </div>
                         <p className="font-medium">Payment receipt</p>

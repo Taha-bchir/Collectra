@@ -1,6 +1,6 @@
 "use client"
 
-import Image from "next/image"
+import { CollectraLogo } from "@/components/common/collectra-logo"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, Sun, Moon, Monitor } from "lucide-react"
@@ -59,14 +59,7 @@ export function Navbar() {
               className="flex h-10 w-auto shrink-0 items-center justify-center"
               aria-label={strings.app_name}
             >
-              <Image
-                src="/logo-collectra-02.png"
-                alt="Collectra logo"
-                width={40}
-                height={40}
-                className="h-10 w-auto object-contain"
-                priority
-              />
+              <CollectraLogo width={40} height={40} className="h-10 w-auto object-contain" priority />
             </Link>
           </div>
 

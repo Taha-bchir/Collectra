@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
+import { CollectraLogo } from "@/components/common/collectra-logo"
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
@@ -165,14 +165,7 @@ function AcceptInvitePageContent() {
       <div className="flex-1 flex flex-col items-center justify-center bg-background p-4 sm:p-6 relative">
         <div className="mb-8 flex justify-center">
           <Link href="/" aria-label="Go to home page">
-            <Image
-              src="/logo-collectra-02.png"
-              alt="Collectra logo"
-              width={56}
-              height={56}
-              className="h-14 w-auto object-contain"
-              priority
-            />
+            <CollectraLogo width={56} height={56} className="h-14 w-auto object-contain" priority />
           </Link>
         </div>
 

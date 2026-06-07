@@ -2,8 +2,8 @@
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import Image from "next/image"
 import { Mail } from "lucide-react"
+import { CollectraLogo } from "@/components/common/collectra-logo"
 import { strings } from "@/lib/strings"
 
 export default function SignUpSuccessPage() {
@@ -13,14 +13,7 @@ export default function SignUpSuccessPage() {
         {/* Logo */}
       <div className="mb-8 flex justify-center">
         <Link href="/" aria-label="Go to home page">
-          <Image
-            src="/logo-collectra-02.png"
-            alt="Collectra logo"
-            width={56}
-            height={56}
-            className="h-14 w-auto object-contain"
-            priority
-          />
+          <CollectraLogo width={56} height={56} className="h-14 w-auto object-contain" priority />
         </Link>
       </div>
 

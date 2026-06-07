@@ -1,6 +1,6 @@
 "use client"
 
-import Image from "next/image"
+import { CollectraLogo } from "@/components/common/collectra-logo"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -73,14 +73,7 @@ export default function VerifyPage() {
         {/* Logo */}
       <div className="mb-8 flex justify-center">
         <Link href="/" aria-label="Go to home page">
-          <Image
-            src="/logo-collectra-02.png"
-            alt="Collectra logo"
-            width={56}
-            height={56}
-            className="h-14 w-auto object-contain"
-            priority
-          />
+          <CollectraLogo width={56} height={56} className="h-14 w-auto object-contain" priority />
         </Link>
       </div>
 
