@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Calendar as CalendarIcon, CircleDollarSign, Loader2, UserRound } from 'lucide-react'
+import { Calendar as CalendarIcon, CircleDollarSign, Download, ExternalLink, Loader2, UserRound } from 'lucide-react'
+import Image from 'next/image'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { toast } from 'sonner'
@@ -17,6 +18,7 @@ import {
   createPublicFakePaymentByToken,
   createPublicPromiseByToken,
   getPublicDebtByToken,
+  downloadPublicDebtInvoiceByToken,
   getPublicDebtInvoiceUrl,
   verifyStripePaymentByToken,
   type PublicDebtView,
@@ -24,6 +26,11 @@ import {
 
 const ENABLE_DEMO_PAYMENT = process.env.NEXT_PUBLIC_ENABLE_DEMO_PAYMENT === 'true'
 const ENABLE_STRIPE_PAYMENT = process.env.NEXT_PUBLIC_ENABLE_STRIPE_PAYMENT !== 'false'
+const STRIPE_CHECKOUT_CURRENCIES = new Set(['eur', 'usd'])
+
+function supportsStripeCheckout(currency: string) {
+  return STRIPE_CHECKOUT_CURRENCIES.has(currency.trim().toLowerCase())
+}
 
 function formatDate(value: string) {
   // Use day-month-year ordering (DD/MM/YYYY) with time, e.g. "21/05/2026, 13:45:00"
@@ -94,6 +101,7 @@ function ClientDebtViewContent() {
   const [submittingPromise, setSubmittingPromise] = useState(false)
   const [submittingStripePayment, setSubmittingStripePayment] = useState(false)
   const [submittingFakePayment, setSubmittingFakePayment] = useState(false)
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false)
   const [inlineFeedback, setInlineFeedback] = useState<string | null>(null)
   const paymentStatus = useMemo(() => searchParams.get('payment')?.trim() ?? '', [searchParams])
   const sessionId = useMemo(() => searchParams.get('session_id')?.trim() ?? searchParams.get('sessionId')?.trim() ?? null, [searchParams])
@@ -255,6 +263,14 @@ function ClientDebtViewContent() {
     return dueDay
   }, [debt, minPromiseDateObj])
 
+  const canUseStripeCheckout = useMemo(() => {
+    if (!debt) {
+      return false
+    }
+
+    return ENABLE_STRIPE_PAYMENT && supportsStripeCheckout(debt.currency)
+  }, [debt])
+
   const handleSubmitPromiseDate = async () => {
     if (!token || !debt || !promiseDate) {
       return
@@ -315,6 +331,29 @@ function ClientDebtViewContent() {
         setInlineFeedback(fallbackMessage)
       }
       setSubmittingStripePayment(false)
+    }
+  }
+
+  const handleDownloadInvoice = async () => {
+    if (!token) {
+      return
+    }
+
+    setDownloadingInvoice(true)
+
+    try {
+      await downloadPublicDebtInvoiceByToken(token, debt?.invoiceNumber)
+      toast.success('Invoice downloaded')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(err.message)
+      } else if (err instanceof Error) {
+        toast.error(err.message)
+      } else {
+        toast.error('Unable to download invoice')
+      }
+    } finally {
+      setDownloadingInvoice(false)
     }
   }
 
@@ -436,13 +475,19 @@ function ClientDebtViewContent() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <p className="text-xs text-muted-foreground">
-                        {ENABLE_STRIPE_PAYMENT
-                          ? 'You will be redirected to Stripe Checkout.'
-                          : 'Online payments are currently disabled for this environment.'}
+                        {!ENABLE_STRIPE_PAYMENT
+                          ? 'Online payments are currently disabled for this environment.'
+                          : canUseStripeCheckout
+                            ? 'You will be redirected to Stripe Checkout.'
+                            : `Online card payment is available for EUR and USD debts only. This debt is in ${debt.currency.toUpperCase()}.`}
                       </p>
                       <Button
                         onClick={handleStripePayment}
-                        disabled={submittingStripePayment || isConfirmingPayment || !ENABLE_STRIPE_PAYMENT}
+                        disabled={
+                          submittingStripePayment ||
+                          isConfirmingPayment ||
+                          !canUseStripeCheckout
+                        }
                         className="w-full"
                       >
                         {submittingStripePayment ? (
@@ -452,10 +497,10 @@ function ClientDebtViewContent() {
                           </>
                         ) : isConfirmingPayment ? (
                           'Confirming payment...'
-                        ) : ENABLE_STRIPE_PAYMENT ? (
+                        ) : canUseStripeCheckout ? (
                           'Pay now securely'
                         ) : (
-                          'Payments unavailable'
+                          'Online payment unavailable'
                         )}
                       </Button>
                       {ENABLE_DEMO_PAYMENT && (
@@ -545,20 +590,52 @@ function ClientDebtViewContent() {
               ) : null}
 
               {debt.status === 'PAID' && invoiceUrl ? (
-                <div className="rounded-md border border-border/60 bg-background p-4">
-                  <p className="font-medium">Payment receipt</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Your Stripe invoice is ready. Open it to view or download the PDF.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button onClick={() => window.open(invoiceUrl, '_blank', 'noopener,noreferrer')}>
-                      Open Stripe invoice
-                    </Button>
-                    <Button variant="outline" onClick={() => window.open(invoiceUrl, '_blank', 'noopener,noreferrer')}>
-                      Download PDF
-                    </Button>
-                  </div>
-                </div>
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src="/logo-collectra-02.png"
+                            alt="Collectra"
+                            width={120}
+                            height={32}
+                            className="h-8 w-auto"
+                          />
+                          <Badge variant="secondary">Paid</Badge>
+                        </div>
+                        <p className="font-medium">Payment receipt</p>
+                        <p className="text-sm text-muted-foreground">
+                          {debt.invoiceNumber
+                            ? `Invoice ${debt.invoiceNumber} is ready.`
+                            : 'Your Collectra receipt is ready.'}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => window.open(invoiceUrl, '_blank', 'noopener,noreferrer')}
+                        >
+                          <ExternalLink className="mr-2 h-4 w-4" />
+                          View receipt
+                        </Button>
+                        <Button onClick={() => void handleDownloadInvoice()} disabled={downloadingInvoice}>
+                          {downloadingInvoice ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Downloading...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="mr-2 h-4 w-4" />
+                              Download receipt
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               ) : null}
 
               {debt.tokenExpiresAt && (

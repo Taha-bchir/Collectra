@@ -1,0 +1,57 @@
+\babel@toc {english}{}\relax 
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Use Case Diagram -- Sprint 1}}{18}{figure.caption.26}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Class Diagram -- Sprint 1}}{22}{figure.caption.34}%
+\contentsline {figure}{\numberline {3.3}{\ignorespaces Sequence Diagram -- Authentication Flow}}{23}{figure.caption.35}%
+\contentsline {figure}{\numberline {3.4}{\ignorespaces Sequence Diagram -- Invite Member Flow}}{23}{figure.caption.36}%
+\contentsline {figure}{\numberline {3.5}{\ignorespaces Sequence Diagram -- Accept Invitation Flow}}{24}{figure.caption.37}%
+\contentsline {figure}{\numberline {3.6}{\ignorespaces Login Screen}}{24}{figure.caption.38}%
+\contentsline {figure}{\numberline {3.7}{\ignorespaces Workspace Creation Screen}}{25}{figure.caption.39}%
+\contentsline {figure}{\numberline {3.8}{\ignorespaces Team Management Screen}}{25}{figure.caption.40}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Use Case Diagram -- Sprint 2 (campaigns, import, customer link; promise and dashboard shown for cross-sprint include)}}{29}{figure.caption.46}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Class Diagram -- Sprint 2 (campaign, client, debt)}}{33}{figure.caption.52}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Sequence Diagram -- Campaign and Comma-Separated Values Import Flow}}{33}{figure.caption.53}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Sequence Diagram -- Customer Personal Link Flow}}{34}{figure.caption.54}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Campaign List -- Sprint 2}}{34}{figure.caption.55}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Debt Table with Status Filters -- Sprint 2}}{35}{figure.caption.56}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Comma-Separated Values Import Dialog -- Sprint 2}}{35}{figure.caption.57}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Customer Personal Link Screen -- Sprint 2}}{36}{figure.caption.58}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Use Case Diagram -- Sprint 3}}{41}{figure.caption.64}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Class Diagram -- Sprint 3}}{42}{figure.caption.67}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Sequence Diagram -- Payment Promise Flow}}{43}{figure.caption.68}%
+\contentsline {figure}{\numberline {5.4}{\ignorespaces Sequence Diagram -- Dashboard Data Aggregation}}{43}{figure.caption.69}%
+\contentsline {figure}{\numberline {5.5}{\ignorespaces Payment Promise Dialog -- Sprint 3}}{44}{figure.caption.70}%
+\contentsline {figure}{\numberline {5.6}{\ignorespaces Action History Table -- Sprint 3}}{44}{figure.caption.71}%
+\contentsline {figure}{\numberline {5.7}{\ignorespaces Dashboard -- Sprint 3}}{45}{figure.caption.72}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Use Case Diagram -- Sprint 4 Payment and Invoice Flow}}{51}{figure.caption.80}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Class Diagram -- Sprint 4 Payment, Invoice, and Tracking Layer}}{51}{figure.caption.81}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Sequence Diagram -- Stripe Verification and Payment Confirmation}}{52}{figure.caption.82}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces Sequence Diagram -- Invoice Access}}{52}{figure.caption.83}%
+\contentsline {figure}{\numberline {6.5}{\ignorespaces Payment and Tracking Overview -- Sprint 4}}{53}{figure.caption.84}%
+\contentsline {figure}{\numberline {6.6}{\ignorespaces Invoice and Analytics Areas -- Sprint 4}}{53}{figure.caption.85}%
+\contentsline {figure}{\numberline {6.7}{\ignorespaces Use Case Diagram -- Overall Technical Architecture}}{56}{figure.caption.87}%
+\contentsline {figure}{\numberline {6.8}{\ignorespaces Class Diagram -- Overall Technical Architecture}}{57}{figure.caption.88}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {B.1}{\ignorespaces Login Screen -- Appendix View}}{68}{figure.caption.97}%
+\contentsline {figure}{\numberline {B.2}{\ignorespaces Workspace Creation -- Appendix View}}{69}{figure.caption.98}%
+\contentsline {figure}{\numberline {B.3}{\ignorespaces Team Management -- Appendix View}}{69}{figure.caption.99}%
+\contentsline {figure}{\numberline {B.4}{\ignorespaces Campaign List -- Appendix View}}{70}{figure.caption.100}%
+\contentsline {figure}{\numberline {B.5}{\ignorespaces Debt Table -- Appendix View}}{71}{figure.caption.101}%
+\contentsline {figure}{\numberline {B.6}{\ignorespaces Import Dialog -- Appendix View}}{71}{figure.caption.102}%
+\contentsline {figure}{\numberline {B.7}{\ignorespaces Personal Link Screen -- Appendix View}}{72}{figure.caption.103}%
+\contentsline {figure}{\numberline {B.8}{\ignorespaces Payment Promise Dialog -- Appendix View}}{73}{figure.caption.104}%
+\contentsline {figure}{\numberline {B.9}{\ignorespaces Action History -- Appendix View}}{73}{figure.caption.105}%
+\contentsline {figure}{\numberline {B.10}{\ignorespaces Dashboard -- Appendix View}}{74}{figure.caption.106}%
+\contentsline {figure}{\numberline {B.11}{\ignorespaces Payment Overview -- Appendix View}}{74}{figure.caption.107}%
+\contentsline {figure}{\numberline {B.12}{\ignorespaces Invoice -- Appendix View}}{75}{figure.caption.108}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {D.1}{\ignorespaces Collectra Database Schema -- Entity-Relationship Diagram}}{79}{figure.caption.110}%

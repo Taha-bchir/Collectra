@@ -1,7 +1,7 @@
 'use client'
 
 import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, CalendarDays, Download, Layers3, Loader2, PlusCircle, Upload } from 'lucide-react'
+import { ArrowRight, CalendarDays, Layers3, Loader2, PlusCircle, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -37,7 +37,7 @@ import { CustomerTrackingView } from './customer-tracking-view'
 
 const CREATE_CAMPAIGN_DRAFT_STORAGE_KEY = 'collectra:create-campaign-draft'
 const DEFAULT_IMPORT_CURRENCY = 'usd'
-const IMPORT_CURRENCY_OPTIONS = ['usd', 'eur', 'gbp', 'mad']
+const IMPORT_CURRENCY_OPTIONS = ['eur', 'usd', 'tnd'] as const
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError) {
@@ -438,46 +438,33 @@ export function CampaignsView({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-3">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium">Need the right CSV format?</p>
-                  <p className="text-xs text-muted-foreground">
-                    Download the template first. Required columns: fullName, email, phone, and amount.
-                  </p>
-                </div>
-
-                <Button asChild variant="secondary" className="shrink-0">
-                  <a href="/templates/campaign-import-template.csv" download>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download CSV template
-                  </a>
-                </Button>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Campaign name</label>
+                <Input
+                  value={campaignName}
+                  onChange={(event) => setCampaignName(event.target.value)}
+                  placeholder="March Recovery Batch"
+                  maxLength={120}
+                  disabled={importing}
+                  required
+                />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Campaign name</label>
-                  <Input
-                    value={campaignName}
-                    onChange={(event) => setCampaignName(event.target.value)}
-                    placeholder="March Recovery Batch"
-                    maxLength={120}
-                    disabled={importing}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2 md:min-w-[12rem]">
                   <label className="text-sm font-medium">Campaign due date</label>
                   <Popover open={dueDatePickerOpen} onOpenChange={setDueDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full justify-start text-left font-normal"
+                        className="h-10 w-full justify-start text-left font-normal"
                         disabled={importing}
                       >
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        {importDueDate ? formatDateOnly(importDueDate) : 'Select due date'}
+                        <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                        <span className="truncate">
+                          {importDueDate ? formatDateOnly(importDueDate) : 'Select due date'}
+                        </span>
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -501,7 +488,7 @@ export function CampaignsView({
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Currency</label>
                   <Select value={importCurrency} onValueChange={setImportCurrency} disabled={importing}>
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="h-10 w-full">
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent>

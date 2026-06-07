@@ -336,8 +336,17 @@ function SignUpForm() {
         {/* Left Side - Form */}
         <div className="flex-1 flex flex-col bg-background p-4 sm:p-6 lg:p-8 xl:p-12 overflow-y-auto">
         {/* Logo */}
-        <div className="flex items-center gap-8 mb-25 lg:mb-25">
-
+        <div className="mb-8 flex justify-center xl:hidden">
+          <Link href="/" aria-label="Go to home page">
+            <Image
+              src="/logo-collectra-02.png"
+              alt="Collectra logo"
+              width={56}
+              height={56}
+              className="h-14 w-auto object-contain"
+              priority
+            />
+          </Link>
         </div>
 
         {/* Form Container - Centered */}
@@ -656,7 +665,7 @@ function SignUpForm() {
           <div className="absolute inset-0 bg-black/80" />
           <Link href="/" aria-label="Go to home page" className="relative z-10">
             <Image
-              src="/Logo%20Collectra-02.png"
+              src="/logo-collectra-02.png"
               alt="Collectra logo"
               width={220}
               height={220}

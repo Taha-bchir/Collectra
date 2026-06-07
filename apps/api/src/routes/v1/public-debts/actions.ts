@@ -14,11 +14,12 @@ import {
   verifyStripePaymentByTokenSchema,
 } from '../../../schema/v1/index.js'
 import { toPrismaMetadata } from '../../../utils/metadata.js'
-import { DebtsService, createOrReuseStripeInvoiceForDebt } from '../../../services/debts.js'
+import { buildPaidDebtCollectraInvoiceHtml, DebtsService } from '../../../services/debts.js'
 import type { Env } from '../../../types/index.js'
 import { withRouteTryCatch } from '../../../utils/route-helpers.js'
 import { logger } from '../../../utils/logger.js'
 import { getStripeClient } from '../../../lib/stripe.js'
+import { resolvePublicWebUrl } from '../../../utils/public-url.js'
 
 const handler = new OpenAPIHono<Env>()
 const TRANSPARENT_GIF_BASE64 =
@@ -62,6 +63,7 @@ handler.openapi(
         status: debt.status,
         campaignName: debt.campaign.name,
         workspaceName: debt.campaign.workspace?.name ?? null,
+        invoiceNumber: debt.status === 'PAID' ? debt.invoiceNumber : null,
         tokenExpiresAt: tokenExpiresAt.toISOString(),
         customer: {
           fullName: debt.client.fullName,
@@ -185,6 +187,7 @@ handler.openapi(
   createPublicInvoiceByTokenSchema,
   withRouteTryCatch('publicDebts.getInvoiceByToken', async (c) => {
     const { token } = c.req.valid('param')
+    const download = c.req.query('download') === '1'
     const service = new DebtsService(c.get('prisma'))
     const { debt } = await service.getByCustomerToken(token)
 
@@ -194,62 +197,17 @@ handler.openapi(
       })
     }
 
-    const paymentConfirmation = await c.get('prisma').customerActionHistory.findFirst({
-      where: {
-        debtId: debt.id,
-        actionType: 'PAYMENT_CONFIRMED',
-      },
-      orderBy: { timestamp: 'desc' },
-      select: { metadata: true },
+    const html = await buildPaidDebtCollectraInvoiceHtml(c.get('prisma'), debt, token, {
+      forDownload: download,
     })
-
-    const storedInvoice = paymentConfirmation?.metadata as
-      | {
-          stripe?: {
-            invoice?: {
-              hostedInvoiceUrl?: string | null
-              invoicePdfUrl?: string | null
-              invoiceId?: string | null
-            } | null
-          } | null
-        }
-      | null
-
-    const invoiceUrl =
-      storedInvoice?.stripe?.invoice?.hostedInvoiceUrl ?? storedInvoice?.stripe?.invoice?.invoicePdfUrl ?? null
-
-    if (invoiceUrl) {
-      c.header('Cache-Control', 'no-store')
-      return c.redirect(invoiceUrl, 302)
-    }
-
-    if (!invoiceUrl) {
-      try {
-        const stripeInvoice = await createOrReuseStripeInvoiceForDebt(debt)
-        const fallbackInvoiceUrl = stripeInvoice?.hostedInvoiceUrl ?? stripeInvoice?.invoicePdfUrl ?? null
-
-        if (fallbackInvoiceUrl) {
-          c.header('Cache-Control', 'no-store')
-          return c.redirect(fallbackInvoiceUrl, 302)
-        }
-      } catch (error) {
-        logger.warn(
-          {
-            debtId: debt.id,
-            error: error instanceof Error ? error.message : String(error),
-            scope: 'publicDebts.getInvoiceByToken.stripeFallback',
-          },
-          'Stripe invoice creation failed while opening the public invoice',
-        )
-      }
-
-      throw new HTTPException(503, {
-        message: 'Stripe invoice URL is not available',
-      })
-    }
+    const invoiceNumber = debt.invoiceNumber ?? `collectra-invoice-${debt.id.slice(0, 8)}`
 
     c.header('Cache-Control', 'no-store')
-    return c.redirect(invoiceUrl, 302)
+    if (download) {
+      c.header('Content-Disposition', `attachment; filename="${invoiceNumber}.html"`)
+    }
+
+    return c.html(html)
   })
 )
 

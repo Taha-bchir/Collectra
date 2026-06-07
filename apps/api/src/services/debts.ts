@@ -5,9 +5,15 @@ import { env } from '../config/env.js'
 import { logBrevoEvent } from './brevo-event-logs.js'
 import { signCustomerToken, verifyCustomerToken } from '../lib/customer-jwt.js'
 import { logger } from '../utils/logger.js'
-import { getStripeClient, normalizeStripeCurrency } from '../lib/stripe.js'
-import { resolvePublicWebUrl } from '../utils/public-url.js'
+import {
+  assertStripeCheckoutCurrency,
+  getStripeClient,
+  normalizeStripeCurrency,
+  toStripeHttpException,
+} from '../lib/stripe.js'
+import { resolvePublicApiUrl, resolvePublicWebUrl } from '../utils/public-url.js'
 import { parsePromisedDateInput, utcCalendarDayStart } from '../utils/calendar.js'
+import { toPrismaMetadata } from '../utils/metadata.js'
 import { transitionDebtToOverdue } from './overdue-debts.js'
 
 const BREVO_EMAIL_API_URL = 'https://api.brevo.com/v3/smtp/email'
@@ -31,6 +37,326 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
+}
+
+type CollectraInvoiceData = {
+  invoiceNumber: string
+  paidAt: Date
+  customerName: string
+  customerEmail: string | null
+  amount: number
+  currency: string
+  dueDate: Date
+  campaignName: string
+  workspaceName: string | null
+  debtId: string
+  logoUrl: string
+  downloadUrl: string
+}
+
+function formatInvoiceDisplayDate(value: Date) {
+  return value.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatInvoiceAmount(amount: number, currency: string) {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: (currency || 'USD').toUpperCase(),
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
+export function buildCollectraInvoiceHtml(
+  data: CollectraInvoiceData,
+  options?: { forDownload?: boolean },
+) {
+  const issuer = data.workspaceName?.trim() || data.campaignName
+  const downloadQuery = options?.forDownload ? '' : '?download=1'
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(data.invoiceNumber)} - Collectra</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f4ef;
+        --card: #ffffff;
+        --text: #2f2622;
+        --muted: #6f625c;
+        --border: #e7ddd4;
+        --primary: #7a3340;
+        --primary-soft: #f8ecee;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+      .page {
+        max-width: 720px;
+        margin: 32px auto;
+        padding: 0 16px 40px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(47, 38, 34, 0.06);
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        padding: 28px 28px 20px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, #fff 0%, #fbf8f5 100%);
+      }
+      .brand img {
+        height: 36px;
+        width: auto;
+        display: block;
+      }
+      .brand p {
+        margin: 10px 0 0;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .meta {
+        text-align: right;
+      }
+      .meta h1 {
+        margin: 0;
+        font-size: 24px;
+        color: var(--primary);
+      }
+      .meta p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .badge {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .content {
+        padding: 28px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+        margin-bottom: 24px;
+      }
+      .field {
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: #fcfaf8;
+      }
+      .field span {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .field strong {
+        font-size: 15px;
+      }
+      .amount-box {
+        margin-top: 8px;
+        padding: 22px;
+        border-radius: 16px;
+        background: var(--primary-soft);
+        border: 1px solid #ead2d7;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+      }
+      .amount-box span {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .amount-box strong {
+        font-size: 28px;
+        color: var(--primary);
+      }
+      .footer {
+        padding: 0 28px 28px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 28px 28px;
+      }
+      .button {
+        appearance: none;
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .button-primary {
+        background: var(--primary);
+        color: #fff;
+      }
+      .button-secondary {
+        background: #fff;
+        color: var(--primary);
+        border: 1px solid #d8b8bf;
+      }
+      @media print {
+        body { background: #fff; }
+        .page { margin: 0; padding: 0; max-width: none; }
+        .card { border: 0; box-shadow: none; }
+        .actions { display: none; }
+      }
+      @media (max-width: 640px) {
+        .header, .grid { grid-template-columns: 1fr; display: grid; }
+        .meta { text-align: left; }
+        .amount-box { flex-direction: column; align-items: flex-start; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="card">
+        <div class="header">
+          <div class="brand">
+            <img src="${escapeHtml(data.logoUrl)}" alt="Collectra" />
+            <p>Payment receipt</p>
+          </div>
+          <div class="meta">
+            <h1>${escapeHtml(data.invoiceNumber)}</h1>
+            <p>Paid on ${escapeHtml(formatInvoiceDisplayDate(data.paidAt))}</p>
+            <span class="badge">Paid</span>
+          </div>
+        </div>
+
+        <div class="content">
+          <div class="grid">
+            <div class="field">
+              <span>Customer</span>
+              <strong>${escapeHtml(data.customerName)}</strong>
+            </div>
+            <div class="field">
+              <span>Issued by</span>
+              <strong>${escapeHtml(issuer)}</strong>
+            </div>
+            <div class="field">
+              <span>Due date</span>
+              <strong>${escapeHtml(formatInvoiceDisplayDate(data.dueDate))}</strong>
+            </div>
+            <div class="field">
+              <span>Reference</span>
+              <strong>${escapeHtml(data.campaignName)}</strong>
+            </div>
+          </div>
+
+          <div class="amount-box">
+            <span>Amount paid</span>
+            <strong>${escapeHtml(formatInvoiceAmount(data.amount, data.currency))}</strong>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="button button-primary" type="button" onclick="window.print()">Print / Save as PDF</button>
+          <a class="button button-secondary" href="${escapeHtml(data.downloadUrl)}${downloadQuery}">Download receipt</a>
+        </div>
+
+        <div class="footer">
+          Thank you for your payment. This receipt was generated by Collectra.
+          ${data.customerEmail ? ` A copy was sent to ${escapeHtml(data.customerEmail)}.` : ''}
+        </div>
+      </div>
+    </div>
+  </body>
+</html>`
+}
+
+export async function buildPaidDebtCollectraInvoiceHtml(
+  prisma: PrismaClient,
+  debt: {
+    id: string
+    amount: { toNumber(): number }
+    currency: string
+    dueDate: Date
+    invoiceNumber: string | null
+    client: {
+      fullName: string
+      email: string | null
+    }
+    campaign: {
+      name: string
+      workspace?: { name: string } | null
+    }
+  },
+  token: string,
+  options?: { forDownload?: boolean },
+) {
+  const paymentConfirmation = await prisma.customerActionHistory.findFirst({
+    where: {
+      debtId: debt.id,
+      actionType: 'PAYMENT_CONFIRMED',
+    },
+    orderBy: { timestamp: 'desc' },
+    select: { timestamp: true },
+  })
+
+  const invoiceNumber = debt.invoiceNumber ?? buildInvoiceNumber(debt.id)
+  const invoiceBaseUrl = resolvePublicApiUrl().replace(/\/$/, '')
+  const downloadUrl = `${invoiceBaseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
+
+  return buildCollectraInvoiceHtml(
+    {
+      invoiceNumber,
+      paidAt: paymentConfirmation?.timestamp ?? new Date(),
+      customerName: debt.client.fullName,
+      customerEmail: debt.client.email,
+      amount: debt.amount.toNumber(),
+      currency: debt.currency,
+      dueDate: debt.dueDate,
+      campaignName: debt.campaign.name,
+      workspaceName: debt.campaign.workspace?.name ?? null,
+      debtId: debt.id,
+      logoUrl: `${resolvePublicWebUrl()}/logo-collectra-02.png`,
+      downloadUrl,
+    },
+    options,
+  )
 }
 
 export type StripeInvoiceDetails = {
@@ -61,8 +387,8 @@ export type DebtInvoiceSource = {
   }
 }
 
-function getStripeInvoiceIdempotencyKey(debtId: string, currency: string) {
-  return `collectra:stripe-invoice:${debtId}:${currency}`
+function getStripeInvoiceIdempotencyKey(debtId: string) {
+  return `collectra:stripe-invoice:${debtId}`
 }
 
 function isDeletedStripeResource(value: unknown): boolean {
@@ -71,10 +397,6 @@ function isDeletedStripeResource(value: unknown): boolean {
   }
 
   return (value as { deleted?: unknown }).deleted === true
-}
-
-async function refreshStripeInvoice(stripe: StripeClient, invoiceId: string) {
-  return stripe.invoices.retrieve(invoiceId)
 }
 
 async function getOrCreateStripeCustomer(
@@ -116,7 +438,6 @@ async function findStripeInvoiceForDebt(
   stripe: StripeClient,
   customers: StripeCustomer[],
   debtId: string,
-  currency: string,
 ): Promise<StripeInvoice | null> {
   for (const customer of customers) {
     const invoices = await stripe.invoices.list({
@@ -124,10 +445,7 @@ async function findStripeInvoiceForDebt(
       limit: 100,
     })
 
-    const existingInvoice = invoices.data.find(
-      (invoice) =>
-        invoice.metadata?.debtId === debtId && normalizeStripeCurrency(invoice.currency) === currency,
-    )
+    const existingInvoice = invoices.data.find((invoice) => invoice.metadata?.debtId === debtId)
     if (existingInvoice) {
       return existingInvoice
     }
@@ -170,7 +488,6 @@ export async function createOrReuseStripeInvoiceForDebt(
 ): Promise<StripeInvoiceDetails | null> {
   const stripe = getStripeClient()
   const amount = debt.amount.toNumber()
-  const currency = normalizeStripeCurrency(debt.currency)
 
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new HTTPException(400, {
@@ -199,7 +516,7 @@ export async function createOrReuseStripeInvoiceForDebt(
     })
   }
 
-  const existingInvoice = await findStripeInvoiceForDebt(stripe, customers, debt.id, currency)
+  const existingInvoice = await findStripeInvoiceForDebt(stripe, customers, debt.id)
   if (existingInvoice) {
     const invoiceNumber = existingInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id)
 
@@ -220,35 +537,31 @@ export async function createOrReuseStripeInvoiceForDebt(
               paid_out_of_band: true,
             })
 
-      const refreshedInvoice = await refreshStripeInvoice(stripe, paidInvoice.id)
-
       return {
-        invoiceId: refreshedInvoice.id,
-        invoiceNumber: refreshedInvoice.number ?? invoiceNumber,
-        hostedInvoiceUrl: refreshedInvoice.hosted_invoice_url ?? null,
-        invoicePdfUrl: refreshedInvoice.invoice_pdf ?? null,
-        customerId: refreshedInvoice.customer as string,
+        invoiceId: paidInvoice.id,
+        invoiceNumber: paidInvoice.number ?? invoiceNumber,
+        hostedInvoiceUrl: paidInvoice.hosted_invoice_url ?? null,
+        invoicePdfUrl: paidInvoice.invoice_pdf ?? null,
+        customerId: paidInvoice.customer as string,
       }
     }
 
-    const refreshedInvoice = await refreshStripeInvoice(stripe, existingInvoice.id)
-
     return {
-      invoiceId: refreshedInvoice.id,
-      invoiceNumber: refreshedInvoice.number ?? invoiceNumber,
-      hostedInvoiceUrl: refreshedInvoice.hosted_invoice_url ?? null,
-      invoicePdfUrl: refreshedInvoice.invoice_pdf ?? null,
-      customerId: refreshedInvoice.customer as string,
+      invoiceId: existingInvoice.id,
+      invoiceNumber,
+      hostedInvoiceUrl: existingInvoice.hosted_invoice_url ?? null,
+      invoicePdfUrl: existingInvoice.invoice_pdf ?? null,
+      customerId: existingInvoice.customer as string,
     }
   }
 
   const createdInvoice = await stripe.invoices.create(
     {
       customer: customer.id,
-      currency,
+      currency: normalizeStripeCurrency(debt.currency),
       collection_method: 'send_invoice',
       auto_advance: false,
-      days_until_due: 1,
+      days_until_due: 0,
       pending_invoice_items_behavior: 'exclude',
       metadata: {
         debtId: debt.id,
@@ -258,7 +571,7 @@ export async function createOrReuseStripeInvoiceForDebt(
       },
     },
     {
-      idempotencyKey: getStripeInvoiceIdempotencyKey(debt.id, currency),
+      idempotencyKey: getStripeInvoiceIdempotencyKey(debt.id),
     },
   )
 
@@ -274,15 +587,111 @@ export async function createOrReuseStripeInvoiceForDebt(
           paid_out_of_band: true,
         })
 
-  const refreshedInvoice = await refreshStripeInvoice(stripe, paidInvoice.id)
-
   return {
-    invoiceId: refreshedInvoice.id,
-    invoiceNumber: refreshedInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id),
-    hostedInvoiceUrl: refreshedInvoice.hosted_invoice_url ?? null,
-    invoicePdfUrl: refreshedInvoice.invoice_pdf ?? null,
+    invoiceId: paidInvoice.id,
+    invoiceNumber: paidInvoice.number ?? debt.invoiceNumber ?? buildInvoiceNumber(debt.id),
+    hostedInvoiceUrl: paidInvoice.hosted_invoice_url ?? null,
+    invoicePdfUrl: paidInvoice.invoice_pdf ?? null,
     customerId: customer.id,
   }
+}
+
+async function getStoredCheckoutSessionIdForDebt(
+  prisma: PrismaClient,
+  debtId: string,
+  pendingStripeSessionId?: string | null,
+) {
+  if (pendingStripeSessionId) {
+    return pendingStripeSessionId
+  }
+
+  const paymentConfirmation = await prisma.customerActionHistory.findFirst({
+    where: {
+      debtId,
+      actionType: 'PAYMENT_CONFIRMED',
+    },
+    orderBy: { timestamp: 'desc' },
+    select: { metadata: true },
+  })
+
+  const metadata = paymentConfirmation?.metadata as
+    | {
+        stripe?: {
+          sessionId?: string | null
+        } | null
+      }
+    | null
+
+  return metadata?.stripe?.sessionId ?? null
+}
+
+async function getStripeReceiptUrlForCheckoutSession(stripe: StripeClient, sessionId: string) {
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ['payment_intent.latest_charge'],
+  })
+
+  const paymentIntent = session.payment_intent
+  if (!paymentIntent || typeof paymentIntent === 'string') {
+    return null
+  }
+
+  const latestCharge = paymentIntent.latest_charge
+  if (!latestCharge || typeof latestCharge === 'string') {
+    return null
+  }
+
+  return latestCharge.receipt_url ?? null
+}
+
+export async function resolvePaidDebtStripeInvoiceUrl(
+  prisma: PrismaClient,
+  debt: DebtInvoiceSource & { pendingStripeSessionId?: string | null },
+) {
+  try {
+    const stripeInvoice = await createOrReuseStripeInvoiceForDebt(debt)
+    const invoiceUrl = stripeInvoice?.hostedInvoiceUrl ?? stripeInvoice?.invoicePdfUrl ?? null
+    if (invoiceUrl) {
+      return invoiceUrl
+    }
+  } catch (error) {
+    logger.warn(
+      {
+        debtId: debt.id,
+        error: error instanceof Error ? error.message : String(error),
+        scope: 'debts.resolvePaidDebtStripeInvoiceUrl.createOrReuseStripeInvoiceForDebt',
+      },
+      'Stripe invoice creation failed; trying checkout receipt fallback',
+    )
+  }
+
+  try {
+    const stripe = getStripeClient()
+    const sessionId = await getStoredCheckoutSessionIdForDebt(
+      prisma,
+      debt.id,
+      debt.pendingStripeSessionId,
+    )
+
+    if (sessionId) {
+      const receiptUrl = await getStripeReceiptUrlForCheckoutSession(stripe, sessionId)
+      if (receiptUrl) {
+        return receiptUrl
+      }
+    }
+  } catch (error) {
+    logger.warn(
+      {
+        debtId: debt.id,
+        error: error instanceof Error ? error.message : String(error),
+        scope: 'debts.resolvePaidDebtStripeInvoiceUrl.checkoutReceiptFallback',
+      },
+      'Stripe checkout receipt lookup failed',
+    )
+  }
+
+  throw new HTTPException(503, {
+    message: 'Stripe invoice is not available yet. Please try again in a moment.',
+  })
 }
 
 async function sendInvoiceEmailToBrevo(options: {
@@ -339,18 +748,18 @@ async function sendInvoiceEmailToBrevo(options: {
   <body style="font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 24px; background: #f6f7fb; color: #111827;">
     <div style="max-width: 640px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; padding: 28px;">
       <p style="margin: 0 0 12px; text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; color: #6b7280;">Collectra</p>
-      <h1 style="margin: 0 0 12px; font-size: 28px;">Stripe invoice ready</h1>
-      <p style="margin: 0 0 16px; color: #374151;">Your payment receipt for invoice ${escapeHtml(options.invoiceNumber)} is available through Stripe.</p>
-      <p style="margin: 0 0 18px;"><a href="${escapeHtml(options.invoiceUrl)}" style="display: inline-block; background: #111827; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 16px; border-radius: 999px;">Open invoice</a></p>
-      ${options.invoicePdfUrl ? `<p style="margin: 0 0 12px;"><a href="${escapeHtml(options.invoicePdfUrl)}" style="color: #111827;">Download Stripe PDF</a></p>` : ''}
+      <h1 style="margin: 0 0 12px; font-size: 28px;">Payment receipt ready</h1>
+      <p style="margin: 0 0 16px; color: #374151;">Your Collectra receipt for invoice ${escapeHtml(options.invoiceNumber)} is ready.</p>
+      <p style="margin: 0 0 18px;"><a href="${escapeHtml(options.invoiceUrl)}" style="display: inline-block; background: #7a3340; color: #fff; text-decoration: none; font-weight: 700; padding: 12px 16px; border-radius: 999px;">View receipt</a></p>
+      ${options.invoicePdfUrl ? `<p style="margin: 0 0 12px;"><a href="${escapeHtml(options.invoicePdfUrl)}" style="color: #7a3340;">Download receipt</a></p>` : ''}
       <p style="margin: 0; font-size: 12px; color: #6b7280;">Keep this invoice for your records.</p>
     </div>
   </body>
 </html>`,
         textContent: [
-          `Your Stripe invoice ${options.invoiceNumber} is ready.`,
+          `Your Collectra receipt ${options.invoiceNumber} is ready.`,
           `Open it here: ${options.invoiceUrl}`,
-          ...(options.invoicePdfUrl ? [`PDF: ${options.invoicePdfUrl}`] : []),
+          ...(options.invoicePdfUrl ? [`Download: ${options.invoicePdfUrl}`] : []),
         ].join('\n'),
       }),
     })
@@ -697,11 +1106,11 @@ export class DebtsService {
         debtId: debt.id,
         customerId: debt.clientId,
         actionType: 'PROMISE_MADE',
-        metadata: {
+        metadata: toPrismaMetadata({
           promiseId: paymentPromise.id,
           promisedDate: normalizedPromisedDate.toISOString(),
           channel: 'public_link',
-        },
+        }),
       },
     })
 
@@ -776,17 +1185,18 @@ export class DebtsService {
 
     // Send invoice email (non-blocking – failure won't block payment confirmation)
     try {
-      const stripeInvoice = await createOrReuseStripeInvoiceForDebt(
-        updatedDebt as unknown as DebtInvoiceSource,
-      )
+      await createOrReuseStripeInvoiceForDebt(updatedDebt as unknown as DebtInvoiceSource)
 
-      if (stripeInvoice && debt.client.email) {
+      if (debt.client.email) {
+        const invoiceBaseUrl = resolvePublicApiUrl().replace(/\/$/, '')
+        const invoiceUrl = `${invoiceBaseUrl}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
+
         await sendInvoiceEmailToBrevo({
           toEmail: debt.client.email,
           toName: debt.client.fullName,
-          invoiceUrl: stripeInvoice.hostedInvoiceUrl ?? '',
-          invoicePdfUrl: stripeInvoice.invoicePdfUrl,
-          invoiceNumber: stripeInvoice.invoiceNumber,
+          invoiceUrl,
+          invoicePdfUrl: `${invoiceUrl}?download=1`,
+          invoiceNumber: updatedDebt.invoiceNumber ?? buildInvoiceNumber(updatedDebt.id),
           debtId: updatedDebt.id,
           campaignId: debt.campaign.id,
         })
@@ -829,6 +1239,12 @@ export class DebtsService {
       })
     }
 
+    if (debt.status === 'OVERDUE_AFTER_PROMISE') {
+      throw new HTTPException(400, {
+        message: 'This debt is overdue and can no longer be paid online',
+      })
+    }
+
     const amount = debt.amount.toNumber()
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new HTTPException(400, {
@@ -837,89 +1253,93 @@ export class DebtsService {
     }
 
     const stripe = getStripeClient()
-    const currency = normalizeStripeCurrency(debt.currency)
+    const currency = assertStripeCheckoutCurrency(debt.currency)
     const unitAmount = Math.round(amount * 100)
 
-    if (debt.pendingStripeSessionId) {
-      try {
-        const pendingSession = await stripe.checkout.sessions.retrieve(debt.pendingStripeSessionId)
+    try {
+      if (debt.pendingStripeSessionId) {
+        try {
+          const pendingSession = await stripe.checkout.sessions.retrieve(debt.pendingStripeSessionId)
 
-        if (pendingSession.status === 'open' && pendingSession.url) {
-          return {
-            sessionId: pendingSession.id,
-            checkoutUrl: pendingSession.url,
+          if (pendingSession.status === 'open' && pendingSession.url) {
+            return {
+              sessionId: pendingSession.id,
+              checkoutUrl: pendingSession.url,
+            }
           }
-        }
 
-        if (pendingSession.status === 'complete' || pendingSession.payment_status === 'paid') {
-          throw new HTTPException(400, {
-            message: 'This payment has already been completed. Please refresh the page.',
+          if (pendingSession.status === 'complete' || pendingSession.payment_status === 'paid') {
+            throw new HTTPException(400, {
+              message: 'This payment has already been completed. Please refresh the page.',
+            })
+          }
+        } catch (error) {
+          if (error instanceof HTTPException) {
+            throw error
+          }
+
+          await this.prisma.debtRecord.update({
+            where: { id: debt.id },
+            data: {
+              pendingStripeSessionId: null,
+            },
           })
         }
-      } catch (error) {
-        if (error instanceof HTTPException) {
-          throw error
-        }
-
-        await this.prisma.debtRecord.update({
-          where: { id: debt.id },
-          data: {
-            pendingStripeSessionId: null,
-          },
-        })
       }
-    }
 
-    const successUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=success&session_id={CHECKOUT_SESSION_ID}`
-    const cancelUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=cancelled`
+      const successUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=success&session_id={CHECKOUT_SESSION_ID}`
+      const cancelUrl = `${env.WEB_URL}/client/view?token=${encodeURIComponent(token)}&payment=cancelled`
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      customer_email: debt.client.email ?? undefined,
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency,
-            unit_amount: unitAmount,
-            product_data: {
-              name: `Debt Payment - ${debt.campaign.name}`,
-              description: `Debt ID: ${debt.id}`,
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        customer_email: debt.client.email ?? undefined,
+        line_items: [
+          {
+            quantity: 1,
+            price_data: {
+              currency,
+              unit_amount: unitAmount,
+              product_data: {
+                name: `Debt Payment - ${debt.campaign.name}`,
+                description: `Debt ID: ${debt.id}`,
+              },
             },
           },
-        },
-      ],
-      metadata: {
-        debtId: debt.id,
-        customerId: debt.clientId,
-        source: 'public_link',
-      },
-      payment_intent_data: {
+        ],
         metadata: {
           debtId: debt.id,
           customerId: debt.clientId,
           source: 'public_link',
         },
-      },
-    })
+        payment_intent_data: {
+          metadata: {
+            debtId: debt.id,
+            customerId: debt.clientId,
+            source: 'public_link',
+          },
+        },
+      })
 
-    if (!session.url) {
-      throw new HTTPException(500, { message: 'Stripe checkout URL was not returned' })
-    }
+      if (!session.url) {
+        throw new HTTPException(500, { message: 'Stripe checkout URL was not returned' })
+      }
 
-    // Atomically store the pending session ID on the debt to prevent duplicates
-    await this.prisma.debtRecord.update({
-      where: { id: debt.id },
-      data: ({
-        pendingStripeSessionId: session.id,
-      } as unknown) as Parameters<typeof this.prisma.debtRecord.update>[0]['data'],
-    })
+      // Atomically store the pending session ID on the debt to prevent duplicates
+      await this.prisma.debtRecord.update({
+        where: { id: debt.id },
+        data: ({
+          pendingStripeSessionId: session.id,
+        } as unknown) as Parameters<typeof this.prisma.debtRecord.update>[0]['data'],
+      })
 
-    return {
-      sessionId: session.id,
-      checkoutUrl: session.url,
+      return {
+        sessionId: session.id,
+        checkoutUrl: session.url,
+      }
+    } catch (error) {
+      throw toStripeHttpException(error)
     }
   }
 
@@ -1053,8 +1473,8 @@ export class DebtsService {
           toEmail: fullDebt.client.email,
           toName: fullDebt.client.fullName,
           invoiceNumber: stripeInvoice?.invoiceNumber ?? updatedDebt.invoiceNumber ?? buildInvoiceNumber(fullDebt.id),
-          invoiceUrl: stripeInvoice?.hostedInvoiceUrl ?? invoiceDownloadUrl,
-          invoicePdfUrl: stripeInvoice?.invoicePdfUrl ?? null,
+          invoiceUrl: invoiceDownloadUrl,
+          invoicePdfUrl: `${invoiceDownloadUrl}?download=1`,
           debtId: fullDebt.id,
           campaignId: fullDebt.campaign.id,
         })

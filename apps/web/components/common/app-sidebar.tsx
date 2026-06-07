@@ -288,7 +288,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 title={sidebarState === "collapsed" ? strings.app_name : undefined}
               >
                 <Image
-                  src="/Logo%20Collectra-02.png"
+                  src="/logo-collectra-02.png"
                   alt="Collectra logo"
                   width={40}
                   height={40}

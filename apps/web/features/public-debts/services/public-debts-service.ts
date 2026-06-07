@@ -11,6 +11,7 @@ export type PublicDebtView = {
   status: 'IMPORTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
   campaignName: string
   workspaceName?: string | null
+  invoiceNumber?: string | null
   tokenExpiresAt: string | null
   customer: {
     fullName: string
@@ -21,6 +22,10 @@ export type PublicDebtView = {
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL!.replace(/\/$/, '')
 
+function publicDebtPath(token: string, suffix = '') {
+  return `/api/v1/public/debts/${encodeURIComponent(token)}${suffix}`
+}
+
 const client = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },
@@ -30,7 +35,7 @@ const client = axios.create({
 export async function getPublicDebtByToken(token: string): Promise<PublicDebtView> {
   try {
     console.log('[API] Fetching debt for token:', token.substring(0, 10) + '...')
-    const { data } = await client.get<{ data: PublicDebtView }>(`/api/v1/public/debts/${token}`)
+    const { data } = await client.get<{ data: PublicDebtView }>(publicDebtPath(token))
     console.log('[API] Debt fetched successfully. Status:', data.data.status)
     return data.data
   } catch (error) {
@@ -55,7 +60,7 @@ export async function createPublicPromiseByToken(token: string, promisedDate: st
   try {
     const { data } = await client.post<{
       data: { debtId: string; status: PublicDebtView['status']; promiseDate: string }
-    }>(`/api/v1/public/debts/${token}/promise`, {
+    }>(publicDebtPath(token, '/promise'), {
       promisedDate,
     })
 
@@ -98,7 +103,7 @@ export async function createPublicFakePaymentByToken(token: string) {
   try {
     const { data } = await client.post<{
       data: { debtId: string; status: PublicDebtView['status'] }
-    }>(`/api/v1/public/debts/${token}/fake-payment`)
+    }>(publicDebtPath(token, '/fake-payment'))
 
     return data.data
   } catch (error) {
@@ -120,7 +125,7 @@ export async function createPublicStripeCheckoutSessionByToken(token: string) {
   try {
     const { data } = await client.post<{
       data: { sessionId: string; checkoutUrl: string }
-    }>(`/api/v1/public/debts/${token}/stripe/checkout-session`)
+    }>(publicDebtPath(token, '/stripe/checkout-session'))
 
     return data.data
   } catch (error) {
@@ -149,7 +154,7 @@ export async function trackPublicDebtClickByToken(token: string) {
   try {
     const { data } = await client.post<{
       data: { debtId: string; tracked: true }
-    }>(`/api/v1/public/debts/${token}/track-click`)
+    }>(publicDebtPath(token, '/track-click'))
 
     return data.data
   } catch (error) {
@@ -169,7 +174,7 @@ export async function trackPublicDebtClickByToken(token: string) {
 
 export async function verifyStripePaymentByToken(token: string, sessionId?: string | null) {
   try {
-    const url = `/api/v1/public/debts/${token}/verify-payment${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''}`
+    const url = `${publicDebtPath(token, '/verify-payment')}${sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : ''}`
     const { data } = await client.get<{
       data: { debtId: string; debtStatus: PublicDebtView['status']; isPaid: boolean }
     }>(url)
@@ -194,6 +199,42 @@ export async function verifyStripePaymentByToken(token: string, sessionId?: stri
 }
 
 export function getPublicDebtInvoiceUrl(token: string) {
-  return `${baseURL}/api/v1/public/debts/${encodeURIComponent(token)}/invoice`
+  return `${baseURL}${publicDebtPath(token, '/invoice')}`
+}
+
+export async function downloadPublicDebtInvoiceByToken(
+  token: string,
+  invoiceNumber?: string | null,
+) {
+  try {
+    const response = await client.get<Blob>(publicDebtPath(token, '/invoice'), {
+      params: { download: '1' },
+      responseType: 'blob',
+    })
+
+    const blob = response.data
+    const filename = `${invoiceNumber?.trim() || 'collectra-invoice'}.html`
+    const blobUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = blobUrl
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(blobUrl)
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status ?? 0
+      const payload = error.response?.data as
+        | { error?: { message?: string }; message?: string }
+        | undefined
+
+      const message =
+        payload?.error?.message || payload?.message || error.message || 'Failed to download invoice'
+      throw new ApiError(message, status, payload)
+    }
+
+    throw new ApiError(error instanceof Error ? error.message : 'Failed to download invoice', 0)
+  }
 }
 

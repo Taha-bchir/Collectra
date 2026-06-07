@@ -74,7 +74,7 @@ export default function VerifyPage() {
       <div className="mb-8 flex justify-center">
         <Link href="/" aria-label="Go to home page">
           <Image
-            src="/Logo%20Collectra-02.png"
+            src="/logo-collectra-02.png"
             alt="Collectra logo"
             width={56}
             height={56}

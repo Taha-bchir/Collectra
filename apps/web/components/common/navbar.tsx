@@ -60,7 +60,7 @@ export function Navbar() {
               aria-label={strings.app_name}
             >
               <Image
-                src="/Logo%20Collectra-02.png"
+                src="/logo-collectra-02.png"
                 alt="Collectra logo"
                 width={40}
                 height={40}

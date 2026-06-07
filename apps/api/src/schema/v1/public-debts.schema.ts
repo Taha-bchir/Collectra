@@ -21,6 +21,8 @@ const PublicDebtViewSchema = z.object({
   promiseDate: z.string().datetime().nullable().optional(),
   status: z.nativeEnum(DebtStatus),
   campaignName: z.string(),
+  workspaceName: z.string().nullable().optional(),
+  invoiceNumber: z.string().nullable().optional(),
   tokenExpiresAt: z.string().datetime(),
   customer: z.object({
     fullName: z.string(),
@@ -155,7 +157,7 @@ export const createPublicStripeCheckoutSessionByTokenSchema = createRoute({
   tags: ['public-debts'],
   summary: 'Create Stripe Checkout session by secure customer token',
   description:
-    'Public endpoint used by debtor links to open Stripe Checkout for debts currently in PROMISE_TO_PAY status.',
+    'Public endpoint used by debtor links to open Stripe Checkout for unpaid debts. A promise date is not required.',
   request: {
     params: z.object({
       token: z.string().min(1),
@@ -311,6 +313,9 @@ export const createPublicInvoiceByTokenSchema = createRoute({
   request: {
     params: z.object({
       token: z.string().min(1),
+    }),
+    query: z.object({
+      download: z.enum(['1']).optional(),
     }),
   },
   responses: {
