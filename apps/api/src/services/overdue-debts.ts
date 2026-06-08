@@ -3,12 +3,14 @@ import { BrevoEmailService } from './brevo-email.js'
 import { logBrevoEvent } from './brevo-event-logs.js'
 import { logger } from '../utils/logger.js'
 import { utcCalendarDayStart } from '../utils/calendar.js'
+import { getOverdueReferenceDate, isDebtOverdue } from '../utils/customer-payment.js'
 
 type OverdueDebtCandidate = {
   id: string
   clientId: string
   amount: { toNumber(): number }
   dueDate: Date
+  promiseDate: Date | null
   status: 'IMPORTED' | 'UNPAID' | 'NOTIFIED' | 'PROMISE_TO_PAY' | 'PAID' | 'OVERDUE_AFTER_PROMISE'
   client: {
     fullName: string
@@ -32,7 +34,9 @@ export type MarkOverdueDebtsResult = {
 async function sendOverdueNoticeIfPossible(prisma: PrismaClient, debt: OverdueDebtCandidate) {
   const emailService = new BrevoEmailService()
   const amount = debt.amount.toNumber()
-  const dueDateLabel = debt.dueDate.toISOString().split('T')[0] ?? debt.dueDate.toISOString()
+  const overdueReferenceDate = getOverdueReferenceDate(debt)
+  const dueDateLabel =
+    overdueReferenceDate.toISOString().split('T')[0] ?? overdueReferenceDate.toISOString()
 
   if (!debt.client.email) {
     return { ok: false as const, skippedNoEmail: true, skippedBrevo: false }
@@ -68,6 +72,8 @@ async function sendOverdueNoticeIfPossible(prisma: PrismaClient, debt: OverdueDe
       payload: {
         debtId: debt.id,
         dueDate: debt.dueDate.toISOString(),
+        promiseDate: debt.promiseDate?.toISOString() ?? null,
+        overdueReferenceDate: overdueReferenceDate.toISOString(),
       },
     })
   } catch (error) {
@@ -88,12 +94,12 @@ export async function transitionDebtToOverdue(
     return { transitioned: false, emailed: false, skippedNoEmail: false, skippedBrevo: false }
   }
 
-  const todayStart = utcCalendarDayStart(new Date())
-  const dueDateStart = utcCalendarDayStart(debt.dueDate)
-
-  if (todayStart.getTime() <= dueDateStart.getTime()) {
+  if (!isDebtOverdue(debt)) {
     return { transitioned: false, emailed: false, skippedNoEmail: false, skippedBrevo: false }
   }
+
+  const overdueReason =
+    debt.status === 'PROMISE_TO_PAY' && debt.promiseDate ? 'promise_date_passed' : 'due_date_passed'
 
   await prisma.$transaction(async (tx) => {
     await tx.debtRecord.update({
@@ -107,8 +113,10 @@ export async function transitionDebtToOverdue(
         customerId: debt.clientId,
         actionType: 'STATUS_CHANGED',
         metadata: {
-          reason: 'due_date_passed',
+          reason: overdueReason,
           newStatus: 'OVERDUE_AFTER_PROMISE',
+          promiseDate: debt.promiseDate?.toISOString() ?? null,
+          dueDate: debt.dueDate.toISOString(),
         },
       },
     })
@@ -130,13 +138,28 @@ export async function markOverdueDebtsByDueDate(prisma: PrismaClient): Promise<M
   const debts = await prisma.debtRecord.findMany({
     where: {
       status: { notIn: ['PAID', 'OVERDUE_AFTER_PROMISE'] },
-      dueDate: { lt: todayStart },
+      OR: [
+        {
+          status: 'PROMISE_TO_PAY',
+          promiseDate: { lt: todayStart },
+        },
+        {
+          status: { not: 'PROMISE_TO_PAY' },
+          dueDate: { lt: todayStart },
+        },
+        {
+          status: 'PROMISE_TO_PAY',
+          promiseDate: null,
+          dueDate: { lt: todayStart },
+        },
+      ],
     },
     select: {
       id: true,
       clientId: true,
       amount: true,
       dueDate: true,
+      promiseDate: true,
       status: true,
       client: {
         select: {

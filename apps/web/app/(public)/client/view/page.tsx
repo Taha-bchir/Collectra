@@ -271,6 +271,28 @@ function ClientDebtViewContent() {
     return ENABLE_STRIPE_PAYMENT && supportsStripeCheckout(debt.currency)
   }, [debt])
 
+  const paymentBlockedUntilPromiseDate = useMemo(() => {
+    if (!debt || debt.status !== 'PROMISE_TO_PAY' || !debt.promiseDate) {
+      return null
+    }
+
+    const today = calendarDayStart(new Date())
+    const promiseDay = calendarDayStart(new Date(debt.promiseDate))
+    if (today.getTime() >= promiseDay.getTime()) {
+      return null
+    }
+
+    return promiseDay
+  }, [debt])
+
+  const canPayNow = useMemo(() => {
+    if (!debt || debt.status === 'PAID' || debt.status === 'OVERDUE_AFTER_PROMISE') {
+      return false
+    }
+
+    return paymentBlockedUntilPromiseDate === null
+  }, [debt, paymentBlockedUntilPromiseDate])
+
   const handleSubmitPromiseDate = async () => {
     if (!token || !debt || !promiseDate) {
       return
@@ -470,13 +492,21 @@ function ClientDebtViewContent() {
                     <CardHeader className="space-y-2">
                       <CardTitle className="text-lg">Pay now</CardTitle>
                       <CardDescription>
-                        Settle the full amount right away with a secure online payment.
+                        {debt.status === 'OVERDUE_AFTER_PROMISE'
+                          ? 'This debt is overdue. Online payment is no longer available.'
+                          : paymentBlockedUntilPromiseDate
+                            ? `Online payment opens on ${paymentBlockedUntilPromiseDate.toLocaleDateString('en-GB')}, your chosen promise date.`
+                            : 'Settle the full amount right away with a secure online payment.'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <p className="text-xs text-muted-foreground">
                         {!ENABLE_STRIPE_PAYMENT
                           ? 'Online payments are currently disabled for this environment.'
+                          : debt.status === 'OVERDUE_AFTER_PROMISE'
+                            ? 'Please contact your collector if you still need to resolve this debt.'
+                          : paymentBlockedUntilPromiseDate
+                            ? 'You selected a promise date. Payment stays locked until that date.'
                           : canUseStripeCheckout
                             ? 'You will be redirected to Stripe Checkout.'
                             : `Online card payment is available for EUR and USD debts only. This debt is in ${debt.currency.toUpperCase()}.`}
@@ -486,7 +516,8 @@ function ClientDebtViewContent() {
                         disabled={
                           submittingStripePayment ||
                           isConfirmingPayment ||
-                          !canUseStripeCheckout
+                          !canUseStripeCheckout ||
+                          !canPayNow
                         }
                         className="w-full"
                       >
@@ -497,6 +528,10 @@ function ClientDebtViewContent() {
                           </>
                         ) : isConfirmingPayment ? (
                           'Confirming payment...'
+                        ) : !canPayNow ? (
+                          paymentBlockedUntilPromiseDate
+                            ? 'Payment opens on promise date'
+                            : 'Online payment unavailable'
                         ) : canUseStripeCheckout ? (
                           'Pay now securely'
                         ) : (
@@ -507,7 +542,7 @@ function ClientDebtViewContent() {
                         <Button
                           variant="ghost"
                           onClick={handleFakePayment}
-                          disabled={submittingFakePayment}
+                          disabled={submittingFakePayment || !canPayNow}
                           className="w-full"
                         >
                           {submittingFakePayment ? (

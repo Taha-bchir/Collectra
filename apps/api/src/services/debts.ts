@@ -13,6 +13,7 @@ import {
 } from '../lib/stripe.js'
 import { resolvePublicApiUrl, resolvePublicWebUrl } from '../utils/public-url.js'
 import { parsePromisedDateInput, utcCalendarDayStart } from '../utils/calendar.js'
+import { assertCustomerPaymentAllowed } from '../utils/customer-payment.js'
 import { toPrismaMetadata } from '../utils/metadata.js'
 import { transitionDebtToOverdue } from './overdue-debts.js'
 
@@ -1019,6 +1020,7 @@ export class DebtsService {
       clientId: debt.clientId,
       amount: debt.amount ?? { toNumber: () => 0 },
       dueDate,
+      promiseDate: debt.promiseDate ?? null,
       status: debt.status,
       client: debt.client ?? { fullName: '', email: null },
       campaign: debt.campaign ?? { id: '', name: '' },
@@ -1130,24 +1132,7 @@ export class DebtsService {
       })
     }
 
-    // Validate payment is allowed on/after promise date
-    if (debt.promiseDate) {
-      const promiseDateStart = new Date(
-        Date.UTC(
-          debt.promiseDate.getUTCFullYear(),
-          debt.promiseDate.getUTCMonth(),
-          debt.promiseDate.getUTCDate(),
-        ),
-      )
-      const todayStart = new Date()
-      todayStart.setUTCHours(0, 0, 0, 0)
-
-      if (todayStart < promiseDateStart) {
-        throw new HTTPException(400, {
-          message: `Payment is not available until ${debt.promiseDate.toISOString().split('T')[0]}`,
-        })
-      }
-    }
+    assertCustomerPaymentAllowed(debt)
 
     const updatedDebt = await this.prisma.$transaction(async (tx) => {
       const paidDebt = await tx.debtRecord.update({
@@ -1233,17 +1218,7 @@ export class DebtsService {
       pendingStripeSessionId?: string | null
     }
 
-    if (debt.status === 'PAID') {
-      throw new HTTPException(400, {
-        message: 'This debt has already been paid',
-      })
-    }
-
-    if (debt.status === 'OVERDUE_AFTER_PROMISE') {
-      throw new HTTPException(400, {
-        message: 'This debt is overdue and can no longer be paid online',
-      })
-    }
+    assertCustomerPaymentAllowed(debt)
 
     const amount = debt.amount.toNumber()
     if (!Number.isFinite(amount) || amount <= 0) {

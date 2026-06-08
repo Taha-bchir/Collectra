@@ -7,27 +7,26 @@ import { markOverdueDebtsByDueDate } from '../../../services/overdue-debts.js'
 
 const handler = new OpenAPIHono<Env>()
 
-handler.post(
-  '/mark-overdue',
-  withRouteTryCatch('adminDebts.markOverdueByDueDate', async (c) => {
-    const denied = assertCronSecret(c)
-    if (denied) return denied
+const runMarkOverdueJob = withRouteTryCatch('adminDebts.markOverdueByDueDate', async (c) => {
+  const denied = assertCronSecret(c)
+  if (denied) return denied
 
-    const result = await markOverdueDebtsByDueDate(c.get('prisma'))
-    return c.json({ data: result })
-  }),
-)
+  const result = await markOverdueDebtsByDueDate(c.get('prisma'))
+  return c.json({ data: result })
+})
 
-handler.post(
-  '/send-promise-reminders',
-  withRouteTryCatch('adminDebts.sendPromiseReminders', async (c) => {
-    const denied = assertCronSecret(c)
-    if (denied) return denied
+const runPromiseReminderJob = withRouteTryCatch('adminDebts.sendPromiseReminders', async (c) => {
+  const denied = assertCronSecret(c)
+  if (denied) return denied
 
-    const result = await sendPromiseDueReminders(c.get('prisma'))
-    return c.json({ data: result })
-  }),
-)
+  const result = await sendPromiseDueReminders(c.get('prisma'))
+  return c.json({ data: result })
+})
+
+handler.get('/mark-overdue', runMarkOverdueJob)
+handler.post('/mark-overdue', runMarkOverdueJob)
+handler.get('/send-promise-reminders', runPromiseReminderJob)
+handler.post('/send-promise-reminders', runPromiseReminderJob)
 
 const routeModule = {
   path: '/api/v1/admin/debts',

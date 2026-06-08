@@ -365,7 +365,7 @@ export class BrevoEmailService {
                 <div style="font-size:12px; letter-spacing:0.18em; text-transform:uppercase; opacity:0.82;">${safeSender}</div>
                 <div style="margin-top:10px; font-size:26px; line-height:1.15; font-weight:700;">Payment overdue</div>
                 <div style="margin-top:10px; font-size:14px; line-height:1.7; max-width:520px; opacity:0.96;">
-                  The due date <strong>${safeDueDate}</strong> has passed. Online payment is no longer available for this debt.
+                  The scheduled payment date <strong>${safeDueDate}</strong> has passed. Online payment is no longer available for this debt.
                 </div>
               </td>
             </tr>
@@ -404,7 +404,7 @@ export class BrevoEmailService {
       '',
       `Hello ${displayName},`,
       '',
-      `Your debt for campaign ${campaignName} is now overdue. The due date ${dueDateLabel} has passed.`,
+      `Your debt for campaign ${campaignName} is now overdue. The scheduled payment date ${dueDateLabel} has passed.`,
       `Amount: ${amountText}`,
       'Online payment is no longer available for this debt.',
       'The company will take the appropriate next actions according to its recovery process.',
